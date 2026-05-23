@@ -9,7 +9,30 @@ export const Route = createFileRoute("/member/$slug")({
     if (!m) throw notFound();
     return m;
   },
-  head: ({ loaderData }) => buildHead({ title: loaderData?.stageName ?? "Member", canonical: `/member/${loaderData?.slug}` }),
+  head: ({ loaderData }) => {
+    if (!loaderData) return buildHead({ title: "Member" });
+    const m = loaderData;
+    const canonical = `/member/${m.slug}`;
+    const personLd = {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: m.stageName,
+      alternateName: m.koreanName,
+      birthDate: m.birthday,
+      nationality: m.nationality,
+      image: m.image,
+      url: canonical,
+      jobTitle: Array.isArray(m.position) ? m.position.join(", ") : undefined,
+    };
+    return buildHead({
+      title: m.stageName,
+      description: `${m.stageName} — profile, facts and updates.`,
+      canonical,
+      ogImage: m.image,
+      ogType: "profile",
+      jsonLd: personLd,
+    });
+  },
   component: MemberPage,
 });
 
