@@ -49,9 +49,21 @@ export const BADGES: BadgeDef[] = [
 ];
 
 const KEY = "kpopblog:gamification";
+const ACTIVITY_KEY = "kpopblog:gamification:activity";
+const ACTIVITY_LIMIT = 50;
+
+export interface ActivityEntry {
+  id: string;
+  at: string;
+  points: number;
+  kind: keyof GamificationStats | "points";
+  label: string;
+}
 
 type Listener = (s: GamificationStats) => void;
 const listeners = new Set<Listener>();
+type ActivityListener = (a: ActivityEntry[]) => void;
+const activityListeners = new Set<ActivityListener>();
 
 function defaults(): GamificationStats {
   return { points: 0, articlesRead: 0, commentsPosted: 0, pollsVoted: 0, artistsFollowed: 0, streakDays: 1 };
@@ -72,18 +84,58 @@ function write(s: GamificationStats) {
   listeners.forEach((l) => l(s));
 }
 
+function readActivity(): ActivityEntry[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACTIVITY_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeActivity(items: ActivityEntry[]) {
+  if (typeof localStorage === "undefined") return;
+  const trimmed = items.slice(0, ACTIVITY_LIMIT);
+  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(trimmed));
+  activityListeners.forEach((l) => l(trimmed));
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  points: "Earned points",
+  articlesRead: "Read an article",
+  commentsPosted: "Posted a comment",
+  pollsVoted: "Voted in a poll",
+  artistsFollowed: "Followed an artist",
+  streakDays: "Daily streak bonus",
+};
+
 export const gamification = {
   stats: read,
+  activity: readActivity,
   subscribe(l: Listener) {
     listeners.add(l);
     l(read());
     return () => listeners.delete(l);
   },
-  award(points: number, key?: keyof GamificationStats) {
+  subscribeActivity(l: ActivityListener) {
+    activityListeners.add(l);
+    l(readActivity());
+    return () => activityListeners.delete(l);
+  },
+  award(points: number, key?: keyof GamificationStats, label?: string) {
     const s = read();
     s.points += points;
     if (key && key !== "points") s[key] = (s[key] as number) + 1;
     write(s);
+    const entry: ActivityEntry = {
+      id: `a_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      at: new Date().toISOString(),
+      points,
+      kind: key ?? "points",
+      label: label ?? ACTIVITY_LABELS[key ?? "points"] ?? "Activity",
+    };
+    writeActivity([entry, ...readActivity()]);
   },
   levelOf(points: number): FandomLevel {
     return [...LEVELS].reverse().find((l) => points >= l.minPoints) ?? LEVELS[0];
@@ -100,3 +152,4 @@ export const gamification = {
     return BADGES.filter((b) => b.earn(s));
   },
 };
+
