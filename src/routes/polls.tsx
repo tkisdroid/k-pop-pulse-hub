@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 
 export const Route = createFileRoute("/polls")({
@@ -12,6 +13,7 @@ function Polls() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <SectionHeader eyebrow="Polls" title="Active fan polls" />
+      <AdSlot slotId="polls-top" variant="leaderboard" />
       <div className="grid gap-4 sm:grid-cols-2">
         {demoData.polls.map((p) => (
           <Link key={p.id} to="/polls/$slug" params={{ slug: p.slug }} className="p-5 rounded-xl bg-card border border-border hover:border-primary/40 block">

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { Play } from "lucide-react";
 
 export const Route = createFileRoute("/videos")({
@@ -13,6 +14,7 @@ function Videos() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="Videos" title="MVs, performances & interviews" />
+      <AdSlot slotId="videos-top" variant="leaderboard" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {demoData.videos.map((v) => (
           <div key={v.id} className="rounded-xl overflow-hidden bg-card border border-border">

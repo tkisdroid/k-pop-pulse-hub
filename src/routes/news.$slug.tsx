@@ -14,6 +14,7 @@ import { cmsProvider } from "@/services/cms";
 import { personalization } from "@/services/personalization";
 import { gamification } from "@/services/gamification";
 import { notifications } from "@/services/notifications/store";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: ({ params }) => {
@@ -132,7 +133,7 @@ function ArticlePage() {
       )}
       <div className="prose prose-invert max-w-none mt-8 dark:prose-invert" dangerouslySetInnerHTML={{ __html: article.content }} />
 
-      <div className="my-8 rounded-xl border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground">Sponsored — inline ad slot</div>
+      <AdSlot slotId={`article-${article.slug}-inline`} variant="in-article" className="my-8" />
 
       {artists.length > 0 && (
         <section className="mt-8">
@@ -193,6 +194,9 @@ function ArticlePage() {
           })}
         </div>
       </section>
+
+
+      <AdSlot slotId={`article-${article.slug}-pre-related`} variant="rectangle" />
 
       <section className="mt-12">
         <h2 className="font-display text-2xl font-bold mb-4">Related articles</h2>

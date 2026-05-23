@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/forum")({
@@ -14,6 +15,7 @@ function ForumIndex() {
     <div className="mx-auto max-w-7xl px-4 py-8 grid gap-8 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <SectionHeader eyebrow="Forum" title="Categories" />
+        <AdSlot slotId="forum-top" variant="leaderboard" />
         <div className="grid gap-3 sm:grid-cols-2">
           {demoData.categories.map((c) => (
             <Link key={c.id} to="/forum/$categorySlug" params={{ categorySlug: c.slug }} className="p-4 rounded-xl bg-card border border-border hover:border-primary/40">

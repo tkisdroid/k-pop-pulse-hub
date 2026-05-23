@@ -4,6 +4,7 @@ import { demoData } from "@/data/demo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export const Route = createFileRoute("/latest")({
   head: () => buildHead({ title: "Latest K-pop News", description: "Browse the freshest K-pop stories.", canonical: "/latest" }),
@@ -31,6 +32,7 @@ function Latest() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="News" title="Latest K-pop News" subtitle="Filter, sort, and search the editorial feed." />
+      <AdSlot slotId="latest-top" variant="leaderboard" />
       <div className="grid gap-3 md:flex md:items-center md:justify-between mb-6">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {CATS.map((c) => (

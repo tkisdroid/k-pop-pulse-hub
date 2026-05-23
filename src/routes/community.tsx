@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
@@ -17,6 +18,7 @@ function Community() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <SectionHeader eyebrow="Community" title="The Wall" subtitle="Quick fan thoughts from around the world." />
+      <AdSlot slotId="community-top" variant="leaderboard" />
       <div className="mb-6 p-4 rounded-xl bg-card border border-border">
         {user ? (
           <form onSubmit={(e) => e.preventDefault()}>
