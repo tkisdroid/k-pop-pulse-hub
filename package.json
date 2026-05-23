@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "ai:generate": "bun run scripts/ai/generate.ts",
+    "ai:translate": "bun run scripts/ai/translate.ts"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
