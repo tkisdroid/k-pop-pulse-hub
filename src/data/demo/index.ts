@@ -743,27 +743,64 @@ const notificationsData: Notification[] = [
   { id: "n_4", userId: "u_1", type: "mention", body: "New: aespa 'Supernova' breaks Circle chart record", url: `/news/${articlesData[3].slug}`, read: false, createdAt: new Date().toISOString() },
 ];
 
-// ---------- Videos ----------
-const videoSeeds = [
-  ["bts", "BTS — group reunion teaser breakdown", "Teaser"],
-  ["blackpink", "BLACKPINK DEADLINE Seoul concert recap", "Performance"],
-  ["aespa", "aespa Supernova live stage compilation", "Performance"],
-  ["stray-kids", "Stray Kids dominATE Seoul fancam highlights", "Performance"],
-  ["le-sserafim", "LE SSERAFIM CRAZY choreography reveal", "MV"],
-  ["newjeans", "NewJeans dance practice archive", "Performance"],
-  ["iu", "IU HER tour London press conference", "Interview"],
-  ["seventeen", "SEVENTEEN MAESTRO behind-the-scenes", "Variety"],
+// ---------- Videos (real YouTube IDs so they can be embedded in-site) ----------
+const videoSeeds: Array<[slug: string, title: string, category: string, youtubeId: string, duration: string]> = [
+  ["bts", "BTS — 'Dynamite' Official MV", "MV", "gdZLi9oWNZg", "3:43"],
+  ["bts", "BTS — 'Butter' Official MV", "MV", "WMweEpGlu_U", "3:55"],
+  ["bts", "BTS — 'Boy With Luv' feat. Halsey", "MV", "XsX3ATc3FbA", "3:50"],
+  ["blackpink", "BLACKPINK — 'Pink Venom' MV", "MV", "gQlMMD8auMs", "3:08"],
+  ["blackpink", "BLACKPINK — 'How You Like That' MV", "MV", "ioNng23DkIM", "3:10"],
+  ["blackpink", "BLACKPINK — 'Shut Down' MV", "MV", "POe9SOEKotk", "2:56"],
+  ["newjeans", "NewJeans — 'Super Shy' MV", "MV", "ArmDp-zijuc", "2:34"],
+  ["newjeans", "NewJeans — 'OMG' MV", "MV", "sVTy_wmn5SU", "3:35"],
+  ["newjeans", "NewJeans — 'ETA' MV", "MV", "jOTfBlKSQYY", "2:35"],
+  ["le-sserafim", "LE SSERAFIM — 'ANTIFRAGILE' MV", "MV", "pyf8cbqyfPs", "3:01"],
+  ["le-sserafim", "LE SSERAFIM — 'EASY' MV", "MV", "WfJgnA6Lwgg", "3:04"],
+  ["le-sserafim", "LE SSERAFIM — 'UNFORGIVEN' feat. Nile Rodgers", "MV", "Qq00ND2DKQQ", "3:05"],
+  ["aespa", "aespa — 'Supernova' MV", "MV", "phuiiNCxRMg", "2:58"],
+  ["aespa", "aespa — 'Next Level' MV", "MV", "4TWR90KJl84", "3:48"],
+  ["aespa", "aespa — 'Spicy' MV", "MV", "TGPGfaFvHyM", "3:15"],
+  ["ive", "IVE — 'I AM' MV", "MV", "6ZUIwj3FgUY", "3:21"],
+  ["ive", "IVE — 'LOVE DIVE' MV", "MV", "Y8JFxS1HlDo", "3:00"],
+  ["ive", "IVE — 'After LIKE' MV", "MV", "F0B7HDiY-10", "2:56"],
+  ["stray-kids", "Stray Kids — 'God's Menu' MV", "MV", "TQTlCHxyuu8", "3:30"],
+  ["stray-kids", "Stray Kids — 'MANIAC' MV", "MV", "PCp2iXA1uLE", "3:30"],
+  ["stray-kids", "Stray Kids — 'LALALALA' MV", "MV", "JsOOis4bBFg", "3:11"],
+  ["twice", "TWICE — 'I CAN'T STOP ME' MV", "MV", "CM4CkVFmTds", "3:33"],
+  ["twice", "TWICE — 'Fancy' MV", "MV", "kOHB85vDuow", "3:34"],
+  ["twice", "TWICE — 'ONE SPARK' MV", "MV", "VmyP8N8sDjY", "3:14"],
+  ["seventeen", "SEVENTEEN — 'MAESTRO' MV", "MV", "QYHJEoQzG54", "3:04"],
+  ["seventeen", "SEVENTEEN — 'God of Music' MV", "MV", "VqGAXVpePpw", "3:01"],
+  ["seventeen", "SEVENTEEN — 'Super' MV", "MV", "tT2Yj4qPlSc", "3:08"],
+  ["itzy", "ITZY — 'WANNABE' MV", "MV", "lrFp79uXPi0", "3:24"],
+  ["itzy", "ITZY — 'LOCO' MV", "MV", "BiSCXVT_a3o", "3:25"],
+  ["riize", "RIIZE — 'Get A Guitar' MV", "MV", "iuJDhFRDx9M", "3:00"],
+  ["riize", "RIIZE — 'Boom Boom Bass' MV", "MV", "EzM3pZ7tziA", "3:09"],
+  ["enhypen", "ENHYPEN — 'Bite Me' MV", "MV", "yJ5O7Q1ZxNw", "2:55"],
+  ["enhypen", "ENHYPEN — 'Sweet Venom' MV", "MV", "k6jqx9kZgPM", "3:09"],
+  ["iu", "IU — 'LILAC' MV", "MV", "v7bnOxV4jAc", "3:46"],
+  ["iu", "IU — 'Blueming' MV", "MV", "D1PvIWdJ8xo", "3:36"],
+  ["iu", "IU — 'eight' feat. SUGA of BTS", "MV", "mrxXjBDxqA8", "2:55"],
+  ["txt", "TXT — 'Sugar Rush Ride' MV", "MV", "Km1u9Hi-pNk", "3:01"],
+  ["txt", "TXT — 'Chasing That Feeling' MV", "MV", "WkpZ-2nQHcA", "3:19"],
+  ["gidle", "(G)I-DLE — 'TOMBOY' MV", "MV", "8df0OFhJ9Zo", "2:53"],
+  ["gidle", "(G)I-DLE — 'Queencard' MV", "MV", "kSTudb6ZqWg", "3:08"],
+  ["gidle", "(G)I-DLE — 'Super Lady' MV", "MV", "0jbVuusZsdE", "3:18"],
+  ["zerobaseone", "ZEROBASEONE — 'In Bloom' MV", "MV", "_TG1XlqYYTQ", "3:18"],
+  ["zerobaseone", "ZEROBASEONE — 'CRUSH' MV", "MV", "ddPbsGy26IM", "3:16"],
 ];
 
-const videosData = videoSeeds.map(([slug, title, category], i) => {
+const videosData = videoSeeds.map(([slug, title, category, youtubeId, duration], i) => {
   const a = artistsData.find((x) => x.slug === slug)!;
   return {
     id: `v_${i + 1}`,
     title,
     artistId: a.id,
+    artistSlug: slug,
     category,
-    thumbnail: a.image,
-    duration: ["3:24", "4:12", "5:08", "2:55", "3:47", "4:21", "6:02", "3:11"][i],
+    youtubeId,
+    thumbnail: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
+    duration,
   };
 });
 
