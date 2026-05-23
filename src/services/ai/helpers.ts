@@ -4,9 +4,58 @@
  * Start `createServerFn` or a WP REST route) that forwards to OpenAI or
  * Gemini using server-side keys.
  *
- * Endpoint contract: POST { task, payload } -> { text } | { flagged, reasons }
+ * Endpoint contract:
+ *   POST { task, payload } -> { text } | { bullets } | { flagged, score?, reasons? }
+ *
+ * Moderation settings (threshold + default block reason) come from the
+ * WordPress admin (Settings → KpopBlog) and are injected via
+ * window.kpopblogConfig.moderation. When the SPA runs outside WP, we fetch
+ * them from /wp-json/kpopblog/v1/moderation/settings if a WP API base is
+ * configured, otherwise we fall back to safe defaults.
  */
 const ENDPOINT = (import.meta as any).env?.VITE_AI_CHAT_ENDPOINT as string | undefined;
+
+type ModerationSettings = { enabled: boolean; threshold: number; defaultReason: string };
+
+const FALLBACK_MOD: ModerationSettings = {
+  enabled: true,
+  threshold: 0.7,
+  defaultReason: "Your comment was blocked by our automated moderation system. Please revise and try again.",
+};
+
+let modSettingsPromise: Promise<ModerationSettings> | null = null;
+
+function injectedModSettings(): ModerationSettings | null {
+  if (typeof window === "undefined") return null;
+  const cfg = (window as any).kpopblogConfig;
+  const m = cfg?.moderation;
+  if (!m) return null;
+  return {
+    enabled: m.enabled !== false,
+    threshold: typeof m.threshold === "number" ? m.threshold : FALLBACK_MOD.threshold,
+    defaultReason: typeof m.defaultReason === "string" && m.defaultReason ? m.defaultReason : FALLBACK_MOD.defaultReason,
+  };
+}
+
+async function loadModerationSettings(): Promise<ModerationSettings> {
+  const injected = injectedModSettings();
+  if (injected) return injected;
+  if (modSettingsPromise) return modSettingsPromise;
+  const wpApi = (import.meta as any).env?.VITE_WP_API_BASE as string | undefined;
+  if (!wpApi) {
+    modSettingsPromise = Promise.resolve(FALLBACK_MOD);
+    return modSettingsPromise;
+  }
+  modSettingsPromise = fetch(`${wpApi.replace(/\/$/, "")}/kpopblog/v1/moderation/settings`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((j) => ({
+      enabled: j.enabled !== false,
+      threshold: typeof j.threshold === "number" ? j.threshold : FALLBACK_MOD.threshold,
+      defaultReason: typeof j.defaultReason === "string" && j.defaultReason ? j.defaultReason : FALLBACK_MOD.defaultReason,
+    }))
+    .catch(() => FALLBACK_MOD);
+  return modSettingsPromise;
+}
 
 async function callChat<T>(task: string, payload: unknown): Promise<T | null> {
   if (!ENDPOINT) return null;
@@ -30,6 +79,7 @@ async function callChat<T>(task: string, payload: unknown): Promise<T | null> {
 
 export const aiHelpers = {
   configured: Boolean(ENDPOINT),
+  getModerationSettings: loadModerationSettings,
 
   async summarize(text: string, opts?: { bullets?: number; locale?: string }): Promise<string[]> {
     const remote = await callChat<{ bullets: string[] }>("summarize", {
@@ -38,7 +88,6 @@ export const aiHelpers = {
       locale: opts?.locale ?? "en",
     });
     if (remote?.bullets?.length) return remote.bullets;
-    // Local fallback so the UI always works.
     const sentences = text.replace(/<[^>]+>/g, "").split(/(?<=[.!?])\s+/).filter(Boolean);
     return sentences.slice(0, opts?.bullets ?? 3);
   },
@@ -49,15 +98,41 @@ export const aiHelpers = {
     return { text: `[${targetLang}] ${text}`, machine: true };
   },
 
-  async moderate(text: string): Promise<{ allowed: boolean; reasons: string[] }> {
-    const remote = await callChat<{ flagged: boolean; reasons?: string[] }>("moderate", { text });
-    if (remote) return { allowed: !remote.flagged, reasons: remote.reasons ?? [] };
-    // Local fallback: basic profanity / spam regex.
-    const banned = /\b(slur1|slur2|kys|fuck you|nigger|faggot)\b/i;
-    const spammy = /(https?:\/\/\S+){3,}|(.)\1{8,}/i;
-    const reasons: string[] = [];
-    if (banned.test(text)) reasons.push("hateful language");
-    if (spammy.test(text)) reasons.push("spam");
-    return { allowed: reasons.length === 0, reasons };
+  async moderate(text: string): Promise<{ allowed: boolean; reasons: string[]; reason: string; score: number }> {
+    const settings = await loadModerationSettings();
+    if (!settings.enabled) return { allowed: true, reasons: [], reason: "", score: 0 };
+
+    const remote = await callChat<{ flagged: boolean; score?: number; reasons?: string[] }>("moderate", {
+      text,
+      threshold: settings.threshold,
+    });
+
+    let flagged: boolean;
+    let reasons: string[];
+    let score: number;
+
+    if (remote) {
+      score = typeof remote.score === "number" ? remote.score : remote.flagged ? 1 : 0;
+      reasons = remote.reasons ?? [];
+      // Honor the admin-configured threshold even if the model said "flagged".
+      flagged = remote.flagged && score >= settings.threshold;
+    } else {
+      // Local fallback: basic profanity / spam regex.
+      const banned = /\b(slur1|slur2|kys|fuck you|nigger|faggot)\b/i;
+      const spammy = /(https?:\/\/\S+){3,}|(.)\1{8,}/i;
+      reasons = [];
+      if (banned.test(text)) reasons.push("hateful language");
+      if (spammy.test(text)) reasons.push("spam");
+      score = reasons.length ? 1 : 0;
+      flagged = reasons.length > 0;
+    }
+
+    const reason = flagged
+      ? reasons.length
+        ? `${settings.defaultReason} (${reasons.join(", ")})`
+        : settings.defaultReason
+      : "";
+
+    return { allowed: !flagged, reasons, reason, score };
   },
 };

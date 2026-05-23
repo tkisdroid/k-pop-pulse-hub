@@ -71,7 +71,7 @@ function ArticlePage() {
     try {
       const check = await aiHelpers.moderate(draft);
       if (!check.allowed) {
-        setModError(`Comment blocked by AI moderation: ${check.reasons.join(", ")}`);
+        setModError(check.reason || `Comment blocked by AI moderation: ${check.reasons.join(", ")}`);
         return;
       }
       const res = await cmsProvider.postComment?.(article.slug, draft);
