@@ -17,6 +17,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { AdSlot, StickyFooterAd } from "@/components/ads/AdSlot";
 
 function NotFoundComponent() {
   return (
@@ -92,7 +93,14 @@ function RootComponent() {
             <AuthModalProvider>
               <div className="min-h-screen flex flex-col">
                 <Header />
+                <div className="mx-auto max-w-7xl px-4 w-full">
+                  <AdSlot slotId="global-top-leaderboard" variant="leaderboard" />
+                </div>
                 <main className="flex-1 pb-20 lg:pb-0"><Outlet /></main>
+                <div className="mx-auto max-w-7xl px-4 w-full">
+                  <AdSlot slotId="global-pre-footer" variant="billboard" />
+                </div>
+                <StickyFooterAd />
                 <Footer />
                 <MobileBottomNav />
               </div>

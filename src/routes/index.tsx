@@ -6,6 +6,7 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
 import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export const Route = createFileRoute("/")({
   head: () => buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" }),
@@ -60,6 +61,8 @@ function Index() {
         </div>
       </section>
 
+      <div className="mx-auto max-w-7xl px-4"><AdSlot slotId="home-after-hero" variant="leaderboard" /></div>
+
       <ForYouSection pool={demoData.articles} />
 
       {/* Trending */}
@@ -93,8 +96,7 @@ function Index() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {latest.map((a) => <ArticleCard key={a.id} article={a} />)}
         </div>
-        {/* mid-feed ad slot */}
-        <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/40 p-6 text-center text-xs text-muted-foreground">Sponsored — ad slot</div>
+        <AdSlot slotId="home-mid-feed" variant="billboard" />
       </section>
 
       {/* Comebacks + Spotlight */}
@@ -187,6 +189,8 @@ function Index() {
           </div>
         </div>
       </section>
+
+      <div className="mx-auto max-w-7xl px-4"><AdSlot slotId="home-pre-community" variant="leaderboard" /></div>
 
       {/* Community wall */}
       <section className="mx-auto max-w-7xl px-4 py-8">
