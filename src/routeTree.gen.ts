@@ -35,6 +35,7 @@ import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WatchVideoIdRouteImport } from './routes/watch.$videoId'
 import { Route as ThreadThreadSlugRouteImport } from './routes/thread.$threadSlug'
 import { Route as TagSlugRouteImport } from './routes/tag.$slug'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
@@ -176,6 +177,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WatchVideoIdRoute = WatchVideoIdRouteImport.update({
+  id: '/watch/$videoId',
+  path: '/watch/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ThreadThreadSlugRoute = ThreadThreadSlugRouteImport.update({
   id: '/thread/$threadSlug',
   path: '/thread/$threadSlug',
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/profile/$username': typeof ProfileUsernameRoute
   '/tag/$slug': typeof TagSlugRoute
   '/thread/$threadSlug': typeof ThreadThreadSlugRoute
+  '/watch/$videoId': typeof WatchVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/profile/$username': typeof ProfileUsernameRoute
   '/tag/$slug': typeof TagSlugRoute
   '/thread/$threadSlug': typeof ThreadThreadSlugRoute
+  '/watch/$videoId': typeof WatchVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -341,6 +349,7 @@ export interface FileRoutesById {
   '/profile/$username': typeof ProfileUsernameRoute
   '/tag/$slug': typeof TagSlugRoute
   '/thread/$threadSlug': typeof ThreadThreadSlugRoute
+  '/watch/$videoId': typeof WatchVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -381,6 +390,7 @@ export interface FileRouteTypes {
     | '/profile/$username'
     | '/tag/$slug'
     | '/thread/$threadSlug'
+    | '/watch/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/profile/$username'
     | '/tag/$slug'
     | '/thread/$threadSlug'
+    | '/watch/$videoId'
   id:
     | '__root__'
     | '/'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/profile/$username'
     | '/tag/$slug'
     | '/thread/$threadSlug'
+    | '/watch/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   ProfileUsernameRoute: typeof ProfileUsernameRoute
   TagSlugRoute: typeof TagSlugRoute
   ThreadThreadSlugRoute: typeof ThreadThreadSlugRoute
+  WatchVideoIdRoute: typeof WatchVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -680,6 +693,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/watch/$videoId': {
+      id: '/watch/$videoId'
+      path: '/watch/$videoId'
+      fullPath: '/watch/$videoId'
+      preLoaderRoute: typeof WatchVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/thread/$threadSlug': {
       id: '/thread/$threadSlug'
       path: '/thread/$threadSlug'
@@ -808,6 +828,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileUsernameRoute: ProfileUsernameRoute,
   TagSlugRoute: TagSlugRoute,
   ThreadThreadSlugRoute: ThreadThreadSlugRoute,
+  WatchVideoIdRoute: WatchVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
