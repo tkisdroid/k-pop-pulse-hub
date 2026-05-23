@@ -740,7 +740,7 @@ const notificationsData: Notification[] = [
   { id: "n_1", userId: "u_1", type: "reply", body: "BLINK Mod replied to your BTS reunion thread", url: `/thread/${threadsData[0].slug}`, read: false, createdAt: new Date().toISOString() },
   { id: "n_2", userId: "u_1", type: "comeback", body: "BLACKPINK DEADLINE Seoul opens in 5 days", url: "/comebacks", read: false, createdAt: new Date().toISOString() },
   { id: "n_3", userId: "u_1", type: "follow", body: "MY Forever followed you", read: true, createdAt: new Date().toISOString() },
-  { id: "n_4", userId: "u_1", type: "article", body: "New: aespa 'Supernova' breaks Circle chart record", url: `/news/${articlesData[3].slug}`, read: false, createdAt: new Date().toISOString() },
+  { id: "n_4", userId: "u_1", type: "mention", body: "New: aespa 'Supernova' breaks Circle chart record", url: `/news/${articlesData[3].slug}`, read: false, createdAt: new Date().toISOString() },
 ];
 
 // ---------- Videos ----------
