@@ -153,10 +153,10 @@ function ProfilePage() {
                     params={{ slug: a.slug }}
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/40"
                   >
-                    <img src={a.imageUrl} alt="" className="size-10 rounded-full object-cover" />
+                    <img src={a.image} alt="" className="size-10 rounded-full object-cover" />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold truncate">{a.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{a.koreanName ?? a.company ?? ""}</div>
+                      <div className="text-xs text-muted-foreground truncate">{a.koreanName ?? a.agency ?? ""}</div>
                     </div>
                   </Link>
                 </li>
