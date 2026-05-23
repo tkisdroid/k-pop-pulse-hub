@@ -1,14 +1,51 @@
 import type { Artist, Member, Article, ForumCategory, ForumThread, ForumPost, ComebackEvent, Poll, User, CommunityPost, Badge, Comment, Notification } from "@/types";
 
-// Brand-color gradient placeholders. We use these in place of copyrighted
-// promotional photography while keeping real artist names, agencies, debut
-// dates, fandom names, members and event data accurate.
+// Stylized, copyright-safe concept art per artist (no real likenesses).
+import imgBts from "@/assets/artists/bts.jpg";
+import imgBlackpink from "@/assets/artists/blackpink.jpg";
+import imgNewjeans from "@/assets/artists/newjeans.jpg";
+import imgLesserafim from "@/assets/artists/le-sserafim.jpg";
+import imgAespa from "@/assets/artists/aespa.jpg";
+import imgIve from "@/assets/artists/ive.jpg";
+import imgStraykids from "@/assets/artists/stray-kids.jpg";
+import imgTwice from "@/assets/artists/twice.jpg";
+import imgSeventeen from "@/assets/artists/seventeen.jpg";
+import imgItzy from "@/assets/artists/itzy.jpg";
+import imgRiize from "@/assets/artists/riize.jpg";
+import imgEnhypen from "@/assets/artists/enhypen.jpg";
+import imgIu from "@/assets/artists/iu.jpg";
+import imgTxt from "@/assets/artists/txt.jpg";
+import imgGidle from "@/assets/artists/gidle.jpg";
+import imgZerobaseone from "@/assets/artists/zerobaseone.jpg";
+
+const artistImageBySlug: Record<string, string> = {
+  bts: imgBts,
+  blackpink: imgBlackpink,
+  newjeans: imgNewjeans,
+  "le-sserafim": imgLesserafim,
+  aespa: imgAespa,
+  ive: imgIve,
+  "stray-kids": imgStraykids,
+  twice: imgTwice,
+  seventeen: imgSeventeen,
+  itzy: imgItzy,
+  riize: imgRiize,
+  enhypen: imgEnhypen,
+  iu: imgIu,
+  txt: imgTxt,
+  gidle: imgGidle,
+  zerobaseone: imgZerobaseone,
+};
+
+// Fallback brand-color gradient placeholders for entities without bespoke art
+// (members, generic comeback covers, author avatars, etc.).
 const grad = (a: string, b: string, label: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></linearGradient></defs><rect width='800' height='600' fill='url(%23g)'/><text x='50%' y='50%' fill='white' font-family='sans-serif' font-size='56' font-weight='800' text-anchor='middle' dominant-baseline='middle' opacity='0.92'>${label}</text></svg>`
   )}`;
 
 export const placeholderImg = grad;
+
 
 // ---------- Real artists ----------
 type ArtistSeed = [
