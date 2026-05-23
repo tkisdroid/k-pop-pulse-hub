@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/hooks/useI18n";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 
 const COLS = [
   { title: "About", links: [["About", "/about"], ["Contact", "/contact"], ["Advertise", "/advertise"], ["Submit News Tip", "/submit"]] },
