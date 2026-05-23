@@ -62,7 +62,10 @@ function ProfilePage() {
     if (!isMe) return;
     const u1 = gamification.subscribe(setStats);
     const u2 = gamification.subscribeActivity(setActivity);
-    const sync = () => setFollowedIds(personalization.signals().followedArtists);
+    const sync = () => {
+      setFollowedIds(personalization.signals().followedArtists);
+      setConsentState(personalization.hasConsent());
+    };
     window.addEventListener("storage", sync);
     return () => { u1(); u2(); window.removeEventListener("storage", sync); };
   }, [isMe]);
