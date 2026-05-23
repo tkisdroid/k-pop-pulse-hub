@@ -105,6 +105,7 @@ function kpopblog_register_write_routes() {
 			$count = (int) get_post_meta( $post_id, 'kb_follower_count', true );
 			$count = max( 0, $following ? $count - 1 : $count + 1 );
 			update_post_meta( $post_id, 'kb_follower_count', $count );
+			do_action( 'kb_follow_toggled', $post_id, $user_id, ! $following );
 			return rest_ensure_response( array( 'following' => ! $following, 'followerCount' => $count ) );
 		},
 	) );
