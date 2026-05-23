@@ -28,6 +28,7 @@ require_once KPOPBLOG_PATH . 'includes/rest.php';
 require_once KPOPBLOG_PATH . 'includes/rest-write.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';
 require_once KPOPBLOG_PATH . 'includes/notifications.php';
+require_once KPOPBLOG_PATH . 'includes/newsletter.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
 import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 
 export const Route = createFileRoute("/")({
   head: () => buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" }),
@@ -191,6 +192,10 @@ function Index() {
       </section>
 
       <div className="mx-auto max-w-7xl px-4"><AdSlot slotId="home-pre-community" variant="leaderboard" /></div>
+
+      <section className="mx-auto max-w-7xl px-4 py-8">
+        <NewsletterCTA variant="card" source="home" showTopics />
+      </section>
 
       {/* Community wall */}
       <section className="mx-auto max-w-7xl px-4 py-8">

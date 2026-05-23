@@ -18,6 +18,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PollsRouteImport } from './routes/polls'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as NewsletterRouteImport } from './routes/newsletter'
 import { Route as ModerationRouteImport } from './routes/moderation'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LatestRouteImport } from './routes/latest'
@@ -90,6 +91,11 @@ const PollsRoute = PollsRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsletterRoute = NewsletterRouteImport.update({
+  id: '/newsletter',
+  path: '/newsletter',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModerationRoute = ModerationRouteImport.update({
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
+  '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
+  '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
@@ -330,6 +338,7 @@ export interface FileRoutesById {
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
+  '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
@@ -371,6 +380,7 @@ export interface FileRouteTypes {
     | '/latest'
     | '/login'
     | '/moderation'
+    | '/newsletter'
     | '/onboarding'
     | '/polls'
     | '/privacy'
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/latest'
     | '/login'
     | '/moderation'
+    | '/newsletter'
     | '/onboarding'
     | '/polls'
     | '/privacy'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/latest'
     | '/login'
     | '/moderation'
+    | '/newsletter'
     | '/onboarding'
     | '/polls'
     | '/privacy'
@@ -489,6 +501,7 @@ export interface RootRouteChildren {
   LatestRoute: typeof LatestRoute
   LoginRoute: typeof LoginRoute
   ModerationRoute: typeof ModerationRoute
+  NewsletterRoute: typeof NewsletterRoute
   OnboardingRoute: typeof OnboardingRoute
   PollsRoute: typeof PollsRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
@@ -572,6 +585,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/newsletter': {
+      id: '/newsletter'
+      path: '/newsletter'
+      fullPath: '/newsletter'
+      preLoaderRoute: typeof NewsletterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/moderation': {
@@ -811,6 +831,7 @@ const rootRouteChildren: RootRouteChildren = {
   LatestRoute: LatestRoute,
   LoginRoute: LoginRoute,
   ModerationRoute: ModerationRoute,
+  NewsletterRoute: NewsletterRoute,
   OnboardingRoute: OnboardingRoute,
   PollsRoute: PollsRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
