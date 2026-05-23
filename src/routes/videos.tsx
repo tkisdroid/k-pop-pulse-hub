@@ -42,7 +42,7 @@ function Videos() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-reveal-children className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {videos.map((v) => {
           const artist = demoData.artists.find((a) => a.id === v.artistId);
           return (

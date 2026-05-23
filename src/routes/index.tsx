@@ -70,7 +70,7 @@ function Index() {
 
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Trending Now" title="What everyone is reading" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div data-reveal-children className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {trending.map((a, i) => (
             <Link key={a.id} to="/news/$slug" params={{ slug: a.slug }} className="group relative rounded-xl overflow-hidden bg-card border border-border">
               <div className="aspect-[4/5]"><img src={a.featuredImage} alt={a.title} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>
@@ -94,7 +94,7 @@ function Index() {
             <button key={c} className="shrink-0 px-3 py-1.5 rounded-full text-sm bg-accent hover:bg-primary hover:text-primary-foreground transition-colors">{c}</button>
           ))}
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div data-reveal-children className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {latest.map((a) => <ArticleCard key={a.id} article={a} />)}
         </div>
         <AdSlot slotId="home-mid-feed" variant="billboard" />
@@ -200,7 +200,7 @@ function Index() {
       {/* Community wall */}
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Community Wall" title="Fans around the world" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div data-reveal-children className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {community.map((c) => {
             const user = demoData.users.find((u) => u.id === c.authorId)!;
             return (

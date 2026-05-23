@@ -36,7 +36,7 @@ function Artists() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists, agency" className="h-9 px-3 rounded-md bg-background border border-input text-sm" />
         </div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div data-reveal-children className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {artists.map((a) => (
           <Link key={a.id} to="/artist/$slug" params={{ slug: a.slug }} className="rounded-xl overflow-hidden bg-card border border-border hover:border-primary/40 group">
             <div className="aspect-[3/4] overflow-hidden"><img src={a.image} alt={a.name} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>

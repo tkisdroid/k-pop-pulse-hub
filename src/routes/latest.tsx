@@ -49,7 +49,7 @@ function Latest() {
       {articles.length === 0 ? (
         <div className="py-20 text-center text-muted-foreground">No results found.</div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div data-reveal-children className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {articles.map((a) => <ArticleCard key={a.id} article={a} />)}
         </div>
       )}

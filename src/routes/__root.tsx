@@ -3,6 +3,7 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   Link,
@@ -20,6 +21,8 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import { AdSlot, StickyFooterAd } from "@/components/ads/AdSlot";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { KeepExploring } from "@/components/layout/KeepExploring";
+import { ScrollProgress } from "@/components/layout/ScrollProgress";
+import { RevealOnScroll } from "@/components/layout/RevealOnScroll";
 
 function NotFoundComponent() {
   return (
@@ -85,6 +88,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RouteFadeOutlet() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <main className="flex-1 pb-20 lg:pb-0">
+      <div key={pathname} className="route-fade">
+        <Outlet />
+      </div>
+    </main>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
@@ -93,13 +107,15 @@ function RootComponent() {
         <I18nProvider>
           <AuthProviderShell>
             <AuthModalProvider>
+              <ScrollProgress />
+              <RevealOnScroll />
               <div className="min-h-screen flex flex-col">
                 <Header />
                 <div className="mx-auto max-w-7xl px-4 w-full">
                   <AdSlot slotId="global-top-leaderboard" variant="leaderboard" />
                 </div>
                 <Breadcrumbs />
-                <main className="flex-1 pb-20 lg:pb-0"><Outlet /></main>
+                <RouteFadeOutlet />
                 <KeepExploring />
                 <div className="mx-auto max-w-7xl px-4 w-full">
                   <AdSlot slotId="global-pre-footer" variant="billboard" />

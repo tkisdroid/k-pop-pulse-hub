@@ -20,13 +20,13 @@ function Trending() {
       <section>
         <SectionHeader eyebrow="Trending" title="Top stories right now" />
         <AdSlot slotId="trending-top" variant="leaderboard" />
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div data-reveal-children className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {articles.slice(0, 6).map((a) => <ArticleCard key={a.id} article={a} />)}
         </div>
       </section>
       <section>
         <SectionHeader title="Trending artists" />
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div data-reveal-children className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {artists.map((a) => (
             <Link key={a.id} to="/artist/$slug" params={{ slug: a.slug }} className="text-center group">
               <div className="aspect-square rounded-full overflow-hidden mb-2 mx-auto w-24"><img src={a.image} alt={a.name} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>

@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Search, Menu, Sun, Moon, X } from "lucide-react";
 import { NotificationCenter } from "./NotificationCenter";
 import { LevelBadge } from "@/components/gamification/LevelBadge";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,33 +30,52 @@ export function Header() {
   const { user } = useAuth();
   const { show } = useAuthModal();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => { setOpen(false); }, [path]);
+
   return (
-    <header className="sticky top-0 z-40 glass border-b border-border">
-      <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-4">
-        <button className="lg:hidden p-2" onClick={() => setOpen((o) => !o)} aria-label="Menu">
+    <header
+      className={`sticky top-0 z-40 transition-all duration-300 ${
+        scrolled ? "glass-strong border-b border-border shadow-[0_8px_24px_-16px_color-mix(in_oklab,var(--foreground)_25%,transparent)]" : "glass border-b border-transparent"
+      }`}
+    >
+      <div className={`mx-auto max-w-7xl px-4 flex items-center gap-4 transition-all duration-300 ${scrolled ? "py-2" : "py-3"}`}>
+        <button className="lg:hidden p-2 press" onClick={() => setOpen((o) => !o)} aria-label="Menu">
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="size-8 rounded-lg gradient-neon" />
+        <Link to="/" className="flex items-center gap-2 shrink-0 group">
+          <div className="size-8 rounded-lg gradient-neon transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110" />
           <span className="font-display text-xl font-bold">Kpop<span className="text-gradient">Blog</span></span>
         </Link>
         <nav className="hidden lg:flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
-          {NAV.map((n) => (
-            <Link
-              key={n.to}
-              to={n.to as any}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-accent ${path === n.to ? "text-primary" : "text-muted-foreground"}`}
-            >
-              {t(n.key)}
-            </Link>
-          ))}
+          {NAV.map((n) => {
+            const active = path === n.to;
+            return (
+              <Link
+                key={n.to}
+                to={n.to as any}
+                data-active={active}
+                className={`link-underline px-3 py-1.5 rounded-md text-sm font-medium transition-colors hover:text-foreground ${active ? "text-primary" : "text-muted-foreground"}`}
+              >
+                {t(n.key)}
+              </Link>
+            );
+          })}
         </nav>
         <div className="ml-auto flex items-center gap-1">
-          <Link to="/search" className="p-2 rounded-md hover:bg-accent" aria-label="Search"><Search className="size-5" /></Link>
+          <Link to="/search" className="p-2 rounded-md hover:bg-accent press transition-colors" aria-label="Search"><Search className="size-5" /></Link>
           <LanguageSwitcher />
-          <button onClick={toggle} className="p-2 rounded-md hover:bg-accent" aria-label="Theme">
+          <button onClick={toggle} className="p-2 rounded-md hover:bg-accent press transition-colors" aria-label="Theme">
             {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
           </button>
           {user ? (
@@ -67,8 +86,8 @@ export function Header() {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={() => show("Log in to KpopBlog")}>{t("nav.login")}</Button>
-              <Button size="sm" className="hidden sm:inline-flex" asChild>
+              <Button variant="ghost" size="sm" className="press" onClick={() => show("Log in to KpopBlog")}>{t("nav.login")}</Button>
+              <Button size="sm" className="hidden sm:inline-flex press" asChild>
                 <Link to="/signup">{t("nav.signup")}</Link>
               </Button>
             </>
@@ -76,14 +95,14 @@ export function Header() {
         </div>
       </div>
       {open && (
-        <div className="lg:hidden border-t border-border bg-background">
+        <div className="lg:hidden border-t border-border bg-background animate-in fade-in slide-in-from-top-2 duration-200">
           <nav className="px-4 py-2 grid gap-1">
             {NAV.map((n) => (
-              <Link key={n.to} to={n.to as any} onClick={() => setOpen(false)} className="px-3 py-2 rounded-md hover:bg-accent">
+              <Link key={n.to} to={n.to as any} className="px-3 py-2 rounded-md hover:bg-accent transition-colors">
                 {t(n.key)}
               </Link>
             ))}
-            <Link to="/submit" onClick={() => setOpen(false)} className="px-3 py-2 rounded-md hover:bg-accent">{t("nav.submit")}</Link>
+            <Link to="/submit" className="px-3 py-2 rounded-md hover:bg-accent transition-colors">{t("nav.submit")}</Link>
           </nav>
         </div>
       )}
