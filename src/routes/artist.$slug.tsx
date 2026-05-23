@@ -22,6 +22,7 @@ function ArtistPage() {
   const [tab, setTab] = useState<typeof TABS[number]>("Overview");
   const members = demoData.members.filter((m) => m.groupId === artist.id);
   const news = demoData.articles.filter((a) => a.relatedArtistIds.includes(artist.id));
+  const videos = demoData.videos.filter((v) => v.artistId === artist.id);
   const comebacks = demoData.comebacks.filter((c) => c.artistId === artist.id);
   const threads = demoData.threads.filter((t) => true).slice(0, 4);
 
