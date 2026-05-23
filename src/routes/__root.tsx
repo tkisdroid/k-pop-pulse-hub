@@ -18,6 +18,8 @@ import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { AdSlot, StickyFooterAd } from "@/components/ads/AdSlot";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { KeepExploring } from "@/components/layout/KeepExploring";
 
 function NotFoundComponent() {
   return (
@@ -96,7 +98,9 @@ function RootComponent() {
                 <div className="mx-auto max-w-7xl px-4 w-full">
                   <AdSlot slotId="global-top-leaderboard" variant="leaderboard" />
                 </div>
+                <Breadcrumbs />
                 <main className="flex-1 pb-20 lg:pb-0"><Outlet /></main>
+                <KeepExploring />
                 <div className="mx-auto max-w-7xl px-4 w-full">
                   <AdSlot slotId="global-pre-footer" variant="billboard" />
                 </div>
