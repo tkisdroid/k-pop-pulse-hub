@@ -111,7 +111,7 @@ const artistsData: Artist[] = artistSeeds.map(([slug, name, korean, type, agency
   status: "active",
   nationality: "South Korea",
   bio,
-  image: grad(c1, c2, name),
+  image: artistImageBySlug[slug] ?? grad(c1, c2, name),
   followerCount: followers,
   memberIds: [],
   socialLinks: {
