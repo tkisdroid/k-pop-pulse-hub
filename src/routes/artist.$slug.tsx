@@ -68,6 +68,29 @@ function ArtistPage() {
             </div>
           )}
           {tab === "News" && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{news.map((a) => <ArticleCard key={a.id} article={a} />)}</div>}
+          {tab === "Videos" && (
+            videos.length === 0 ? (
+              <div className="text-muted-foreground py-8">No videos yet for this artist.</div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {videos.map((v) => (
+                  <Link key={v.id} to="/watch/$videoId" params={{ videoId: v.id }} className="rounded-xl overflow-hidden bg-card border border-border group">
+                    <div className="aspect-video relative">
+                      <img src={v.thumbnail} alt={v.title} className="size-full object-cover" loading="lazy" />
+                      <div className="absolute inset-0 grid place-items-center bg-black/30 group-hover:bg-black/50 transition">
+                        <span className="size-12 rounded-full bg-primary/90 grid place-items-center text-primary-foreground text-xl">▶</span>
+                      </div>
+                      <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">{v.duration}</div>
+                    </div>
+                    <div className="p-3">
+                      <div className="text-xs text-primary uppercase">{v.category}</div>
+                      <div className="font-semibold text-sm line-clamp-2">{v.title}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )
+          )}
           {tab === "Members" && (
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {members.map((m) => (
