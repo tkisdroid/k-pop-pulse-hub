@@ -56,6 +56,7 @@ function ProfilePage() {
   const [followedIds, setFollowedIds] = useState<string[]>(() =>
     isMe ? personalization.signals().followedArtists : user!.followedArtists,
   );
+  const [consent, setConsentState] = useState<boolean>(() => personalization.hasConsent());
 
   useEffect(() => {
     if (!isMe) return;
