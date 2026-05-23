@@ -5,9 +5,21 @@ import { buildHead } from "@/components/layout/seo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { gamification, BADGES, type ActivityEntry, type GamificationStats } from "@/services/gamification";
 import { personalization } from "@/services/personalization";
-import { Newspaper, MessageCircle, Vote, Heart, Flame, Trophy } from "lucide-react";
+import { Newspaper, MessageCircle, Vote, Heart, Flame, Trophy, Shield, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/profile/$username")({
   head: ({ params }) => buildHead({ title: `${params.username}`, canonical: `/profile/${params.username}` }),
@@ -44,12 +56,16 @@ function ProfilePage() {
   const [followedIds, setFollowedIds] = useState<string[]>(() =>
     isMe ? personalization.signals().followedArtists : user!.followedArtists,
   );
+  const [consent, setConsentState] = useState<boolean>(() => personalization.hasConsent());
 
   useEffect(() => {
     if (!isMe) return;
     const u1 = gamification.subscribe(setStats);
     const u2 = gamification.subscribeActivity(setActivity);
-    const sync = () => setFollowedIds(personalization.signals().followedArtists);
+    const sync = () => {
+      setFollowedIds(personalization.signals().followedArtists);
+      setConsentState(personalization.hasConsent());
+    };
     window.addEventListener("storage", sync);
     return () => { u1(); u2(); window.removeEventListener("storage", sync); };
   }, [isMe]);
@@ -198,6 +214,73 @@ function ProfilePage() {
           )}
         </section>
       </div>
+
+      {/* Privacy & Personalization */}
+      {isMe && (
+        <section className="mt-8 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="size-5 text-primary" />
+            <h2 className="font-display text-xl font-bold">Privacy & Personalization</h2>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium">Allow personalization data collection</div>
+              <div className="text-xs text-muted-foreground">
+                We use reading history and followed artists to recommend content. You can delete this data at any time.
+              </div>
+            </div>
+            <Switch
+              checked={consent}
+              onCheckedChange={(v) => {
+                personalization.setConsent(v);
+                setConsentState(v);
+                if (!v) {
+                  setFollowedIds([]);
+                } else {
+                  setFollowedIds(personalization.signals().followedArtists);
+                }
+              }}
+            />
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-4 pt-4 border-t border-border">
+            <div>
+              <div className="text-sm font-medium">Reset personalization data</div>
+              <div className="text-xs text-muted-foreground">
+                Clear your reading history, followed artists, and tag preferences.
+              </div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
+                  <Trash2 className="size-3.5" /> Delete data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete personalization data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove your reading history, followed artists, and tag preferences stored locally. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      personalization.resetData();
+                      setFollowedIds([]);
+                      setConsentState(false);
+                      personalization.setConsent(false);
+                    }}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

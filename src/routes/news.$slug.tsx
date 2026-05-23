@@ -46,7 +46,9 @@ function ArticlePage() {
   const comments = demoData.comments.filter((c) => c.articleId === article.id);
 
   useEffect(() => {
-    personalization.recordView({ id: article.id, tags: article.tags });
+    if (personalization.hasConsent()) {
+      personalization.recordView({ id: article.id, tags: article.tags });
+    }
     gamification.award(2, "articlesRead");
     cmsProvider.recordEngagement?.(article.slug, "view");
   }, [article.id, article.slug, article.tags]);
