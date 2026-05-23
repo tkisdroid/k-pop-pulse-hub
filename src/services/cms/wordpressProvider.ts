@@ -40,6 +40,22 @@ async function wpFetch<T>(path: string, params?: Record<string, string | number 
   return (await res.json()) as T;
 }
 
+async function wpPost<T>(path: string, body: unknown): Promise<T> {
+  const base = getApiBase();
+  if (!base) throw new Error("WordPress API URL not configured");
+  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
+  if (typeof window !== "undefined" && window.kpopblogConfig?.nonce) {
+    headers["X-WP-Nonce"] = window.kpopblogConfig.nonce;
+  }
+  const res = await fetch(`${base}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  if (!res.ok) {
+    let msg = `WP ${res.status}`;
+    try { const j = await res.json(); msg = (j?.message as string) ?? msg; } catch { /* noop */ }
+    throw new Error(msg);
+  }
+  return (await res.json()) as T;
+}
+
 export const wordpressCmsProvider: CmsProvider = {
   name: "wordpress",
 
@@ -74,5 +90,35 @@ export const wordpressCmsProvider: CmsProvider = {
     return all
       .filter((a) => a.id !== article.id && a.relatedArtistIds.some((id) => article.relatedArtistIds.includes(id)))
       .slice(0, limit);
+  },
+
+  async postComment(slug, body) {
+    try {
+      const r = await wpPost<{ id: string; pending: boolean }>(`/articles/${encodeURIComponent(slug)}/comments`, { body });
+      return { ok: true, id: r.id, pending: r.pending };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
+  async votePoll(slug, optionId) {
+    try {
+      await wpPost(`/polls/${encodeURIComponent(slug)}/vote`, { optionId });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
+  async toggleFollowArtist(slug) {
+    try {
+      const r = await wpPost<{ following: boolean; followerCount: number }>(`/artists/${encodeURIComponent(slug)}/follow`, {});
+      return { ok: true, ...r };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
+  async recordEngagement(slug, kind) {
+    try {
+      await wpPost(`/articles/${encodeURIComponent(slug)}/engage`, { kind });
+    } catch { /* fire-and-forget */ }
   },
 };

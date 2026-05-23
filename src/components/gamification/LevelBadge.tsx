@@ -3,7 +3,10 @@ import { gamification, type GamificationStats } from "@/services/gamification";
 
 export function LevelBadge({ compact = false }: { compact?: boolean }) {
   const [s, setS] = useState<GamificationStats>(() => gamification.stats());
-  useEffect(() => gamification.subscribe(setS), []);
+  useEffect(() => {
+    const unsub = gamification.subscribe(setS);
+    return () => { unsub(); };
+  }, []);
   const { current, next, pct } = gamification.progress(s.points);
 
   if (compact) {
