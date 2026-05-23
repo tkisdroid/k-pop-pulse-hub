@@ -20,12 +20,19 @@ function kpopblog_enqueue_assets() {
 	wp_register_style( 'kpopblog-app', KPOPBLOG_URL . $css, array(), KPOPBLOG_VERSION );
 	wp_register_script( 'kpopblog-app', KPOPBLOG_URL . $js, array(), KPOPBLOG_VERSION, true );
 
+	$mod = function_exists( 'kpopblog_get_moderation_settings' ) ? kpopblog_get_moderation_settings() : array( 'enabled' => 1, 'threshold' => 0.7, 'default_reason' => '' );
+
 	wp_localize_script( 'kpopblog-app', 'kpopblogConfig', array(
-		'apiUrl'   => esc_url_raw( rest_url( KPOPBLOG_REST_NS ) ),
-		'wpApiUrl' => esc_url_raw( rest_url( 'wp/v2' ) ),
-		'nonce'    => wp_create_nonce( 'wp_rest' ),
-		'siteUrl'  => esc_url_raw( home_url( '/' ) ),
-		'locale'   => substr( get_locale(), 0, 2 ),
+		'apiUrl'     => esc_url_raw( rest_url( KPOPBLOG_REST_NS ) ),
+		'wpApiUrl'   => esc_url_raw( rest_url( 'wp/v2' ) ),
+		'nonce'      => wp_create_nonce( 'wp_rest' ),
+		'siteUrl'    => esc_url_raw( home_url( '/' ) ),
+		'locale'     => substr( get_locale(), 0, 2 ),
+		'moderation' => array(
+			'enabled'       => (bool) $mod['enabled'],
+			'threshold'     => (float) $mod['threshold'],
+			'defaultReason' => (string) $mod['default_reason'],
+		),
 	) );
 }
 add_action( 'wp_enqueue_scripts', 'kpopblog_enqueue_assets' );
