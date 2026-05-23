@@ -3,6 +3,7 @@ import {
   Outlet,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   Link,
@@ -20,6 +21,8 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import { AdSlot, StickyFooterAd } from "@/components/ads/AdSlot";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { KeepExploring } from "@/components/layout/KeepExploring";
+import { ScrollProgress } from "@/components/layout/ScrollProgress";
+import { RevealOnScroll } from "@/components/layout/RevealOnScroll";
 
 function NotFoundComponent() {
   return (
