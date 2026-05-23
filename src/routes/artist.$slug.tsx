@@ -15,7 +15,7 @@ export const Route = createFileRoute("/artist/$slug")({
   component: ArtistPage,
 });
 
-const TABS = ["Overview", "News", "Members", "Discography", "Comebacks", "Photos", "Forum", "Polls", "Facts"] as const;
+const TABS = ["Overview", "News", "Videos", "Members", "Discography", "Comebacks", "Photos", "Forum", "Polls", "Facts"] as const;
 
 function ArtistPage() {
   const artist = Route.useLoaderData();
