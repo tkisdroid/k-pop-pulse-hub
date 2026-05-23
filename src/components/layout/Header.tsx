@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Search, Menu, Sun, Moon, Bell, X } from "lucide-react";
+import { Search, Menu, Sun, Moon, X } from "lucide-react";
+import { NotificationCenter } from "./NotificationCenter";
+import { LevelBadge } from "@/components/gamification/LevelBadge";
 import { useState } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
@@ -59,10 +61,8 @@ export function Header() {
           </button>
           {user ? (
             <>
-              <button className="p-2 rounded-md hover:bg-accent relative" aria-label="Notifications">
-                <Bell className="size-5" />
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />
-              </button>
+              <LevelBadge compact />
+              <NotificationCenter />
               <UserMenu />
             </>
           ) : (

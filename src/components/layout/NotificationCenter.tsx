@@ -24,7 +24,10 @@ export function NotificationCenter() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const popRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => notifications.subscribe(setItems), []);
+  useEffect(() => {
+    const unsub = notifications.subscribe(setItems);
+    return () => { unsub(); };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
