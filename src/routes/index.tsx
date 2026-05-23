@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { ForYouSection } from "@/components/articles/ForYouSection";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
@@ -59,7 +60,10 @@ function Index() {
         </div>
       </section>
 
+      <ForYouSection pool={demoData.articles} />
+
       {/* Trending */}
+
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Trending Now" title="What everyone is reading" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

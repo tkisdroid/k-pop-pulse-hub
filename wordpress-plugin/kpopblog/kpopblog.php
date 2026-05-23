@@ -25,6 +25,7 @@ define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
 require_once KPOPBLOG_PATH . 'includes/cpt.php';
 require_once KPOPBLOG_PATH . 'includes/meta.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';
+require_once KPOPBLOG_PATH . 'includes/rest-write.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
 
