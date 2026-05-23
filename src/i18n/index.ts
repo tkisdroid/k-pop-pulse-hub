@@ -1,5 +1,5 @@
-import en from "./en";
-import type { LocaleDict } from "./en";
+import en from "./locales/en";
+import type { LocaleDict } from "./locales/en";
 
 // Create lightweight stubs for non-English locales (real translations later).
 const langs = ["ko","ja","zh-CN","zh-TW","es","pt-BR","id","th","vi","hi","fr","de","tr","ar","ru","fil"] as const;
