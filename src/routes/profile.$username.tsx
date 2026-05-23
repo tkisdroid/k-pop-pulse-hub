@@ -5,9 +5,21 @@ import { buildHead } from "@/components/layout/seo";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { gamification, BADGES, type ActivityEntry, type GamificationStats } from "@/services/gamification";
 import { personalization } from "@/services/personalization";
-import { Newspaper, MessageCircle, Vote, Heart, Flame, Trophy } from "lucide-react";
+import { Newspaper, MessageCircle, Vote, Heart, Flame, Trophy, Shield, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/profile/$username")({
   head: ({ params }) => buildHead({ title: `${params.username}`, canonical: `/profile/${params.username}` }),
