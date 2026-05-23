@@ -62,7 +62,7 @@ function resolveLabel(prevSeg: string | undefined, seg: string) {
   }
   if (prevSeg === "polls") {
     const p = demoData.polls.find((x) => x.slug === seg);
-    if (p) return p.question.length > 48 ? p.question.slice(0, 45) + "…" : p.question;
+    if (p) return p.title.length > 48 ? p.title.slice(0, 45) + "…" : p.title;
   }
   if (prevSeg === "thread") {
     const t = demoData.threads.find((x) => x.slug === seg);

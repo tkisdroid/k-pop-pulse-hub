@@ -105,7 +105,7 @@ function buildSections(pathname: string): Section[] | null {
     const member = demoData.members.find((m) => m.slug === segs[1]);
     if (!member) return null;
     const artist = demoData.artists.find((a) => a.id === member.artistId);
-    const groupmates = demoData.members.filter((m) => m.artistId === member.artistId && m.id !== member.id).slice(0, 4);
+    const groupmates = demoData.members.filter((m) => m.groupId === member.artistId && m.id !== member.id).slice(0, 4);
     return [
       ...(artist
         ? [{ title: `From ${artist.name}`, items: [{ href: `/artist/${artist.slug}`, label: `${artist.name} profile`, sub: artist.fandomName, icon: Music2 }] as Item[] }]
@@ -131,7 +131,7 @@ function buildSections(pathname: string): Section[] | null {
   if (segs[0] === "polls" && segs[1]) {
     const others = demoData.polls.filter((p) => p.slug !== segs[1]).slice(0, 4);
     return [
-      { title: "More polls", items: others.map((p) => ({ href: `/polls/${p.slug}`, label: p.question, icon: Vote })) },
+      { title: "More polls", items: others.map((p) => ({ href: `/polls/${p.slug}`, label: p.title, icon: Vote })) },
       { title: "Keep exploring", items: pickHubs(["/polls"]) },
     ];
   }
