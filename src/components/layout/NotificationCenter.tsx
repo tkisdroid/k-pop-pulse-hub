@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bell, Calendar, MessageCircle, Newspaper, UserPlus, Sparkles, Check } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { notifications, type NotificationItem, type NotificationKind } from "@/services/notifications/store";
+import { startNotificationRealtime } from "@/services/notifications/realtime";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   comeback: Calendar,
@@ -26,6 +27,7 @@ export function NotificationCenter() {
 
   useEffect(() => {
     const unsub = notifications.subscribe(setItems);
+    startNotificationRealtime();
     return () => { unsub(); };
   }, []);
 
