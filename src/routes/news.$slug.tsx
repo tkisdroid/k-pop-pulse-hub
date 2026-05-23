@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
-import { buildHead } from "@/components/layout/seo";
+import { buildHead, breadcrumbLd } from "@/components/layout/seo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSummary } from "@/components/articles/ArticleSummary";
 import { Button } from "@/components/ui/button";
@@ -22,13 +22,40 @@ export const Route = createFileRoute("/news/$slug")({
     if (!article) throw notFound();
     return article;
   },
-  head: ({ loaderData }) =>
-    buildHead({
-      title: loaderData?.title ?? "Article",
-      description: loaderData?.excerpt,
-      canonical: `/news/${loaderData?.slug}`,
-      ogImage: loaderData?.featuredImage,
-    }),
+  head: ({ loaderData }) => {
+    if (!loaderData) return buildHead({ title: "Article" });
+    const a = loaderData;
+    const canonical = `/news/${a.slug}`;
+    const newsArticleLd = {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      headline: a.title,
+      description: a.excerpt,
+      image: a.featuredImage ? [a.featuredImage] : undefined,
+      datePublished: a.publishedAt,
+      dateModified: a.modifiedAt ?? a.publishedAt,
+      author: [{ "@type": "Person", name: a.author }],
+      publisher: { "@type": "Organization", name: "KpopBlog" },
+      mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+      articleSection: a.category,
+      keywords: a.tags?.join(", "),
+      inLanguage: a.language,
+    };
+    const crumbs = breadcrumbLd([
+      { name: "Home", path: "/" },
+      { name: "News", path: "/latest" },
+      { name: a.category, path: `/category/${a.category}` },
+      { name: a.title, path: canonical },
+    ]);
+    return buildHead({
+      title: a.title,
+      description: a.excerpt,
+      canonical,
+      ogImage: a.featuredImage,
+      ogType: "article",
+      jsonLd: [newsArticleLd, crumbs],
+    });
+  },
   component: ArticlePage,
 });
 
