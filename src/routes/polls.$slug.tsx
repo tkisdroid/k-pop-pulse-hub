@@ -26,7 +26,7 @@ function PollPage() {
       <h1 className="font-display text-3xl font-bold mb-2">{p.title}</h1>
       <p className="text-muted-foreground mb-6">{p.description ?? "Cast your vote and see what fans think."}</p>
       <div className="space-y-3">
-        {p.options.map((o) => {
+        {p.options.map((o: { id: string; label: string; votes: number }) => {
           const pct = Math.round((o.votes / p.totalVotes) * 100);
           const isVoted = voted === o.id;
           return (

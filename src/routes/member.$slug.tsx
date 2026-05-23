@@ -32,7 +32,7 @@ function MemberPage() {
           <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">MBTI</div>{m.mbti}</div>
         </div>
         <h2 className="font-display text-xl font-bold mt-6 mb-2">Facts</h2>
-        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">{m.facts.map((f, i) => <li key={i}>{f}</li>)}</ul>
+        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">{m.facts.map((f: string, i: number) => <li key={i}>{f}</li>)}</ul>
         <div className="mt-6 flex gap-2"><Button>Follow</Button><Button variant="outline">Suggest correction</Button></div>
       </div>
     </div>
