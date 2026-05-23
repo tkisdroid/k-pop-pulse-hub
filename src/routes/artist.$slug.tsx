@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { demoData } from "@/data/demo";
-import { buildHead } from "@/components/layout/seo";
+import { buildHead, breadcrumbLd } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 
@@ -11,7 +11,35 @@ export const Route = createFileRoute("/artist/$slug")({
     if (!a) throw notFound();
     return a;
   },
-  head: ({ loaderData }) => buildHead({ title: loaderData?.name ?? "Artist", canonical: `/artist/${loaderData?.slug}`, ogImage: loaderData?.image }),
+  head: ({ loaderData }) => {
+    if (!loaderData) return buildHead({ title: "Artist" });
+    const a = loaderData;
+    const canonical = `/artist/${a.slug}`;
+    const groupLd = {
+      "@context": "https://schema.org",
+      "@type": "MusicGroup",
+      name: a.name,
+      alternateName: a.koreanName,
+      foundingDate: a.debutDate,
+      genre: "K-pop",
+      image: a.image,
+      url: canonical,
+      description: a.bio,
+    };
+    const crumbs = breadcrumbLd([
+      { name: "Home", path: "/" },
+      { name: "Artists", path: "/artists" },
+      { name: a.name, path: canonical },
+    ]);
+    return buildHead({
+      title: a.name,
+      description: a.bio,
+      canonical,
+      ogImage: a.image,
+      ogType: "profile",
+      jsonLd: [groupLd, crumbs],
+    });
+  },
   component: ArtistPage,
 });
 
