@@ -3,6 +3,7 @@ import { useState } from "react";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 
 export const Route = createFileRoute("/artists")({
   head: () => buildHead({ title: "K-pop Artists", description: "Artist & group directory.", canonical: "/artists" }),
@@ -22,6 +23,7 @@ function Artists() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="Directory" title="K-pop Artists" subtitle="Search by artist, group, agency or generation." />
+      <AdSlot slotId="artists-top" variant="leaderboard" />
       <div className="grid gap-3 md:flex md:items-center md:justify-between mb-6">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {TYPES.map(([k, l]) => <button key={k} onClick={() => setType(k)} className={`shrink-0 px-3 py-1.5 rounded-full text-sm ${type === k ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{l}</button>)}

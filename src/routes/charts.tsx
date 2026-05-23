@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const Route = createFileRoute("/charts")({
@@ -13,6 +14,7 @@ function Charts() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <SectionHeader eyebrow="Charts" title="Weekly K-pop ranking" subtitle="Demo data — real chart sources will integrate later." />
+      <AdSlot slotId="charts-top" variant="leaderboard" />
       <div className="rounded-xl bg-card border border-border overflow-hidden">
         {demoData.charts.map((c) => (
           <div key={c.rank} className="flex items-center gap-4 p-3 border-b border-border last:border-b-0">

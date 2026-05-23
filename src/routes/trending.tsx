@@ -3,6 +3,7 @@ import { demoData } from "@/data/demo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { Flame } from "lucide-react";
 
 export const Route = createFileRoute("/trending")({
@@ -18,6 +19,7 @@ function Trending() {
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-12">
       <section>
         <SectionHeader eyebrow="Trending" title="Top stories right now" />
+        <AdSlot slotId="trending-top" variant="leaderboard" />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {articles.slice(0, 6).map((a) => <ArticleCard key={a.id} article={a} />)}
         </div>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/comebacks")({
@@ -21,6 +22,7 @@ function Comebacks() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="Calendar" title="Comeback Schedule" subtitle="Times shown in your local timezone." />
+      <AdSlot slotId="comebacks-top" variant="leaderboard" />
       <div className="flex flex-wrap gap-2 mb-4 justify-between">
         <div className="flex gap-2">{TABS.map((t) => <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-full text-sm ${tab === t ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{t}</button>)}</div>
         <div className="flex gap-2"><button onClick={() => setView("list")} className={`px-3 py-1.5 rounded-md text-sm ${view === "list" ? "bg-primary text-primary-foreground" : "bg-accent"}`}>List</button><button onClick={() => setView("calendar")} className={`px-3 py-1.5 rounded-md text-sm ${view === "calendar" ? "bg-primary text-primary-foreground" : "bg-accent"}`}>Calendar</button></div>
