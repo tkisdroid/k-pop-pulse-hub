@@ -193,6 +193,10 @@ function Index() {
 
       <div className="mx-auto max-w-7xl px-4"><AdSlot slotId="home-pre-community" variant="leaderboard" /></div>
 
+      <section className="mx-auto max-w-7xl px-4 py-8">
+        <NewsletterCTA variant="card" source="home" showTopics />
+      </section>
+
       {/* Community wall */}
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Community Wall" title="Fans around the world" />
