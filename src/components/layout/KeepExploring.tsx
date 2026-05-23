@@ -104,8 +104,8 @@ function buildSections(pathname: string): Section[] | null {
   if (segs[0] === "member" && segs[1]) {
     const member = demoData.members.find((m) => m.slug === segs[1]);
     if (!member) return null;
-    const artist = demoData.artists.find((a) => a.id === member.artistId);
-    const groupmates = demoData.members.filter((m) => m.groupId === member.artistId && m.id !== member.id).slice(0, 4);
+    const artist = demoData.artists.find((a) => a.id === member.groupId);
+    const groupmates = demoData.members.filter((m) => m.groupId === member.groupId && m.id !== member.id).slice(0, 4);
     return [
       ...(artist
         ? [{ title: `From ${artist.name}`, items: [{ href: `/artist/${artist.slug}`, label: `${artist.name} profile`, sub: artist.fandomName, icon: Music2 }] as Item[] }]
