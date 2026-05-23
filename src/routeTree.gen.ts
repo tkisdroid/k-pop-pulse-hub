@@ -11,19 +11,27 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VideosRouteImport } from './routes/videos'
 import { Route as TrendingRouteImport } from './routes/trending'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PollsRouteImport } from './routes/polls'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ModerationRouteImport } from './routes/moderation'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LatestRouteImport } from './routes/latest'
 import { Route as ForumRouteImport } from './routes/forum'
+import { Route as CorrectionsRouteImport } from './routes/corrections'
+import { Route as CopyrightRouteImport } from './routes/copyright'
+import { Route as CookieSettingsRouteImport } from './routes/cookie-settings'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CommunityGuidelinesRouteImport } from './routes/community-guidelines'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ComebacksRouteImport } from './routes/comebacks'
 import { Route as ChartsRouteImport } from './routes/charts'
 import { Route as ArtistsRouteImport } from './routes/artists'
+import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -48,6 +56,11 @@ const TrendingRoute = TrendingRouteImport.update({
   path: '/trending',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubmitRoute = SubmitRouteImport.update({
   id: '/submit',
   path: '/submit',
@@ -61,6 +74,11 @@ const SignupRoute = SignupRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PollsRoute = PollsRouteImport.update({
@@ -93,6 +111,31 @@ const ForumRoute = ForumRouteImport.update({
   path: '/forum',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CorrectionsRoute = CorrectionsRouteImport.update({
+  id: '/corrections',
+  path: '/corrections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CopyrightRoute = CopyrightRouteImport.update({
+  id: '/copyright',
+  path: '/copyright',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookieSettingsRoute = CookieSettingsRouteImport.update({
+  id: '/cookie-settings',
+  path: '/cookie-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityGuidelinesRoute = CommunityGuidelinesRouteImport.update({
+  id: '/community-guidelines',
+  path: '/community-guidelines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CommunityRoute = CommunityRouteImport.update({
   id: '/community',
   path: '/community',
@@ -111,6 +154,11 @@ const ChartsRoute = ChartsRouteImport.update({
 const ArtistsRoute = ArtistsRouteImport.update({
   id: '/artists',
   path: '/artists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvertiseRoute = AdvertiseRouteImport.update({
+  id: '/advertise',
+  path: '/advertise',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -183,19 +231,27 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
+  '/community-guidelines': typeof CommunityGuidelinesRoute
+  '/contact': typeof ContactRoute
+  '/cookie-settings': typeof CookieSettingsRoute
+  '/copyright': typeof CopyrightRoute
+  '/corrections': typeof CorrectionsRoute
   '/forum': typeof ForumRouteWithChildren
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/submit': typeof SubmitRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/videos': typeof VideosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -213,19 +269,27 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
+  '/community-guidelines': typeof CommunityGuidelinesRoute
+  '/contact': typeof ContactRoute
+  '/cookie-settings': typeof CookieSettingsRoute
+  '/copyright': typeof CopyrightRoute
+  '/corrections': typeof CorrectionsRoute
   '/forum': typeof ForumRouteWithChildren
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/submit': typeof SubmitRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/videos': typeof VideosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -244,19 +308,27 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
+  '/community-guidelines': typeof CommunityGuidelinesRoute
+  '/contact': typeof ContactRoute
+  '/cookie-settings': typeof CookieSettingsRoute
+  '/copyright': typeof CopyrightRoute
+  '/corrections': typeof CorrectionsRoute
   '/forum': typeof ForumRouteWithChildren
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/submit': typeof SubmitRoute
+  '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/videos': typeof VideosRoute
   '/artist/$slug': typeof ArtistSlugRoute
@@ -276,19 +348,27 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/advertise'
     | '/artists'
     | '/charts'
     | '/comebacks'
     | '/community'
+    | '/community-guidelines'
+    | '/contact'
+    | '/cookie-settings'
+    | '/copyright'
+    | '/corrections'
     | '/forum'
     | '/latest'
     | '/login'
     | '/moderation'
     | '/onboarding'
     | '/polls'
+    | '/privacy'
     | '/search'
     | '/signup'
     | '/submit'
+    | '/terms'
     | '/trending'
     | '/videos'
     | '/artist/$slug'
@@ -306,19 +386,27 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/advertise'
     | '/artists'
     | '/charts'
     | '/comebacks'
     | '/community'
+    | '/community-guidelines'
+    | '/contact'
+    | '/cookie-settings'
+    | '/copyright'
+    | '/corrections'
     | '/forum'
     | '/latest'
     | '/login'
     | '/moderation'
     | '/onboarding'
     | '/polls'
+    | '/privacy'
     | '/search'
     | '/signup'
     | '/submit'
+    | '/terms'
     | '/trending'
     | '/videos'
     | '/artist/$slug'
@@ -336,19 +424,27 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/advertise'
     | '/artists'
     | '/charts'
     | '/comebacks'
     | '/community'
+    | '/community-guidelines'
+    | '/contact'
+    | '/cookie-settings'
+    | '/copyright'
+    | '/corrections'
     | '/forum'
     | '/latest'
     | '/login'
     | '/moderation'
     | '/onboarding'
     | '/polls'
+    | '/privacy'
     | '/search'
     | '/signup'
     | '/submit'
+    | '/terms'
     | '/trending'
     | '/videos'
     | '/artist/$slug'
@@ -367,19 +463,27 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
+  AdvertiseRoute: typeof AdvertiseRoute
   ArtistsRoute: typeof ArtistsRoute
   ChartsRoute: typeof ChartsRoute
   ComebacksRoute: typeof ComebacksRoute
   CommunityRoute: typeof CommunityRoute
+  CommunityGuidelinesRoute: typeof CommunityGuidelinesRoute
+  ContactRoute: typeof ContactRoute
+  CookieSettingsRoute: typeof CookieSettingsRoute
+  CopyrightRoute: typeof CopyrightRoute
+  CorrectionsRoute: typeof CorrectionsRoute
   ForumRoute: typeof ForumRouteWithChildren
   LatestRoute: typeof LatestRoute
   LoginRoute: typeof LoginRoute
   ModerationRoute: typeof ModerationRoute
   OnboardingRoute: typeof OnboardingRoute
   PollsRoute: typeof PollsRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
   SubmitRoute: typeof SubmitRoute
+  TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
   VideosRoute: typeof VideosRoute
   ArtistSlugRoute: typeof ArtistSlugRoute
@@ -408,6 +512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrendingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/submit': {
       id: '/submit'
       path: '/submit'
@@ -427,6 +538,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/polls': {
@@ -471,6 +589,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForumRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/corrections': {
+      id: '/corrections'
+      path: '/corrections'
+      fullPath: '/corrections'
+      preLoaderRoute: typeof CorrectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/copyright': {
+      id: '/copyright'
+      path: '/copyright'
+      fullPath: '/copyright'
+      preLoaderRoute: typeof CopyrightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookie-settings': {
+      id: '/cookie-settings'
+      path: '/cookie-settings'
+      fullPath: '/cookie-settings'
+      preLoaderRoute: typeof CookieSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community-guidelines': {
+      id: '/community-guidelines'
+      path: '/community-guidelines'
+      fullPath: '/community-guidelines'
+      preLoaderRoute: typeof CommunityGuidelinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/community': {
       id: '/community'
       path: '/community'
@@ -497,6 +650,13 @@ declare module '@tanstack/react-router' {
       path: '/artists'
       fullPath: '/artists'
       preLoaderRoute: typeof ArtistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advertise': {
+      id: '/advertise'
+      path: '/advertise'
+      fullPath: '/advertise'
+      preLoaderRoute: typeof AdvertiseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -617,19 +777,27 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
+  AdvertiseRoute: AdvertiseRoute,
   ArtistsRoute: ArtistsRoute,
   ChartsRoute: ChartsRoute,
   ComebacksRoute: ComebacksRoute,
   CommunityRoute: CommunityRoute,
+  CommunityGuidelinesRoute: CommunityGuidelinesRoute,
+  ContactRoute: ContactRoute,
+  CookieSettingsRoute: CookieSettingsRoute,
+  CopyrightRoute: CopyrightRoute,
+  CorrectionsRoute: CorrectionsRoute,
   ForumRoute: ForumRouteWithChildren,
   LatestRoute: LatestRoute,
   LoginRoute: LoginRoute,
   ModerationRoute: ModerationRoute,
   OnboardingRoute: OnboardingRoute,
   PollsRoute: PollsRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,
   SubmitRoute: SubmitRoute,
+  TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
   VideosRoute: VideosRoute,
   ArtistSlugRoute: ArtistSlugRoute,
