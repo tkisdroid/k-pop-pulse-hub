@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
 import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 
 export const Route = createFileRoute("/")({
   head: () => buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" }),
