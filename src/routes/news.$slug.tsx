@@ -2,13 +2,18 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { demoData } from "@/data/demo";
 import { buildHead } from "@/components/layout/seo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { ArticleSummary } from "@/components/articles/ArticleSummary";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
-import { translationProvider } from "@/services/translation";
 import { useI18n } from "@/hooks/useI18n";
-import { useState } from "react";
-import { Bookmark, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bookmark, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert } from "lucide-react";
+import { aiHelpers } from "@/services/ai/helpers";
+import { cmsProvider } from "@/services/cms";
+import { personalization } from "@/services/personalization";
+import { gamification } from "@/services/gamification";
+import { notifications } from "@/services/notifications/store";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: ({ params }) => {
@@ -32,11 +37,55 @@ function ArticlePage() {
   const { show } = useAuthModal();
   const { lang } = useI18n();
   const [translated, setTranslated] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [modError, setModError] = useState<string | null>(null);
   const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
   const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
   const comments = demoData.comments.filter((c) => c.articleId === article.id);
 
+  useEffect(() => {
+    personalization.recordView({ id: article.id, tags: article.tags });
+    gamification.award(2, "articlesRead");
+    cmsProvider.recordEngagement?.(article.slug, "view");
+  }, [article.id, article.slug, article.tags]);
+
   const gate = (action: () => void) => () => (user ? action() : show("Log in to interact"));
+
+  async function onTranslate() {
+    setTranslating(true);
+    try {
+      const r = await aiHelpers.translate(article.content, lang as string);
+      setTranslated(r.text);
+    } finally {
+      setTranslating(false);
+    }
+  }
+
+  async function onPostComment(e: React.FormEvent) {
+    e.preventDefault();
+    setModError(null);
+    if (!draft.trim()) return;
+    setPosting(true);
+    try {
+      const check = await aiHelpers.moderate(draft);
+      if (!check.allowed) {
+        setModError(`Comment blocked by AI moderation: ${check.reasons.join(", ")}`);
+        return;
+      }
+      const res = await cmsProvider.postComment?.(article.slug, draft);
+      if (res && !res.ok) {
+        setModError(res.error ?? "Failed to post comment");
+        return;
+      }
+      gamification.award(5, "commentsPosted");
+      notifications.notify({ kind: "reply", title: "Comment posted", body: draft.slice(0, 80), href: `/news/${article.slug}` });
+      setDraft("");
+    } finally {
+      setPosting(false);
+    }
+  }
 
   return (
     <article className="mx-auto max-w-4xl px-4 py-8">
@@ -59,12 +108,17 @@ function ArticlePage() {
       <div className="mt-6 rounded-2xl overflow-hidden">
         <img src={article.featuredImage} alt={article.title} className="w-full aspect-video object-cover" />
       </div>
+
+      <ArticleSummary text={article.content} locale={lang as string} />
+
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={gate(() => {})}><Heart className="size-3" /> React ({article.reactionCount})</Button>
+        <Button size="sm" variant="outline" onClick={gate(() => { gamification.award(1); cmsProvider.recordEngagement?.(article.slug, "reaction"); })}>
+          <Heart className="size-3" /> React ({article.reactionCount})
+        </Button>
         <Button size="sm" variant="outline" onClick={gate(() => {})}><Bookmark className="size-3" /> Save</Button>
         <Button size="sm" variant="outline" onClick={() => navigator.share?.({ title: article.title, url: location.href }).catch(() => {})}><Share2 className="size-3" /> Share</Button>
-        <Button size="sm" variant="outline" onClick={async () => { const r = await translationProvider.translate(article.content, lang as string); setTranslated(r.text); }}>
-          <Languages className="size-3" /> Translate
+        <Button size="sm" variant="outline" disabled={translating} onClick={onTranslate}>
+          {translating ? <Loader2 className="size-3 animate-spin" /> : <Languages className="size-3" />} Translate
         </Button>
         <Button size="sm" variant="ghost" onClick={gate(() => {})}><Flag className="size-3" /> Report</Button>
       </div>
@@ -76,10 +130,8 @@ function ArticlePage() {
       )}
       <div className="prose prose-invert max-w-none mt-8 dark:prose-invert" dangerouslySetInnerHTML={{ __html: article.content }} />
 
-      {/* sidebar ad slot inline */}
       <div className="my-8 rounded-xl border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground">Sponsored — inline ad slot</div>
 
-      {/* Related artists */}
       {artists.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display text-xl font-bold mb-3">Related artists</h2>
@@ -91,13 +143,28 @@ function ArticlePage() {
         </section>
       )}
 
-      {/* Comments */}
       <section className="mt-12">
         <h2 className="font-display text-2xl font-bold mb-4">Comments ({comments.length})</h2>
         {user ? (
-          <form className="mb-6" onSubmit={(e) => e.preventDefault()}>
-            <textarea placeholder="Add a comment..." className="w-full p-3 rounded-md bg-background border border-input min-h-24" />
-            <div className="mt-2 flex justify-end"><Button>Post comment</Button></div>
+          <form className="mb-6" onSubmit={onPostComment}>
+            <textarea
+              placeholder="Add a comment..."
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={4000}
+              className="w-full p-3 rounded-md bg-background border border-input min-h-24"
+            />
+            {modError && (
+              <div className="mt-2 text-xs text-destructive flex items-center gap-1.5">
+                <ShieldAlert className="size-3" /> {modError}
+              </div>
+            )}
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">AI-moderated · {draft.length}/4000</span>
+              <Button disabled={posting || !draft.trim()}>
+                {posting ? <Loader2 className="size-3 animate-spin" /> : null} Post comment
+              </Button>
+            </div>
           </form>
         ) : (
           <div className="mb-6 p-4 rounded-md bg-muted/40 text-sm flex items-center justify-between">
