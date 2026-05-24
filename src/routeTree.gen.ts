@@ -34,6 +34,7 @@ import { Route as CommunityGuidelinesRouteImport } from './routes/community-guid
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as ComebacksRouteImport } from './routes/comebacks'
 import { Route as ChartsRouteImport } from './routes/charts'
+import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as AdvertiseRouteImport } from './routes/advertise'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -176,6 +177,11 @@ const ChartsRoute = ChartsRouteImport.update({
   path: '/charts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookmarksRoute = BookmarksRouteImport.update({
+  id: '/bookmarks',
+  path: '/bookmarks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArtistsRoute = ArtistsRouteImport.update({
   id: '/artists',
   path: '/artists',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
+  '/bookmarks': typeof BookmarksRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
+  '/bookmarks': typeof BookmarksRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/advertise': typeof AdvertiseRoute
   '/artists': typeof ArtistsRoute
+  '/bookmarks': typeof BookmarksRoute
   '/charts': typeof ChartsRoute
   '/comebacks': typeof ComebacksRoute
   '/community': typeof CommunityRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advertise'
     | '/artists'
+    | '/bookmarks'
     | '/charts'
     | '/comebacks'
     | '/community'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advertise'
     | '/artists'
+    | '/bookmarks'
     | '/charts'
     | '/comebacks'
     | '/community'
@@ -481,6 +492,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advertise'
     | '/artists'
+    | '/bookmarks'
     | '/charts'
     | '/comebacks'
     | '/community'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdvertiseRoute: typeof AdvertiseRoute
   ArtistsRoute: typeof ArtistsRoute
+  BookmarksRoute: typeof BookmarksRoute
   ChartsRoute: typeof ChartsRoute
   ComebacksRoute: typeof ComebacksRoute
   CommunityRoute: typeof CommunityRoute
@@ -738,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChartsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bookmarks': {
+      id: '/bookmarks'
+      path: '/bookmarks'
+      fullPath: '/bookmarks'
+      preLoaderRoute: typeof BookmarksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/artists': {
       id: '/artists'
       path: '/artists'
@@ -879,6 +899,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdvertiseRoute: AdvertiseRoute,
   ArtistsRoute: ArtistsRoute,
+  BookmarksRoute: BookmarksRoute,
   ChartsRoute: ChartsRoute,
   ComebacksRoute: ComebacksRoute,
   CommunityRoute: CommunityRoute,

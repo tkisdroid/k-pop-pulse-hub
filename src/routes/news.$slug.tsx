@@ -8,13 +8,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useI18n } from "@/hooks/useI18n";
 import { useEffect, useState } from "react";
-import { Bookmark, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert } from "lucide-react";
+import { Bookmark, BookmarkCheck, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert, CornerDownRight } from "lucide-react";
 import { aiHelpers } from "@/services/ai/helpers";
 import { cmsProvider } from "@/services/cms";
 import { personalization } from "@/services/personalization";
 import { gamification } from "@/services/gamification";
 import { notifications } from "@/services/notifications/store";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { bookmarks } from "@/services/bookmarks";
+import { recentlyViewed } from "@/services/recentlyViewed";
+import { RecentlyViewedRail } from "@/components/articles/RecentlyViewedRail";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: ({ params }) => {
@@ -71,6 +74,12 @@ function ArticlePage() {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [modError, setModError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [commentLikes, setCommentLikes] = useState<Record<string, number>>({});
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replies, setReplies] = useState<Record<string, { id: string; body: string; at: string }[]>>({});
   const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
   const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
   const comments = demoData.comments.filter((c) => c.articleId === article.id);
@@ -79,11 +88,49 @@ function ArticlePage() {
     if (personalization.hasConsent()) {
       personalization.recordView({ id: article.id, tags: article.tags });
     }
+    recentlyViewed.push({ id: article.id, slug: article.slug, title: article.title, image: article.featuredImage });
+    setSaved(bookmarks.has(article.id));
     gamification.award(2, "articlesRead");
     cmsProvider.recordEngagement?.(article.slug, "view");
-  }, [article.id, article.slug, article.tags]);
+  }, [article.id, article.slug, article.tags, article.title, article.featuredImage]);
 
   const gate = (action: () => void) => () => (user ? action() : show("Log in to interact"));
+
+  function onToggleSave() {
+    const nowSaved = bookmarks.toggle({
+      id: article.id,
+      slug: article.slug,
+      title: article.title,
+      image: article.featuredImage,
+    });
+    setSaved(nowSaved);
+    if (nowSaved) {
+      gamification.award(1, "articlesRead");
+      notifications.notify({ kind: "reply", title: "Saved", body: article.title, href: "/bookmarks" });
+    }
+  }
+
+  function onLikeComment(id: string) {
+    setLikedComments((prev) => {
+      const next = new Set(prev);
+      const liked = next.has(id);
+      if (liked) next.delete(id); else next.add(id);
+      setCommentLikes((c) => ({ ...c, [id]: (c[id] ?? 0) + (liked ? -1 : 1) }));
+      return next;
+    });
+  }
+
+  function onSubmitReply(parentId: string) {
+    if (!replyDraft.trim()) return;
+    setReplies((prev) => ({
+      ...prev,
+      [parentId]: [...(prev[parentId] ?? []), { id: crypto.randomUUID(), body: replyDraft.trim(), at: new Date().toISOString() }],
+    }));
+    setReplyDraft("");
+    setReplyTo(null);
+    gamification.award(3, "commentsPosted");
+  }
+
 
   async function onTranslate() {
     setTranslating(true);
@@ -147,7 +194,9 @@ function ArticlePage() {
         <Button size="sm" variant="outline" onClick={gate(() => { gamification.award(1); cmsProvider.recordEngagement?.(article.slug, "reaction"); })}>
           <Heart className="size-3" /> React ({article.reactionCount})
         </Button>
-        <Button size="sm" variant="outline" onClick={gate(() => {})}><Bookmark className="size-3" /> Save</Button>
+        <Button size="sm" variant={saved ? "default" : "outline"} onClick={onToggleSave} aria-pressed={saved}>
+          {saved ? <BookmarkCheck className="size-3" /> : <Bookmark className="size-3" />} {saved ? "Saved" : "Save"}
+        </Button>
         <Button size="sm" variant="outline" onClick={() => navigator.share?.({ title: article.title, url: location.href }).catch(() => {})}><Share2 className="size-3" /> Share</Button>
         <Button size="sm" variant="outline" disabled={translating} onClick={onTranslate}>
           {translating ? <Loader2 className="size-3 animate-spin" /> : <Languages className="size-3" />} Translate
@@ -207,16 +256,61 @@ function ArticlePage() {
         <div className="space-y-4">
           {comments.map((c) => {
             const u = demoData.users.find((x) => x.id === c.authorId)!;
+            const liked = likedComments.has(c.id);
+            const likeDelta = commentLikes[c.id] ?? 0;
+            const childReplies = replies[c.id] ?? [];
             return (
               <div key={c.id} className="flex gap-3">
-                <img src={u.avatar} alt="" className="size-9 rounded-full" />
+                <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" />
                 <div className="flex-1">
                   <div className="text-sm"><span className="font-semibold">{u.displayName}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
                   <p className="text-sm">{c.body}</p>
-                  <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                    <button className="hover:text-primary">♥ {c.reactions}</button>
-                    <button className="hover:text-primary">Reply</button>
+                  <div className="text-xs text-muted-foreground mt-1 flex gap-3 items-center">
+                    <button
+                      onClick={gate(() => onLikeComment(c.id))}
+                      className={`transition hover:text-primary inline-flex items-center gap-1 ${liked ? "text-primary" : ""}`}
+                      aria-pressed={liked}
+                    >
+                      <Heart className={`size-3 ${liked ? "fill-current" : ""}`} /> {c.reactions + likeDelta}
+                    </button>
+                    <button
+                      className="hover:text-primary"
+                      onClick={gate(() => setReplyTo(replyTo === c.id ? null : c.id))}
+                    >
+                      Reply
+                    </button>
                   </div>
+
+                  {childReplies.length > 0 && (
+                    <ul className="mt-3 space-y-2 border-l border-border pl-3">
+                      {childReplies.map((r) => (
+                        <li key={r.id} className="text-sm flex gap-2">
+                          <CornerDownRight className="size-3 mt-1 shrink-0 text-muted-foreground" />
+                          <div>
+                            <div className="text-xs text-muted-foreground">You · {new Date(r.at).toLocaleTimeString()}</div>
+                            <p>{r.body}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {replyTo === c.id && user && (
+                    <div className="mt-3">
+                      <textarea
+                        autoFocus
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        placeholder={`Reply to ${u.displayName}...`}
+                        maxLength={1000}
+                        className="w-full p-2 text-sm rounded-md bg-background border border-input min-h-16"
+                      />
+                      <div className="mt-1 flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => { setReplyTo(null); setReplyDraft(""); }}>Cancel</Button>
+                        <Button size="sm" onClick={() => onSubmitReply(c.id)} disabled={!replyDraft.trim()}>Post reply</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -233,6 +327,8 @@ function ArticlePage() {
           {related.slice(0, 4).map((a) => <ArticleCard key={a.id} article={a} variant="compact" />)}
         </div>
       </section>
+
+      <RecentlyViewedRail excludeId={article.id} />
     </article>
   );
 }
