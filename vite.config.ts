@@ -60,6 +60,34 @@ export default defineConfig({
                 expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
               },
             },
+            // Article/CMS API responses — WordPress plugin REST endpoints.
+            // NetworkFirst with a long offline-readable cache window.
+            {
+              urlPattern: ({ url }) =>
+                url.pathname.startsWith("/wp-json/wp/v2/") ||
+                url.pathname.startsWith("/wp-json/kpopblog/"),
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "cms-api",
+                networkTimeoutSeconds: 4,
+                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            // Supabase REST/Storage reads (when CMS provider is Supabase).
+            {
+              urlPattern: ({ url }) =>
+                url.hostname.endsWith(".supabase.co") &&
+                (url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/storage/v1/object/public/")),
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "supabase-read",
+                networkTimeoutSeconds: 4,
+                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+
           ],
         },
       }),

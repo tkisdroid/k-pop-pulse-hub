@@ -10,7 +10,10 @@ import {
   Link,
 } from "@tanstack/react-router";
 import { registerPwa } from "@/pwa/register";
+import { setupQueryPersistence } from "@/pwa/queryPersist";
 import { localNotifications } from "@/services/notifications/local";
+import { OfflineBadge } from "@/components/layout/OfflineBadge";
+
 
 
 
@@ -137,7 +140,13 @@ function RouteFadeOutlet() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { registerPwa(); localNotifications.hydrate(); }, []);
+  useEffect(() => {
+    setupQueryPersistence(queryClient);
+    registerPwa();
+    localNotifications.hydrate();
+  }, [queryClient]);
+
+
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -162,7 +171,9 @@ function RootComponent() {
                 <Footer />
                 <MobileBottomNav />
               </div>
+              <OfflineBadge />
               <AuthModal />
+
             </AuthModalProvider>
           </AuthProviderShell>
         </I18nProvider>
