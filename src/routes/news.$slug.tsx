@@ -256,16 +256,61 @@ function ArticlePage() {
         <div className="space-y-4">
           {comments.map((c) => {
             const u = demoData.users.find((x) => x.id === c.authorId)!;
+            const liked = likedComments.has(c.id);
+            const likeDelta = commentLikes[c.id] ?? 0;
+            const childReplies = replies[c.id] ?? [];
             return (
               <div key={c.id} className="flex gap-3">
-                <img src={u.avatar} alt="" className="size-9 rounded-full" />
+                <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" />
                 <div className="flex-1">
                   <div className="text-sm"><span className="font-semibold">{u.displayName}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
                   <p className="text-sm">{c.body}</p>
-                  <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                    <button className="hover:text-primary">♥ {c.reactions}</button>
-                    <button className="hover:text-primary">Reply</button>
+                  <div className="text-xs text-muted-foreground mt-1 flex gap-3 items-center">
+                    <button
+                      onClick={gate(() => onLikeComment(c.id))}
+                      className={`transition hover:text-primary inline-flex items-center gap-1 ${liked ? "text-primary" : ""}`}
+                      aria-pressed={liked}
+                    >
+                      <Heart className={`size-3 ${liked ? "fill-current" : ""}`} /> {c.reactions + likeDelta}
+                    </button>
+                    <button
+                      className="hover:text-primary"
+                      onClick={gate(() => setReplyTo(replyTo === c.id ? null : c.id))}
+                    >
+                      Reply
+                    </button>
                   </div>
+
+                  {childReplies.length > 0 && (
+                    <ul className="mt-3 space-y-2 border-l border-border pl-3">
+                      {childReplies.map((r) => (
+                        <li key={r.id} className="text-sm flex gap-2">
+                          <CornerDownRight className="size-3 mt-1 shrink-0 text-muted-foreground" />
+                          <div>
+                            <div className="text-xs text-muted-foreground">You · {new Date(r.at).toLocaleTimeString()}</div>
+                            <p>{r.body}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {replyTo === c.id && user && (
+                    <div className="mt-3">
+                      <textarea
+                        autoFocus
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        placeholder={`Reply to ${u.displayName}...`}
+                        maxLength={1000}
+                        className="w-full p-2 text-sm rounded-md bg-background border border-input min-h-16"
+                      />
+                      <div className="mt-1 flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => { setReplyTo(null); setReplyDraft(""); }}>Cancel</Button>
+                        <Button size="sm" onClick={() => onSubmitReply(c.id)} disabled={!replyDraft.trim()}>Post reply</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -282,6 +327,8 @@ function ArticlePage() {
           {related.slice(0, 4).map((a) => <ArticleCard key={a.id} article={a} variant="compact" />)}
         </div>
       </section>
+
+      <RecentlyViewedRail excludeId={article.id} />
     </article>
   );
 }
