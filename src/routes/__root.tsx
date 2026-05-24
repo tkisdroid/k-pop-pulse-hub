@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -8,6 +9,8 @@ import {
   Scripts,
   Link,
 } from "@tanstack/react-router";
+import { registerPwa } from "@/pwa/register";
+
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -132,6 +135,8 @@ function RouteFadeOutlet() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => { registerPwa(); }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
