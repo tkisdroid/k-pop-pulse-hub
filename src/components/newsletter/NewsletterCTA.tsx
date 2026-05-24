@@ -1,13 +1,16 @@
 import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Loader2, Check } from "lucide-react";
+import { Mail, Loader2, Check, Bell, BellRing } from "lucide-react";
 import {
   fetchNewsletterSettings,
   subscribeNewsletter,
   NEWSLETTER_DEFAULTS,
   type NewsletterSettings,
 } from "@/services/newsletter";
+import { localNotifications } from "@/services/notifications/local";
+import { toast } from "sonner";
+
 
 type Variant = "inline" | "card" | "footer";
 
@@ -168,6 +171,7 @@ export function NewsletterCTA({
             {message}
           </p>
         )}
+        {status === "success" && <PushOptIn />}
         <p className="mt-3 text-[11px] text-muted-foreground">
           By subscribing, you agree to our privacy policy. Unsubscribe with one click anytime.
         </p>
@@ -175,3 +179,45 @@ export function NewsletterCTA({
     </section>
   );
 }
+
+function PushOptIn() {
+  const [perm, setPerm] = useState<NotificationPermission>(() => localNotifications.permission());
+  useEffect(() => { setPerm(localNotifications.permission()); }, []);
+  if (typeof Notification === "undefined") return null;
+  if (perm === "granted") {
+    return (
+      <p className="mt-3 text-xs text-primary inline-flex items-center gap-1.5">
+        <BellRing className="size-3.5" /> Push reminders enabled — we'll ping you 15 min before comebacks drop.
+      </p>
+    );
+  }
+  if (perm === "denied") {
+    return (
+      <p className="mt-3 text-xs text-muted-foreground">
+        Browser notifications are blocked. Enable them in your site settings to get comeback reminders.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-4 flex items-center gap-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3">
+      <Bell className="size-4 text-primary shrink-0" />
+      <div className="flex-1 text-xs">
+        <div className="font-semibold">Also get browser reminders?</div>
+        <div className="text-muted-foreground">Comebacks and poll deadlines, never miss a drop.</div>
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={async () => {
+          const p = await localNotifications.requestPermission();
+          setPerm(p);
+          if (p === "granted") toast.success("Reminders enabled");
+          else if (p === "denied") toast.error("Notifications blocked in browser settings");
+        }}
+      >
+        Enable
+      </Button>
+    </div>
+  );
+}
+

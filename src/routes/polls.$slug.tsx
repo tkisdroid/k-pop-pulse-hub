@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useState } from "react";
+import { NotifyButton } from "@/components/notifications/NotifyButton";
+
 
 export const Route = createFileRoute("/polls/$slug")({
   loader: ({ params }) => {
@@ -38,7 +40,24 @@ function PollPage() {
         })}
       </div>
       <div className="mt-4 text-xs text-muted-foreground">{p.totalVotes.toLocaleString()} total votes</div>
-      <div className="mt-6"><Button variant="outline">Share poll</Button></div>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button variant="outline">Share poll</Button>
+        {p.endsAt && +new Date(p.endsAt) > Date.now() && (
+          <NotifyButton
+            label="Notify before close"
+            reminder={{
+              id: `poll:${p.id}`,
+              kind: "poll",
+              title: `🗳️ Poll closing soon`,
+              body: `${p.title} — closes in 1 hour`,
+              url: `/polls/${p.slug}`,
+              fireAt: p.endsAt,
+              leadMinutes: 60,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
+

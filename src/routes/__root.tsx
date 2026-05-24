@@ -10,6 +10,8 @@ import {
   Link,
 } from "@tanstack/react-router";
 import { registerPwa } from "@/pwa/register";
+import { localNotifications } from "@/services/notifications/local";
+
 
 
 import appCss from "../styles.css?url";
@@ -135,7 +137,7 @@ function RouteFadeOutlet() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { registerPwa(); }, []);
+  useEffect(() => { registerPwa(); localNotifications.hydrate(); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
