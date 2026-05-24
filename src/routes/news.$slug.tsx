@@ -344,6 +344,13 @@ function ArticlePage() {
       </section>
 
       <RecentlyViewedRail excludeId={article.id} />
+      </div>
+      <aside className="hidden lg:block">
+        <div className="sticky top-24">
+          <ArticleToc headings={headings} />
+        </div>
+      </aside>
     </article>
+    </>
   );
 }
