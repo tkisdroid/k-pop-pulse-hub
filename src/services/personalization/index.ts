@@ -87,9 +87,16 @@ export const personalization = {
     const s = read();
     let score = 0;
     if (s.viewedArticleIds.includes(article.id)) return -1;
-    if (article.relatedArtistIds?.some((id) => s.followedArtists.includes(id))) score += 8;
-    for (const t of article.tags ?? []) score += (s.likedTags[t] ?? 0) * 1.2;
-    score += Math.max(0, 4 - (Date.now() - +new Date(article.publishedAt)) / (1000 * 60 * 60 * 24)); // recency boost (4d)
+    // Followed-artist match is the strongest signal (weighted per match).
+    const matchedFollows = article.relatedArtistIds?.filter((id) => s.followedArtists.includes(id)).length ?? 0;
+    score += matchedFollows * 12;
+    // Tag affinity, capped to avoid runaway from a single hot tag.
+    for (const t of article.tags ?? []) score += Math.min(s.likedTags[t] ?? 0, 10) * 1.5;
+    // Recency boost: linear decay over 7 days, max +6.
+    const ageDays = (Date.now() - +new Date(article.publishedAt)) / (1000 * 60 * 60 * 24);
+    score += Math.max(0, 6 - ageDays * (6 / 7));
+    // Engagement signal (sublinear so megaviral doesn't dominate).
+    score += Math.log10(1 + (article.viewCount ?? 0)) * 0.6;
     return score;
   },
 
