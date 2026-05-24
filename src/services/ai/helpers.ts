@@ -41,12 +41,16 @@ async function loadModerationSettings(): Promise<ModerationSettings> {
   const injected = injectedModSettings();
   if (injected) return injected;
   if (modSettingsPromise) return modSettingsPromise;
-  const wpApi = (import.meta as any).env?.VITE_WP_API_BASE as string | undefined;
+  const wpApi = ((import.meta as any).env?.VITE_WORDPRESS_API_URL ??
+    (import.meta as any).env?.VITE_WP_API_BASE) as string | undefined;
   if (!wpApi) {
     modSettingsPromise = Promise.resolve(FALLBACK_MOD);
     return modSettingsPromise;
   }
-  modSettingsPromise = fetch(`${wpApi.replace(/\/$/, "")}/kpopblog/v1/moderation/settings`)
+  // wpApi may already include /wp-json/kpopblog/v1 (preferred), or a bare
+  // /wp-json base — handle both so admins don't have to guess the format.
+  const root = wpApi.replace(/\/$/, "").replace(/\/wp-json(\/kpopblog\/v1)?$/, "");
+  modSettingsPromise = fetch(`${root}/wp-json/kpopblog/v1/moderation/settings`)
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((j) => ({
       enabled: j.enabled !== false,

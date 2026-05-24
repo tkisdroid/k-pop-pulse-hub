@@ -41,7 +41,12 @@ const SETTINGS_TTL_MS = 5 * 60_000;
 function apiBase(): string | null {
   if (typeof window === "undefined") return null;
   const cfg = (window as { kpopblogConfig?: { apiUrl?: string } }).kpopblogConfig;
-  return cfg?.apiUrl ? String(cfg.apiUrl).replace(/\/$/, "") : null;
+  const raw = cfg?.apiUrl;
+  if (!raw) return null;
+  // The plugin injects apiUrl already including the /wp-json/kpopblog/v1
+  // namespace. Strip it so callers can append clean /wp-json/... paths
+  // without producing a double prefix.
+  return String(raw).replace(/\/$/, "").replace(/\/wp-json\/kpopblog\/v1$/, "");
 }
 
 export async function fetchNewsletterSettings(): Promise<NewsletterSettings> {
