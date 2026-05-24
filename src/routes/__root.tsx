@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -8,6 +9,8 @@ import {
   Scripts,
   Link,
 } from "@tanstack/react-router";
+import { registerPwa } from "@/pwa/register";
+
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -60,14 +63,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "KpopBlog" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#0b0b10" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "KpopBlog" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" },
       { rel: "alternate", type: "application/rss+xml", title: "KpopBlog — Latest news", href: "/rss.xml" },
       { rel: "sitemap", type: "application/xml", href: "/sitemap.xml" },
+
     ],
     scripts: [
       {
@@ -124,6 +135,8 @@ function RouteFadeOutlet() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => { registerPwa(); }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
