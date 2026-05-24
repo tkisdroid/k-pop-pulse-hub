@@ -35,14 +35,15 @@ export function setupQueryPersistence(queryClient: QueryClient) {
   });
 
   persistQueryClient({
-    queryClient,
+    // Cast: two copies of query-core resolve in monorepo; structural shape is identical.
+    queryClient: queryClient as unknown as Parameters<typeof persistQueryClient>[0]["queryClient"],
     persister,
     maxAge: MAX_AGE_MS,
     buster: CACHE_BUSTER,
     dehydrateOptions: {
-      // Only persist successful, finite-size query results.
       shouldDehydrateQuery: (q) =>
         q.state.status === "success" && (q.state.data == null || JSON.stringify(q.state.data).length < 200_000),
     },
   });
 }
+
