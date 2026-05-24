@@ -10,7 +10,12 @@ import { AdSlot } from "@/components/ads/AdSlot";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 
 export const Route = createFileRoute("/")({
-  head: () => buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" }),
+  head: () => {
+    const head = buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" });
+    const hero = demoData.articles[0]?.featuredImage;
+    if (hero) head.links.push({ rel: "preload", as: "image", href: hero, fetchpriority: "high" });
+    return head;
+  },
   component: Index,
 });
 

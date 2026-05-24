@@ -42,7 +42,7 @@ function MemberPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 grid gap-6 md:grid-cols-3">
       <div>
-        <div className="rounded-2xl overflow-hidden"><img src={m.image} alt={m.stageName} className="w-full aspect-square object-cover" /></div>
+        <div className="rounded-2xl overflow-hidden"><img src={m.image} alt={m.stageName} fetchPriority="high" decoding="async" width={800} height={800} className="w-full aspect-square object-cover" /></div>
       </div>
       <div className="md:col-span-2">
         <div className="text-xs uppercase text-primary"><Link to="/artist/$slug" params={{ slug: group.slug }}>{group.name}</Link></div>

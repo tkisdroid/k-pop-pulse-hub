@@ -47,7 +47,7 @@ export const Route = createFileRoute("/news/$slug")({
       { name: a.category, path: `/category/${a.category}` },
       { name: a.title, path: canonical },
     ]);
-    return buildHead({
+    const head = buildHead({
       title: a.title,
       description: a.excerpt,
       canonical,
@@ -55,6 +55,8 @@ export const Route = createFileRoute("/news/$slug")({
       ogType: "article",
       jsonLd: [newsArticleLd, crumbs],
     });
+    if (a.featuredImage) head.links.push({ rel: "preload", as: "image", href: a.featuredImage, fetchpriority: "high" });
+    return head;
   },
   component: ArticlePage,
 });
@@ -136,7 +138,7 @@ function ArticlePage() {
         <span className="flex items-center gap-1"><MessageCircle className="size-3" />{article.commentCount}</span>
       </div>
       <div className="mt-6 rounded-2xl overflow-hidden">
-        <img src={article.featuredImage} alt={article.title} className="w-full aspect-video object-cover" />
+        <img src={article.featuredImage} alt={article.title} fetchPriority="high" decoding="async" width={1280} height={720} className="w-full aspect-video object-cover" />
       </div>
 
       <ArticleSummary text={article.content} locale={lang as string} />
