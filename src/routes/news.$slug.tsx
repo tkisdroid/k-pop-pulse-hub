@@ -194,7 +194,9 @@ function ArticlePage() {
         <Button size="sm" variant="outline" onClick={gate(() => { gamification.award(1); cmsProvider.recordEngagement?.(article.slug, "reaction"); })}>
           <Heart className="size-3" /> React ({article.reactionCount})
         </Button>
-        <Button size="sm" variant="outline" onClick={gate(() => {})}><Bookmark className="size-3" /> Save</Button>
+        <Button size="sm" variant={saved ? "default" : "outline"} onClick={onToggleSave} aria-pressed={saved}>
+          {saved ? <BookmarkCheck className="size-3" /> : <Bookmark className="size-3" />} {saved ? "Saved" : "Save"}
+        </Button>
         <Button size="sm" variant="outline" onClick={() => navigator.share?.({ title: article.title, url: location.href }).catch(() => {})}><Share2 className="size-3" /> Share</Button>
         <Button size="sm" variant="outline" disabled={translating} onClick={onTranslate}>
           {translating ? <Loader2 className="size-3 animate-spin" /> : <Languages className="size-3" />} Translate
