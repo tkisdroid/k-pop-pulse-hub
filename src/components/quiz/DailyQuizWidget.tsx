@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Brain, Check, RotateCcw, Sparkles, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -59,9 +60,9 @@ export function DailyQuizWidget({ compact = false, className }: Props) {
               <Brain className="size-4" />
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-primary font-semibold">
-                Daily K-pop Quiz
-              </div>
+              <Link to="/quiz" className="text-[11px] uppercase tracking-wider text-primary font-semibold hover:underline">
+                Daily K-pop Quiz →
+              </Link>
               <div className="text-xs text-muted-foreground">
                 {state.date} · {total} questions
               </div>

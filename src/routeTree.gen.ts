@@ -18,6 +18,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PollsRouteImport } from './routes/polls'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -95,6 +96,11 @@ const RssDotxmlRoute = RssDotxmlRouteImport.update({
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/search': typeof SearchRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/search': typeof SearchRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/polls': typeof PollsRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/search': typeof SearchRoute
@@ -421,6 +430,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/polls'
     | '/privacy'
+    | '/quiz'
     | '/robots.txt'
     | '/rss.xml'
     | '/search'
@@ -465,6 +475,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/polls'
     | '/privacy'
+    | '/quiz'
     | '/robots.txt'
     | '/rss.xml'
     | '/search'
@@ -509,6 +520,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/polls'
     | '/privacy'
+    | '/quiz'
     | '/robots.txt'
     | '/rss.xml'
     | '/search'
@@ -554,6 +566,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PollsRoute: typeof PollsRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  QuizRoute: typeof QuizRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SearchRoute: typeof SearchRoute
@@ -637,6 +650,13 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -916,6 +936,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PollsRoute: PollsRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  QuizRoute: QuizRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SearchRoute: SearchRoute,
