@@ -74,6 +74,12 @@ function ArticlePage() {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [modError, setModError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [commentLikes, setCommentLikes] = useState<Record<string, number>>({});
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replies, setReplies] = useState<Record<string, { id: string; body: string; at: string }[]>>({});
   const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
   const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
   const comments = demoData.comments.filter((c) => c.articleId === article.id);
@@ -82,11 +88,49 @@ function ArticlePage() {
     if (personalization.hasConsent()) {
       personalization.recordView({ id: article.id, tags: article.tags });
     }
+    recentlyViewed.push({ id: article.id, slug: article.slug, title: article.title, image: article.featuredImage });
+    setSaved(bookmarks.has(article.id));
     gamification.award(2, "articlesRead");
     cmsProvider.recordEngagement?.(article.slug, "view");
-  }, [article.id, article.slug, article.tags]);
+  }, [article.id, article.slug, article.tags, article.title, article.featuredImage]);
 
   const gate = (action: () => void) => () => (user ? action() : show("Log in to interact"));
+
+  function onToggleSave() {
+    const nowSaved = bookmarks.toggle({
+      id: article.id,
+      slug: article.slug,
+      title: article.title,
+      image: article.featuredImage,
+    });
+    setSaved(nowSaved);
+    if (nowSaved) {
+      gamification.award(1, "articlesRead");
+      notifications.notify({ kind: "reply", title: "Saved", body: article.title, href: "/bookmarks" });
+    }
+  }
+
+  function onLikeComment(id: string) {
+    setLikedComments((prev) => {
+      const next = new Set(prev);
+      const liked = next.has(id);
+      if (liked) next.delete(id); else next.add(id);
+      setCommentLikes((c) => ({ ...c, [id]: (c[id] ?? 0) + (liked ? -1 : 1) }));
+      return next;
+    });
+  }
+
+  function onSubmitReply(parentId: string) {
+    if (!replyDraft.trim()) return;
+    setReplies((prev) => ({
+      ...prev,
+      [parentId]: [...(prev[parentId] ?? []), { id: crypto.randomUUID(), body: replyDraft.trim(), at: new Date().toISOString() }],
+    }));
+    setReplyDraft("");
+    setReplyTo(null);
+    gamification.award(3, "commentsPosted");
+  }
+
 
   async function onTranslate() {
     setTranslating(true);
