@@ -24,7 +24,9 @@ export default defineConfig({
         devOptions: { enabled: false }, // never run SW in dev / Lovable preview
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+          importScripts: ["/sw-extra.js"],
           navigateFallback: "/",
+
           navigateFallbackDenylist: [
             /^\/api\//,
             /^\/sitemap\.xml$/,
