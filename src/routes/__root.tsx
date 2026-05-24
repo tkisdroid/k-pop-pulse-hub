@@ -140,7 +140,13 @@ function RouteFadeOutlet() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { registerPwa(); localNotifications.hydrate(); }, []);
+  useEffect(() => {
+    setupQueryPersistence(queryClient);
+    registerPwa();
+    localNotifications.hydrate();
+  }, [queryClient]);
+
+
 
   return (
     <QueryClientProvider client={queryClient}>
