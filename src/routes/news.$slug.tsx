@@ -176,6 +176,11 @@ function ArticlePage() {
 
   return (
     <article className="mx-auto max-w-4xl px-4 py-8">
+    <>
+    <ReadingProgress targetRef={articleRef} />
+    {lightbox}
+    <article ref={articleRef} className="mx-auto max-w-6xl px-4 py-8 lg:grid lg:grid-cols-[1fr_220px] lg:gap-10">
+      <div className="min-w-0">
       <nav className="text-xs text-muted-foreground mb-4">
         <Link to="/" className="hover:text-foreground">Home</Link> / <Link to="/latest" className="hover:text-foreground">News</Link> / <span>{article.category}</span>
       </nav>
@@ -188,7 +193,7 @@ function ArticlePage() {
           <Link to="/author/$slug" params={{ slug: article.author.toLowerCase().replace(/\s+/g, "-") }} className="hover:text-foreground">{article.author}</Link>
         </div>
         <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
-        <span className="flex items-center gap-1"><Clock className="size-3" />{article.readingTime} min</span>
+        <span className="flex items-center gap-1"><Clock className="size-3" />{article.readingTime} min read</span>
         <span className="flex items-center gap-1"><Eye className="size-3" />{article.viewCount.toLocaleString()}</span>
         <span className="flex items-center gap-1"><MessageCircle className="size-3" />{article.commentCount}</span>
       </div>
@@ -205,11 +210,13 @@ function ArticlePage() {
         <Button size="sm" variant={saved ? "default" : "outline"} onClick={onToggleSave} aria-pressed={saved}>
           {saved ? <BookmarkCheck className="size-3" /> : <Bookmark className="size-3" />} {saved ? "Saved" : "Save"}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => navigator.share?.({ title: article.title, url: location.href }).catch(() => {})}><Share2 className="size-3" /> Share</Button>
         <Button size="sm" variant="outline" disabled={translating} onClick={onTranslate}>
           {translating ? <Loader2 className="size-3 animate-spin" /> : <Languages className="size-3" />} Translate
         </Button>
         <Button size="sm" variant="ghost" onClick={gate(() => {})}><Flag className="size-3" /> Report</Button>
+      </div>
+      <div className="mt-3">
+        <ShareButtons title={article.title} />
       </div>
       {translated && (
         <div className="mt-4 p-3 rounded-md bg-muted/40 text-xs">
@@ -217,7 +224,7 @@ function ArticlePage() {
           <div className="line-clamp-3 text-muted-foreground">{translated.replace(/<[^>]+>/g, "").slice(0, 240)}…</div>
         </div>
       )}
-      <div className="prose prose-invert max-w-none mt-8 dark:prose-invert" dangerouslySetInnerHTML={{ __html: article.content }} />
+      <div ref={contentRef} className="prose prose-invert max-w-none mt-8 dark:prose-invert scroll-mt-24" dangerouslySetInnerHTML={{ __html: contentHtml }} />
 
       <AdSlot slotId={`article-${article.slug}-inline`} variant="in-article" className="my-8" />
 
