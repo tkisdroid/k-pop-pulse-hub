@@ -175,8 +175,8 @@ function ArticlePage() {
   }
 
   return (
-    <article className="mx-auto max-w-4xl px-4 py-8">
     <>
+
     <ReadingProgress targetRef={articleRef} />
     {lightbox}
     <article ref={articleRef} className="mx-auto max-w-6xl px-4 py-8 lg:grid lg:grid-cols-[1fr_220px] lg:gap-10">
