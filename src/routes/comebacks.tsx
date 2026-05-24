@@ -5,6 +5,8 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { Button } from "@/components/ui/button";
+import { NotifyButton } from "@/components/notifications/NotifyButton";
+
 
 export const Route = createFileRoute("/comebacks")({
   head: () => buildHead({ title: "Comeback Calendar", description: "Upcoming K-pop releases, debuts, tours and birthdays.", canonical: "/comebacks" }),
@@ -42,8 +44,23 @@ function Comebacks() {
                 </div>
                 <div className="text-right space-y-1">
                   <div className="font-display text-2xl text-gradient font-bold">{days > 0 ? `${days}d` : "LIVE"}</div>
-                  <div className="flex gap-1"><Button size="sm" variant="outline">Remind</Button><Button size="sm" variant="secondary">Follow</Button></div>
+                  <div className="flex gap-1 justify-end">
+                    <NotifyButton
+                      reminder={{
+                        id: `comeback:${c.id}`,
+                        kind: "comeback",
+                        title: `🎵 ${c.title}`,
+                        body: `${a.name} ${c.type} drops in 15 minutes`,
+                        url: "/comebacks",
+                        icon: c.image,
+                        fireAt: c.releaseAt,
+                        leadMinutes: 15,
+                      }}
+                    />
+                    <Button size="sm" variant="secondary">Follow</Button>
+                  </div>
                 </div>
+
               </div>
             );
           })}
