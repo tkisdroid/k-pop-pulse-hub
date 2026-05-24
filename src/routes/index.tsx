@@ -8,6 +8,7 @@ import { buildHead } from "@/components/layout/seo";
 import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
+import { DailyQuizWidget } from "@/components/quiz/DailyQuizWidget";
 
 export const Route = createFileRoute("/")({
   head: () => {
@@ -192,6 +193,9 @@ function Index() {
                 </div>
               </Link>
             ))}
+          </div>
+          <div className="mt-4">
+            <DailyQuizWidget />
           </div>
         </div>
       </section>
