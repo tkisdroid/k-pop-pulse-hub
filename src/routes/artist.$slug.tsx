@@ -57,12 +57,12 @@ function ArtistPage() {
   return (
     <div>
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={artist.image} alt={artist.name} className="size-full object-cover" />
+        <img src={artist.image} alt={artist.name} fetchPriority="high" decoding="async" width={1920} height={640} className="size-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
       </div>
       <div className="mx-auto max-w-7xl px-4 -mt-20 relative">
         <div className="flex flex-col md:flex-row md:items-end gap-4">
-          <div className="size-32 md:size-40 rounded-2xl overflow-hidden border-4 border-background shrink-0"><img src={artist.image} alt={artist.name} className="size-full object-cover" /></div>
+          <div className="size-32 md:size-40 rounded-2xl overflow-hidden border-4 border-background shrink-0"><img src={artist.image} alt={artist.name} loading="lazy" decoding="async" width={160} height={160} className="size-full object-cover" /></div>
           <div className="flex-1">
             <div className="text-xs uppercase tracking-wider text-primary">{artist.type.replace("_", " ")} · {artist.agency}</div>
             <h1 className="font-display text-4xl font-bold">{artist.name}</h1>
@@ -123,7 +123,7 @@ function ArtistPage() {
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {members.map((m) => (
                 <Link key={m.id} to="/member/$slug" params={{ slug: m.slug }} className="rounded-xl overflow-hidden bg-card border border-border">
-                  <div className="aspect-square overflow-hidden"><img src={m.image} alt={m.stageName} className="size-full object-cover" /></div>
+                  <div className="aspect-square overflow-hidden"><img src={m.image} alt={m.stageName} loading="lazy" decoding="async" width={300} height={300} className="size-full object-cover" /></div>
                   <div className="p-3">
                     <div className="font-display font-bold">{m.stageName}</div>
                     <div className="text-xs text-muted-foreground">{m.position.join(", ")} · {m.nationality}</div>
@@ -138,7 +138,7 @@ function ArtistPage() {
               {comebacks.map((c) => <div key={c.id} className="p-3 rounded-xl bg-card border border-border"><div className="font-semibold">{c.title}</div><div className="text-xs text-muted-foreground">{c.type} · {new Date(c.releaseAt).toDateString()}</div></div>)}
             </div>
           )}
-          {tab === "Photos" && <div className="grid grid-cols-3 md:grid-cols-6 gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="aspect-square rounded-md overflow-hidden"><img src={artist.image} alt="" className="size-full object-cover" /></div>)}</div>}
+          {tab === "Photos" && <div className="grid grid-cols-3 md:grid-cols-6 gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="aspect-square rounded-md overflow-hidden"><img src={artist.image} alt="" loading="lazy" decoding="async" width={300} height={300} className="size-full object-cover" /></div>)}</div>}
           {tab === "Forum" && (
             <div className="grid gap-2">
               {threads.map((t) => <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="p-3 rounded-xl bg-card border border-border">{t.title}</Link>)}
