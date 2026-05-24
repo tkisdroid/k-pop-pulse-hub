@@ -171,7 +171,9 @@ function RootComponent() {
                 <Footer />
                 <MobileBottomNav />
               </div>
+              <OfflineBadge />
               <AuthModal />
+
             </AuthModalProvider>
           </AuthProviderShell>
         </I18nProvider>
