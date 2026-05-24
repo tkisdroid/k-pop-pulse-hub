@@ -8,13 +8,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useI18n } from "@/hooks/useI18n";
 import { useEffect, useState } from "react";
-import { Bookmark, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert } from "lucide-react";
+import { Bookmark, BookmarkCheck, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert, CornerDownRight } from "lucide-react";
 import { aiHelpers } from "@/services/ai/helpers";
 import { cmsProvider } from "@/services/cms";
 import { personalization } from "@/services/personalization";
 import { gamification } from "@/services/gamification";
 import { notifications } from "@/services/notifications/store";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { bookmarks } from "@/services/bookmarks";
+import { recentlyViewed } from "@/services/recentlyViewed";
+import { RecentlyViewedRail } from "@/components/articles/RecentlyViewedRail";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: ({ params }) => {
