@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useI18n } from "@/hooks/useI18n";
-import { useEffect, useState } from "react";
-import { Bookmark, BookmarkCheck, Heart, Share2, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert, CornerDownRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bookmark, BookmarkCheck, Heart, Flag, Languages, Clock, Eye, MessageCircle, Loader2, ShieldAlert, CornerDownRight } from "lucide-react";
 import { aiHelpers } from "@/services/ai/helpers";
 import { cmsProvider } from "@/services/cms";
 import { personalization } from "@/services/personalization";
@@ -18,6 +18,10 @@ import { AdSlot } from "@/components/ads/AdSlot";
 import { bookmarks } from "@/services/bookmarks";
 import { recentlyViewed } from "@/services/recentlyViewed";
 import { RecentlyViewedRail } from "@/components/articles/RecentlyViewedRail";
+import { ReadingProgress } from "@/components/articles/ReadingProgress";
+import { ArticleToc, extractHeadings } from "@/components/articles/ArticleToc";
+import { useProseLightbox } from "@/components/articles/Lightbox";
+import { ShareButtons } from "@/components/articles/ShareButtons";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: ({ params }) => {
@@ -83,6 +87,10 @@ function ArticlePage() {
   const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
   const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
   const comments = demoData.comments.filter((c) => c.articleId === article.id);
+  const articleRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { html: contentHtml, headings } = useMemo(() => extractHeadings(article.content), [article.content]);
+  const { lightbox } = useProseLightbox(contentRef);
 
   useEffect(() => {
     if (personalization.hasConsent()) {
