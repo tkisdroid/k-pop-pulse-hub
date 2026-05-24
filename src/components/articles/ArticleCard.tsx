@@ -7,7 +7,7 @@ export function ArticleCard({ article, variant = "default" }: { article: Article
     return (
       <Link to="/news/$slug" params={{ slug: article.slug }} className="flex gap-3 group">
         <div className="w-24 h-20 rounded-lg overflow-hidden shrink-0 bg-muted">
-          <img src={article.featuredImage} alt={article.title} loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <img src={article.featuredImage} alt={article.title} loading="lazy" decoding="async" width={96} height={80} className="size-full object-cover transition-transform duration-500 group-hover:scale-110" />
         </div>
         <div className="min-w-0">
           <div className="text-xs uppercase tracking-wider text-primary mb-1">{article.category}</div>
@@ -19,7 +19,7 @@ export function ArticleCard({ article, variant = "default" }: { article: Article
   if (variant === "hero") {
     return (
       <Link to="/news/$slug" params={{ slug: article.slug }} className="relative block aspect-[16/10] rounded-2xl overflow-hidden group lift">
-        <img src={article.featuredImage} alt={article.title} className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]" />
+        <img src={article.featuredImage} alt={article.title} fetchPriority="high" decoding="async" width={1280} height={800} className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent transition-opacity duration-500 group-hover:from-black/95" />
         <div className="absolute bottom-0 p-6 text-white transition-transform duration-500 group-hover:-translate-y-1">
           <span className="inline-block px-2 py-0.5 rounded text-xs uppercase tracking-wider bg-primary mb-3">{article.category}</span>
@@ -32,7 +32,7 @@ export function ArticleCard({ article, variant = "default" }: { article: Article
   return (
     <Link to="/news/$slug" params={{ slug: article.slug }} className="group flex flex-col rounded-xl overflow-hidden bg-card border border-border hover:border-primary/40 lift">
       <div className="aspect-video overflow-hidden bg-muted">
-        <img src={article.featuredImage} alt={article.title} loading="lazy" className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.08]" />
+        <img src={article.featuredImage} alt={article.title} loading="lazy" decoding="async" width={640} height={360} className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.08]" />
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="text-xs uppercase tracking-wider text-primary mb-1">{article.category}</div>
