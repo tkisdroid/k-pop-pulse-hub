@@ -10,7 +10,10 @@ import {
   Link,
 } from "@tanstack/react-router";
 import { registerPwa } from "@/pwa/register";
+import { setupQueryPersistence } from "@/pwa/queryPersist";
 import { localNotifications } from "@/services/notifications/local";
+import { OfflineBadge } from "@/components/layout/OfflineBadge";
+
 
 
 
