@@ -22,6 +22,7 @@ define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
 
+require_once KPOPBLOG_PATH . 'includes/install.php';
 require_once KPOPBLOG_PATH . 'includes/cpt.php';
 require_once KPOPBLOG_PATH . 'includes/meta.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';
@@ -36,11 +37,22 @@ require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
 require_once KPOPBLOG_PATH . 'includes/template.php';
 
-register_activation_hook( __FILE__, function () {
+function kpopblog_activate() {
 	kpopblog_register_cpts();
+	kpopblog_install_or_upgrade();
 	flush_rewrite_rules();
-} );
+	kpopblog_audit( 'plugin_activated', 'plugin' );
+}
+register_activation_hook( __FILE__, 'kpopblog_activate' );
 
-register_deactivation_hook( __FILE__, function () {
+function kpopblog_deactivate() {
 	flush_rewrite_rules();
-} );
+}
+register_deactivation_hook( __FILE__, 'kpopblog_deactivate' );
+
+function kpopblog_maybe_upgrade() {
+	if ( get_option( 'kpopblog_schema_version' ) !== KPOPBLOG_SCHEMA_VERSION ) {
+		kpopblog_install_or_upgrade();
+	}
+}
+add_action( 'plugins_loaded', 'kpopblog_maybe_upgrade' );
