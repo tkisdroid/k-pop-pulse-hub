@@ -3,7 +3,7 @@
  * Plugin Name:       KpopBlog
  * Plugin URI:        https://kpopblog.com
  * Description:       Premium K-pop community blog. Manage articles, artists, members, comebacks, charts, forum threads and polls from the WordPress admin, then render the full React front-end with the [kpopblog] shortcode or the "KpopBlog App" Gutenberg block.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            kpopblog.com
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.0.0' );
+define( 'KPOPBLOG_VERSION', '1.1.0' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
@@ -35,7 +35,9 @@ require_once KPOPBLOG_PATH . 'includes/user-admin.php';
 require_once KPOPBLOG_PATH . 'includes/admin-fields.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';
 require_once KPOPBLOG_PATH . 'includes/notifications.php';
+require_once KPOPBLOG_PATH . 'includes/notifications-admin.php';
 require_once KPOPBLOG_PATH . 'includes/newsletter.php';
+require_once KPOPBLOG_PATH . 'includes/newsletter-admin.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
 require_once KPOPBLOG_PATH . 'includes/template.php';
@@ -49,6 +51,7 @@ function kpopblog_activate() {
 register_activation_hook( __FILE__, 'kpopblog_activate' );
 
 function kpopblog_deactivate() {
+	wp_clear_scheduled_hook( 'kpopblog_process_notification_jobs' );
 	flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, 'kpopblog_deactivate' );

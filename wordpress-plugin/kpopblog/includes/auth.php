@@ -25,6 +25,11 @@ function kpopblog_user_capabilities() {
 	);
 }
 
+function kpopblog_user_meta_list( $user_id, $key ) {
+	$value = get_user_meta( $user_id, $key, true );
+	return is_array( $value ) ? array_values( array_filter( $value, function ( $item ) { return '' !== (string) $item; } ) ) : array();
+}
+
 function kpopblog_map_public_profile( WP_User $u ) {
 	return array(
 		'id'              => (string) $u->ID,
@@ -37,8 +42,8 @@ function kpopblog_map_public_profile( WP_User $u ) {
 		'role'            => (string) ( get_user_meta( $u->ID, 'kb_role', true ) ?: 'member' ),
 		'trustLevel'      => (int) ( get_user_meta( $u->ID, 'kb_trust_level', true ) ?: 1 ),
 		'points'          => (int) get_user_meta( $u->ID, 'kb_points', true ),
-		'badges'          => array_values( (array) get_user_meta( $u->ID, 'kb_badges', true ) ),
-		'followedArtists' => array_map( 'strval', (array) get_user_meta( $u->ID, 'kb_followed_artists', true ) ),
+		'badges'          => kpopblog_user_meta_list( $u->ID, 'kb_badges' ),
+		'followedArtists' => array_map( 'strval', kpopblog_user_meta_list( $u->ID, 'kb_followed_artists' ) ),
 		'createdAt'       => mysql_to_rfc3339( $u->user_registered ),
 	);
 }

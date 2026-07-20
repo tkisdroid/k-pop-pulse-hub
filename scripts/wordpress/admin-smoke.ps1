@@ -26,14 +26,27 @@ if ( ! $menu_found ) {
 }
 global $submenu;
 $moderation_found = false;
+$notifications_found = false;
+$newsletter_settings_found = false;
 foreach ( isset( $submenu['kpopblog-admin'] ) ? (array) $submenu['kpopblog-admin'] : array() as $item ) {
     if ( isset( $item[2] ) && 'kpopblog-community-moderation' === $item[2] ) {
         $moderation_found = true;
-        break;
+    }
+    if ( isset( $item[2] ) && 'kpopblog-notifications' === $item[2] ) {
+        $notifications_found = true;
+    }
+    if ( isset( $item[2] ) && 'kpopblog-newsletter' === $item[2] ) {
+        $newsletter_settings_found = true;
     }
 }
 if ( ! $moderation_found ) {
     throw new Exception( 'community moderation submenu missing' );
+}
+if ( ! $notifications_found ) {
+    throw new Exception( 'notifications submenu missing' );
+}
+if ( ! $newsletter_settings_found ) {
+    throw new Exception( 'newsletter settings submenu missing' );
 }
 
 $request = new WP_REST_Request( 'GET', '/kpopblog/v1/admin/health' );
@@ -47,7 +60,7 @@ foreach ( array( 'pluginVersion', 'schemaVersion', 'wordpressVersion', 'phpVersi
         throw new Exception( 'health response key missing: ' . $key );
     }
 }
-if ( ! isset( $data['counts']['content']['kb_community'] ) || ! array_key_exists( 'openReports', $data['counts'] ) ) {
+if ( ! isset( $data['counts']['content']['kb_community'] ) || ! array_key_exists( 'openReports', $data['counts'] ) || ! array_key_exists( 'pendingNotificationJobs', $data['counts'] ) ) {
     throw new Exception( 'community administrator counts missing' );
 }
 $check_ids = wp_list_pluck( $data['checks'], 'id' );

@@ -12,15 +12,17 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 
 $assertions = @'
 global $wpdb;
-$table = $wpdb->prefix . 'kb_audit_log';
 if ( ! defined( 'KPOPBLOG_SCHEMA_VERSION' ) ) {
     throw new Exception( 'schema version constant missing' );
 }
 if ( get_option( 'kpopblog_schema_version' ) !== KPOPBLOG_SCHEMA_VERSION ) {
     throw new Exception( 'schema version mismatch' );
 }
-if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
-    throw new Exception( 'audit table missing' );
+foreach ( array( 'kb_audit_log', 'kb_reports', 'kb_notifications', 'kb_notification_jobs' ) as $suffix ) {
+    $table = $wpdb->prefix . $suffix;
+    if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+        throw new Exception( 'plugin table missing: ' . $suffix );
+    }
 }
 $admin = get_role( 'administrator' );
 foreach ( array( 'kb_moderate_community', 'kb_manage_automation', 'kb_manage_notifications', 'kb_manage_ads' ) as $cap ) {

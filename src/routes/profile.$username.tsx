@@ -4,6 +4,8 @@ import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { communityProvider } from "@/services/community";
+import { fetchNewsletterSettings } from "@/services/newsletter";
+import { subscriptionProvider } from "@/services/notifications/subscriptions";
 import type { PublicProfile } from "@/types";
 
 export const Route = createFileRoute("/profile/$username")({
@@ -23,6 +25,10 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [availableTopics, setAvailableTopics] = useState<string[]>([]);
+  const [subscribedTopics, setSubscribedTopics] = useState<string[]>([]);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [savingTopic, setSavingTopic] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!resolvedUsername) {
@@ -52,6 +58,47 @@ function ProfilePage() {
     void load();
   }, [load]);
   const isMe = Boolean(me && profile && me.id === profile.id);
+
+  useEffect(() => {
+    if (!isMe) return;
+    let active = true;
+    setSubscriptionLoading(true);
+    Promise.all([fetchNewsletterSettings(), subscriptionProvider.list()])
+      .then(([settings, subscriptions]) => {
+        if (!active) return;
+        setAvailableTopics(settings.availableTopics);
+        setSubscribedTopics(subscriptions.topics);
+      })
+      .catch((subscriptionError: Error) => {
+        if (active) setError(subscriptionError.message);
+      })
+      .finally(() => {
+        if (active) setSubscriptionLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isMe]);
+
+  async function toggleTopic(topic: string) {
+    if (savingTopic) return;
+    const subscribed = !subscribedTopics.includes(topic);
+    setSavingTopic(topic);
+    setError(null);
+    try {
+      const state = await subscriptionProvider.setTopic(topic, subscribed);
+      setSubscribedTopics(state.topics);
+      setNotice(
+        subscribed
+          ? `Subscribed to ${topic.replace(/-/g, " ")}.`
+          : `Unsubscribed from ${topic.replace(/-/g, " ")}.`,
+      );
+    } catch (subscriptionError) {
+      setError((subscriptionError as Error).message);
+    } finally {
+      setSavingTopic(null);
+    }
+  }
 
   async function save() {
     if (!isMe || saving) return;
@@ -219,6 +266,45 @@ function ProfilePage() {
           </p>
         </section>
       </div>
+
+      {isMe && (
+        <section className="mt-4 rounded-xl border border-border bg-card p-4">
+          <h2 className="font-display text-xl font-bold">Notification topics</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choose which editorial updates are delivered to your WordPress notification inbox.
+          </p>
+          {subscriptionLoading ? (
+            <p className="mt-3 text-sm text-muted-foreground">Loading subscriptions…</p>
+          ) : availableTopics.length ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {availableTopics.map((topic) => {
+                const checked = subscribedTopics.includes(topic);
+                return (
+                  <label
+                    key={topic}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={savingTopic !== null}
+                      onChange={() => void toggleTopic(topic)}
+                    />
+                    <span className="capitalize">{topic.replace(/-/g, " ")}</span>
+                    {savingTopic === topic && (
+                      <span className="ml-auto text-xs text-muted-foreground">Saving…</span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              No notification topics are currently available.
+            </p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

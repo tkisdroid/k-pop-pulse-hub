@@ -74,11 +74,25 @@ The moderation screen lists open user reports together with pending community
 posts and replies; resolving or dismissing a report is nonce-protected and
 recorded in the plugin audit log.
 
+**Newsletter subscribers** shows confirmed, pending, and unsubscribed records
+with topic, frequency, consent, confirmation, and suppression metadata. Admins
+can filter by status, resend a pending confirmation, unsubscribe a record, or
+export a CSV. Confirmation and unsubscribe tokens are stored only as salted
+hashes; public unsubscribe requests require the secure email link. The plugin
+also participates in WordPress personal-data export and erasure workflows.
+
+**Notifications** queues administrator broadcasts and processes recipients in
+cron batches. Topic and artist preferences are stored on the WordPress user,
+while each inbox item and its read timestamp are stored in plugin tables. The
+React header reads this server inbox in WordPress mode and never seeds demo
+notifications there. Optional outbound webhooks remain HMAC signed.
+
 `verify-foundation.ps1` builds both front-end distributions and exercises the
 installed plugin through real WordPress REST requests. Its identity and
 community checks cover registration policy, rate limiting, public/private
 profile boundaries, pending submissions, locked threads, duplicate reports,
-moderator permissions, and report resolution.
+moderator permissions, report resolution, double opt-in token handling,
+subscription privacy, inbox isolation, read state, and broadcast delivery.
 
 Plugin deactivation only clears rewrite rules and scheduled plugin hooks; it
 does not remove posts, users, settings, subscriptions, or the audit table. No

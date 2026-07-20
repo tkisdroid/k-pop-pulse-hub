@@ -7,7 +7,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-const KPOPBLOG_SCHEMA_VERSION = '1.1.0';
+const KPOPBLOG_SCHEMA_VERSION = '1.2.0';
 
 /**
  * Create or update plugin-owned tables and capabilities.
@@ -19,6 +19,8 @@ function kpopblog_install_or_upgrade() {
 
 	$audit_table     = $wpdb->prefix . 'kb_audit_log';
 	$reports_table   = $wpdb->prefix . 'kb_reports';
+	$notifications_table = $wpdb->prefix . 'kb_notifications';
+	$notification_jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 	$charset_collate = $wpdb->get_charset_collate();
 	$audit_sql       = "CREATE TABLE {$audit_table} (
 		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -51,9 +53,51 @@ function kpopblog_install_or_upgrade() {
 		KEY target_lookup (target_type,target_id),
 		KEY reporter_created (reporter_id,created_at)
 	) {$charset_collate};";
+	$notifications_sql = "CREATE TABLE {$notifications_table} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		user_id bigint(20) unsigned NOT NULL,
+		job_id bigint(20) unsigned NOT NULL DEFAULT 0,
+		delivery_key varchar(64) NULL,
+		kind varchar(32) NOT NULL DEFAULT 'system',
+		title varchar(255) NOT NULL,
+		body text NULL,
+		href varchar(500) NULL,
+		image varchar(500) NULL,
+		read_at datetime NULL,
+		created_at datetime NOT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY delivery_key (delivery_key),
+		KEY user_created (user_id,created_at),
+		KEY user_read (user_id,read_at),
+		KEY job_lookup (job_id)
+	) {$charset_collate};";
+	$notification_jobs_sql = "CREATE TABLE {$notification_jobs_table} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		kind varchar(32) NOT NULL DEFAULT 'system',
+		title varchar(255) NOT NULL,
+		body text NULL,
+		href varchar(500) NULL,
+		image varchar(500) NULL,
+		audience_type varchar(16) NOT NULL DEFAULT 'all',
+		audience_key varchar(191) NOT NULL DEFAULT '',
+		processed_offset bigint(20) unsigned NOT NULL DEFAULT 0,
+		status varchar(16) NOT NULL DEFAULT 'pending',
+		created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+		created_at datetime NOT NULL,
+		completed_at datetime NULL,
+		error_text text NULL,
+		PRIMARY KEY  (id),
+		KEY status_created (status,created_at),
+		KEY creator_created (created_by,created_at)
+	) {$charset_collate};";
 
 	dbDelta( $audit_sql );
 	dbDelta( $reports_sql );
+	dbDelta( $notifications_sql );
+	dbDelta( $notification_jobs_sql );
+	if ( function_exists( 'kpopblog_migrate_legacy_newsletter_tokens' ) ) {
+		kpopblog_migrate_legacy_newsletter_tokens();
+	}
 
 	$admin = get_role( 'administrator' );
 	if ( $admin ) {

@@ -93,20 +93,14 @@ function kpopblog_register_write_routes() {
 		'callback'            => function ( WP_REST_Request $r ) {
 			$post_id = kpopblog_post_id_by_slug( 'kb_artist', $r->get_param( 'slug' ) );
 			if ( ! $post_id ) return new WP_Error( 'not_found', 'Artist not found', array( 'status' => 404 ) );
-			$user_id   = get_current_user_id();
-			$followers = (array) get_user_meta( $user_id, 'kb_followed_artists', true );
-			$following = in_array( $post_id, $followers, true );
-			if ( $following ) {
-				$followers = array_values( array_diff( $followers, array( $post_id ) ) );
-			} else {
-				$followers[] = $post_id;
-			}
-			update_user_meta( $user_id, 'kb_followed_artists', $followers );
-			$count = (int) get_post_meta( $post_id, 'kb_follower_count', true );
-			$count = max( 0, $following ? $count - 1 : $count + 1 );
-			update_post_meta( $post_id, 'kb_follower_count', $count );
-			do_action( 'kb_follow_toggled', $post_id, $user_id, ! $following );
-			return rest_ensure_response( array( 'following' => ! $following, 'followerCount' => $count ) );
+			$state = kpopblog_subscription_state( get_current_user_id() );
+			$following = in_array( $post_id, $state['artists'], true );
+			$result = kpopblog_update_subscription( get_current_user_id(), 'artist', $r->get_param( 'slug' ), ! $following );
+			if ( is_wp_error( $result ) ) { return $result; }
+			return rest_ensure_response( array(
+				'following'     => ! $following,
+				'followerCount' => (int) get_post_meta( $post_id, 'kb_follower_count', true ),
+			) );
 		},
 	) );
 

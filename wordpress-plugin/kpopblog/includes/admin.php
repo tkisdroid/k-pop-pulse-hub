@@ -129,8 +129,12 @@ function kpopblog_get_admin_counts() {
 	) );
 	global $wpdb;
 	$reports_table = $wpdb->prefix . 'kb_reports';
+	$notification_jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 	$open_reports = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $reports_table ) ) === $reports_table
 		? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'pending'" )
+		: 0;
+	$pending_notification_jobs = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $notification_jobs_table ) ) === $notification_jobs_table
+		? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$notification_jobs_table} WHERE status IN ('pending','processing')" )
 		: 0;
 
 	return array(
@@ -139,6 +143,7 @@ function kpopblog_get_admin_counts() {
 		'pendingComments'      => isset( $comment_counts->moderated ) ? (int) $comment_counts->moderated : 0,
 		'confirmedSubscribers' => (int) $subscribers->found_posts,
 		'openReports'          => $open_reports,
+		'pendingNotificationJobs' => $pending_notification_jobs,
 	);
 }
 
@@ -188,6 +193,7 @@ function kpopblog_render_admin_dashboard() {
 		'Users'       => admin_url( 'users.php' ),
 		'Comments'    => admin_url( 'edit-comments.php' ),
 		'Subscribers' => admin_url( 'edit.php?post_type=kb_subscriber' ),
+		'Notifications' => admin_url( 'admin.php?page=kpopblog-notifications' ),
 	);
 	?>
 	<div class="wrap kpopblog-admin">
@@ -206,6 +212,8 @@ function kpopblog_render_admin_dashboard() {
 					$value = $counts['users'];
 				} elseif ( $label === 'Comments' ) {
 					$value = $counts['pendingComments'];
+				} elseif ( $label === 'Notifications' ) {
+					$value = $counts['pendingNotificationJobs'];
 				} else {
 					$value = $counts['confirmedSubscribers'];
 				}

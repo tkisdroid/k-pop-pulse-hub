@@ -4,7 +4,7 @@ Tags: kpop, blog, community, music, react
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 Premium K-pop community blog as a WordPress plugin. Manage every content
@@ -21,6 +21,13 @@ Community submissions are stored as pending WordPress content for review.
 Administrators can publish them from Community Posts and review user reports,
 pending posts, and pending replies from Community Moderation. Report decisions
 are protected by WordPress nonces and written to the plugin audit log.
+
+Newsletter confirmation and unsubscribe links use separate random tokens that
+are stored only as salted hashes. Subscriber administration includes status
+filters, confirmation resend, suppression, CSV export, and WordPress privacy
+export/erase integration. Durable per-user notification inboxes support topic
+and artist preferences, persistent read state, cron-batched admin broadcasts,
+and optional HMAC-signed webhooks.
 
 == Installation ==
 
@@ -52,6 +59,15 @@ Unified namespace: /wp-json/kpopblog/v1
   POST /reports
   GET /moderation/reports
   POST /moderation/reports/{id}
+  GET, POST /subscriptions
+  GET /notifications
+  POST /notifications/{id}/read
+  POST /notifications/read-all
+  POST /notifications/broadcast
+  GET /newsletter/settings
+  POST /newsletter/subscribe
+  POST /newsletter/confirm
+  POST /newsletter/unsubscribe
   GET /bundle    (homepage hydration)
 
 Responses already match the React app's TypeScript types — no transform layer.
