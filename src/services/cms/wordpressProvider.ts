@@ -12,7 +12,13 @@ import type { CmsProvider } from "./types";
 
 declare global {
   interface Window {
-    kpopblogConfig?: { apiUrl?: string; nonce?: string; locale?: string };
+    kpopblogConfig?: {
+      apiUrl?: string;
+      nonce?: string;
+      locale?: string;
+      registrationEnabled?: boolean;
+      adminUrl?: string;
+    };
   }
 }
 

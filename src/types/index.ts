@@ -1,5 +1,13 @@
 export type UserRole = "guest" | "member" | "contributor" | "trusted_member" | "moderator" | "editor" | "admin";
 
+export interface UserCapabilities {
+  moderateCommunity: boolean;
+  manageAutomation: boolean;
+  manageNotifications: boolean;
+  manageAds: boolean;
+  manageOptions: boolean;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -15,6 +23,7 @@ export interface User {
   badges: string[];
   followedArtists: string[];
   createdAt: string;
+  capabilities?: UserCapabilities;
 }
 
 export interface Article {

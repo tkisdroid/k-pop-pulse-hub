@@ -17,6 +17,7 @@ function Login() {
   const nav = useNavigate();
   const isWordpress = authProvider.name === "wordpress";
   const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -27,18 +28,22 @@ function Login() {
         className="space-y-3"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (submitting) return;
+          setSubmitting(true);
           setError(null);
           try {
             await signIn(email, password);
             nav({ to: "/" });
           } catch (err) {
             setError((err as Error).message);
+          } finally {
+            setSubmitting(false);
           }
         }}
       >
-        <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
+        <input type="text" autoComplete="username" required placeholder="Email or username" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
         <input type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
-        <Button type="submit" className="w-full">Log in</Button>
+        <Button type="submit" disabled={submitting} className="w-full">{submitting ? "Logging in…" : "Log in"}</Button>
       </form>
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       {isWordpress ? (
