@@ -29,6 +29,12 @@ export/erase integration. Durable per-user notification inboxes support topic
 and artist preferences, persistent read state, cron-batched admin broadcasts,
 and optional HMAC-signed webhooks.
 
+The AdSense settings page validates the publisher ID and responsive display-unit
+slot IDs against approved app placements. WordPress mode does not render demo ad
+placeholders or load the advertising script before advertising consent. Configure
+a Google-certified consent management platform in AdSense Privacy & messaging
+before serving ads in every region where Google requires one.
+
 == Installation ==
 
 1. Build the React app and copy the bundle into /assets:

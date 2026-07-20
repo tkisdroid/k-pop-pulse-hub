@@ -9,7 +9,11 @@ ASSETS_DIR="$PLUGIN_DIR/assets"
 
 echo "→ Building React app for WordPress (vite.config.wordpress.ts)…"
 cd "$ROOT"
-bun run build:wordpress
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  powershell.exe -NoProfile -Command "npm run build:wordpress"
+else
+  npm run build:wordpress
+fi
 
 echo "→ Copying built assets into the plugin…"
 rm -rf "$ASSETS_DIR"

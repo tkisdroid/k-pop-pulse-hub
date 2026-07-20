@@ -65,8 +65,10 @@ Administrators can open **K-pop Pulse Hub** from the WordPress sidebar. The
 dashboard summarizes content, users, pending comments, and confirmed newsletter
 subscribers. Its health section verifies packaged assets, the static homepage,
 permalinks, user registration, and WordPress cron. It also displays explicit
-readiness warnings while demo runtime data or the service-worker delivery issue
-remain.
+readiness warnings while demo runtime data remains or AdSense has not been
+configured. Service-worker registration stays disabled in WordPress mode so an
+invalid `/sw.js` response or stale application cache cannot break the embedded
+application.
 
 The same menu contains **Community Posts** and **Community Moderation**.
 Subscriber submissions remain pending until an administrator publishes them.
@@ -86,6 +88,14 @@ cron batches. Topic and artist preferences are stored on the WordPress user,
 while each inbox item and its read timestamp are stored in plugin tables. The
 React header reads this server inbox in WordPress mode and never seeds demo
 notifications there. Optional outbound webhooks remain HMAC signed.
+
+**AdSense** accepts one validated `ca-pub-` publisher ID and explicit responsive
+display-unit slot IDs for the app's approved logical placements. WordPress mode
+does not show demo ad placeholders, inject Auto Ads, or load Google's advertising
+script before the visitor grants advertising consent. Before enabling ads in
+production, configure a Google-certified consent management platform through
+AdSense Privacy & messaging for every region where Google requires one; the
+in-app privacy controls are the local script gate, not a certified CMP.
 
 `verify-foundation.ps1` builds both front-end distributions and exercises the
 installed plugin through real WordPress REST requests. Its identity and

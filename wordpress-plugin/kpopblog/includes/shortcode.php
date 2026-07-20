@@ -17,8 +17,11 @@ function kpopblog_enqueue_assets() {
 		if ( ! empty( $m['css'] ) ) { $css = $m['css']; }
 	}
 
-	wp_register_style( 'kpopblog-app', KPOPBLOG_URL . $css, array(), KPOPBLOG_VERSION );
-	wp_register_script( 'kpopblog-app', KPOPBLOG_URL . $js, array(), KPOPBLOG_VERSION, true );
+	// Hashed Vite filenames provide cache invalidation. Native module chunks
+	// import the entry URL without a query string, so adding ?ver= would make
+	// the browser execute the same module twice when a circular chunk imports it.
+	wp_register_style( 'kpopblog-app', KPOPBLOG_URL . $css, array(), null );
+	wp_register_script( 'kpopblog-app', KPOPBLOG_URL . $js, array(), null, true );
 
 	// Vite builds a native ES module (top-level `import`/`export`) — without
 	// type="module" the browser parses it as a classic script and throws
@@ -46,6 +49,7 @@ function kpopblog_enqueue_assets() {
 			'threshold'     => (float) $mod['threshold'],
 			'defaultReason' => (string) $mod['default_reason'],
 		),
+		'ads'        => function_exists( 'kpopblog_ads_frontend_config' ) ? kpopblog_ads_frontend_config() : array( 'enabled' => false, 'publisherId' => '', 'slots' => (object) array() ),
 	) );
 
 	// Styles are printed inside wp_head() (priority 8) — by the time the

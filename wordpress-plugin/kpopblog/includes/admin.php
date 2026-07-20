@@ -91,13 +91,22 @@ function kpopblog_get_health_checks() {
 		admin_url( 'edit.php' )
 	);
 
-	$service_worker_ready = is_readable( KPOPBLOG_PATH . 'assets/sw.js' );
 	$checks[] = kpopblog_health_check(
 		'service_worker',
-		$service_worker_ready ? 'good' : 'warning',
+		'good',
 		'Service worker',
-		$service_worker_ready ? 'A packaged service worker is available.' : 'The WordPress build has no valid service worker; offline registration must remain disabled.',
+		'Service-worker registration is safely disabled in WordPress mode to prevent invalid /sw.js responses and stale application caches.',
 		admin_url( 'plugins.php' )
+	);
+
+	$ads_settings = function_exists( 'kpopblog_get_ads_settings' ) ? kpopblog_get_ads_settings() : array();
+	$ads_ready = ! empty( $ads_settings['enabled'] ) && ! empty( $ads_settings['publisher_id'] ) && ! empty( $ads_settings['slots'] );
+	$checks[] = kpopblog_health_check(
+		'ads',
+		$ads_ready ? 'good' : 'warning',
+		'Google AdSense',
+		$ads_ready ? 'Consent-gated responsive ad units are configured.' : 'AdSense remains disabled until a valid publisher ID and at least one approved placement are saved.',
+		admin_url( 'admin.php?page=kpopblog-ads' )
 	);
 
 	return $checks;

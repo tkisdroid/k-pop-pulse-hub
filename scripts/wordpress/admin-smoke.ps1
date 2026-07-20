@@ -28,6 +28,7 @@ global $submenu;
 $moderation_found = false;
 $notifications_found = false;
 $newsletter_settings_found = false;
+$ads_found = false;
 foreach ( isset( $submenu['kpopblog-admin'] ) ? (array) $submenu['kpopblog-admin'] : array() as $item ) {
     if ( isset( $item[2] ) && 'kpopblog-community-moderation' === $item[2] ) {
         $moderation_found = true;
@@ -38,6 +39,9 @@ foreach ( isset( $submenu['kpopblog-admin'] ) ? (array) $submenu['kpopblog-admin
     if ( isset( $item[2] ) && 'kpopblog-newsletter' === $item[2] ) {
         $newsletter_settings_found = true;
     }
+    if ( isset( $item[2] ) && 'kpopblog-ads' === $item[2] ) {
+        $ads_found = true;
+    }
 }
 if ( ! $moderation_found ) {
     throw new Exception( 'community moderation submenu missing' );
@@ -47,6 +51,9 @@ if ( ! $notifications_found ) {
 }
 if ( ! $newsletter_settings_found ) {
     throw new Exception( 'newsletter settings submenu missing' );
+}
+if ( ! $ads_found ) {
+    throw new Exception( 'AdSense settings submenu missing' );
 }
 
 $request = new WP_REST_Request( 'GET', '/kpopblog/v1/admin/health' );
@@ -64,7 +71,7 @@ if ( ! isset( $data['counts']['content']['kb_community'] ) || ! array_key_exists
     throw new Exception( 'community administrator counts missing' );
 }
 $check_ids = wp_list_pluck( $data['checks'], 'id' );
-foreach ( array( 'assets', 'homepage', 'permalinks', 'registration', 'cron', 'runtime_data', 'service_worker' ) as $check_id ) {
+foreach ( array( 'assets', 'homepage', 'permalinks', 'registration', 'cron', 'runtime_data', 'service_worker', 'ads' ) as $check_id ) {
     if ( ! in_array( $check_id, $check_ids, true ) ) {
         throw new Exception( 'health check missing: ' . $check_id );
     }

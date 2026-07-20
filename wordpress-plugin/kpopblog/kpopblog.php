@@ -34,6 +34,7 @@ require_once KPOPBLOG_PATH . 'includes/moderation-admin.php';
 require_once KPOPBLOG_PATH . 'includes/user-admin.php';
 require_once KPOPBLOG_PATH . 'includes/admin-fields.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';
+require_once KPOPBLOG_PATH . 'includes/ads.php';
 require_once KPOPBLOG_PATH . 'includes/notifications.php';
 require_once KPOPBLOG_PATH . 'includes/notifications-admin.php';
 require_once KPOPBLOG_PATH . 'includes/newsletter.php';
