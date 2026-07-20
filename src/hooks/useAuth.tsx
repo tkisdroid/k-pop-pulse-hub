@@ -7,7 +7,7 @@ interface AuthCtx {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<User>;
   signInDemo: (role: UserRole) => Promise<User>;
-  signUp: (input: { email: string; username: string; displayName: string }) => Promise<User>;
+  signUp: (input: { email: string; username: string; displayName: string; password: string }) => Promise<User>;
   signInWithProvider: (p: "google" | "apple" | "x" | "kakao" | "naver" | "discord") => Promise<{ pending: true; message: string }>;
   signOut: () => Promise<void>;
 }
@@ -19,14 +19,24 @@ export function AuthProviderShell({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(authProvider.getCurrentUser());
-    setLoading(false);
-    return authProvider.onChange((u) => setUser(u));
+    let cancelled = false;
+    (async () => {
+      const initial = authProvider.init ? await authProvider.init() : authProvider.getCurrentUser();
+      if (!cancelled) {
+        setUser(initial);
+        setLoading(false);
+      }
+    })();
+    const unsubscribe = authProvider.onChange((u) => setUser(u));
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const signIn = useCallback((e: string, p: string) => authProvider.signIn(e, p), []);
   const signInDemo = useCallback((r: UserRole) => authProvider.signInDemo(r), []);
-  const signUp = useCallback((i: { email: string; username: string; displayName: string }) => authProvider.signUp(i), []);
+  const signUp = useCallback((i: { email: string; username: string; displayName: string; password: string }) => authProvider.signUp(i), []);
   const signInWithProvider = useCallback((p: any) => authProvider.signInWithProvider(p), []);
   const signOut = useCallback(() => authProvider.signOut(), []);
 

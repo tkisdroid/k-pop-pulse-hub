@@ -26,11 +26,15 @@ require_once KPOPBLOG_PATH . 'includes/cpt.php';
 require_once KPOPBLOG_PATH . 'includes/meta.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';
 require_once KPOPBLOG_PATH . 'includes/rest-write.php';
+require_once KPOPBLOG_PATH . 'includes/auth.php';
+require_once KPOPBLOG_PATH . 'includes/user-admin.php';
+require_once KPOPBLOG_PATH . 'includes/admin-fields.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';
 require_once KPOPBLOG_PATH . 'includes/notifications.php';
 require_once KPOPBLOG_PATH . 'includes/newsletter.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
+require_once KPOPBLOG_PATH . 'includes/template.php';
 
 register_activation_hook( __FILE__, function () {
 	kpopblog_register_cpts();

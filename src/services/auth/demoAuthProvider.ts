@@ -6,12 +6,15 @@ const STORAGE_KEY = "kpopblog.session.v1";
 export interface AuthProvider {
   name: string;
   getCurrentUser(): User | null;
+  /** Optional async session hydration (e.g. cookie-session providers). Falls back to getCurrentUser() when absent. */
+  init?(): Promise<User | null>;
   signIn(email: string, password: string): Promise<User>;
   signInDemo(role: UserRole): Promise<User>;
-  signUp(input: { email: string; username: string; displayName: string }): Promise<User>;
+  signUp(input: { email: string; username: string; displayName: string; password: string }): Promise<User>;
   signInWithProvider(provider: "google" | "apple" | "x" | "kakao" | "naver" | "discord"): Promise<{ pending: true; message: string }>;
   signOut(): Promise<void>;
   onChange(cb: (user: User | null) => void): () => void;
+  requestPasswordReset?(email: string): Promise<{ ok: boolean; message: string }>;
 }
 
 const listeners = new Set<(u: User | null) => void>();

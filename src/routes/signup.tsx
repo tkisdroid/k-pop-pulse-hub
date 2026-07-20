@@ -13,11 +13,12 @@ export const Route = createFileRoute("/signup")({
 function Signup() {
   const { signUp } = useAuth();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email: "", username: "", displayName: "" });
+  const [form, setForm] = useState({ email: "", username: "", displayName: "", password: "" });
   const [agreed, setAgreed] = useState(false);
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
   const [optInLabel, setOptInLabel] = useState(NEWSLETTER_DEFAULTS.signupOptInLabel);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNewsletterSettings().then((s) => setOptInLabel(s.signupOptInLabel));
@@ -33,12 +34,15 @@ function Signup() {
           e.preventDefault();
           if (!agreed || submitting) return;
           setSubmitting(true);
+          setError(null);
           try {
             await signUp(form);
             if (newsletterOptIn && form.email) {
               await subscribeNewsletter({ email: form.email, source: "signup" });
             }
             nav({ to: "/onboarding" });
+          } catch (err) {
+            setError((err as Error).message);
           } finally {
             setSubmitting(false);
           }
@@ -47,7 +51,7 @@ function Signup() {
         <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
         <input required placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
         <input required placeholder="Display name" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
-        <input required type="password" placeholder="Password" className="w-full h-10 px-3 rounded-md bg-background border border-input" />
+        <input required type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full h-10 px-3 rounded-md bg-background border border-input" />
 
         <label className="flex items-start gap-2 text-xs">
           <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} className="mt-0.5" />
@@ -61,6 +65,7 @@ function Signup() {
           {submitting ? "Creating…" : "Create account"}
         </Button>
       </form>
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
       <p className="mt-6 text-sm text-center">Already have an account? <Link to="/login" className="text-primary">Log in</Link></p>
     </div>
   );

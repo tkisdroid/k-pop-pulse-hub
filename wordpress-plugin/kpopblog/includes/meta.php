@@ -90,3 +90,24 @@ function kpopblog_register_meta() {
 	) );
 }
 add_action( 'init', 'kpopblog_register_meta' );
+
+/**
+ * User profile fields — mirror the User type in src/types/index.ts so
+ * kpopblog_map_user() (includes/auth.php) needs no transformation, and so
+ * they're editable from the wp-admin user profile screen / REST.
+ */
+function kpopblog_register_user_meta() {
+	$str = array( 'type' => 'string',  'single' => true, 'show_in_rest' => true, 'auth_callback' => '__return_true' );
+	$num = array( 'type' => 'integer', 'single' => true, 'show_in_rest' => true, 'auth_callback' => '__return_true' );
+	$arr = array( 'type' => 'array',   'single' => true, 'show_in_rest' => array( 'schema' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ) ), 'auth_callback' => '__return_true' );
+
+	register_meta( 'user', 'kb_role',            $str );
+	register_meta( 'user', 'kb_bio',             $str );
+	register_meta( 'user', 'kb_country',         $str );
+	register_meta( 'user', 'kb_language',        $str );
+	register_meta( 'user', 'kb_trust_level',     $num );
+	register_meta( 'user', 'kb_points',          $num );
+	register_meta( 'user', 'kb_badges',          $arr );
+	register_meta( 'user', 'kb_followed_artists', $arr );
+}
+add_action( 'init', 'kpopblog_register_user_meta' );

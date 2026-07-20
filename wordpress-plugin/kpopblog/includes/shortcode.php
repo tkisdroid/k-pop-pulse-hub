@@ -20,6 +20,17 @@ function kpopblog_enqueue_assets() {
 	wp_register_style( 'kpopblog-app', KPOPBLOG_URL . $css, array(), KPOPBLOG_VERSION );
 	wp_register_script( 'kpopblog-app', KPOPBLOG_URL . $js, array(), KPOPBLOG_VERSION, true );
 
+	// Vite builds a native ES module (top-level `import`/`export`) — without
+	// type="module" the browser parses it as a classic script and throws
+	// "Cannot use import statement outside a module", so nothing mounts.
+	add_filter( 'script_loader_tag', function ( $tag, $handle ) {
+		if ( $handle !== 'kpopblog-app' ) { return $tag; }
+		if ( strpos( $tag, 'type=' ) === false ) {
+			$tag = str_replace( ' src=', ' type="module" src=', $tag );
+		}
+		return $tag;
+	}, 10, 2 );
+
 	$mod = function_exists( 'kpopblog_get_moderation_settings' ) ? kpopblog_get_moderation_settings() : array( 'enabled' => 1, 'threshold' => 0.7, 'default_reason' => '' );
 
 	wp_localize_script( 'kpopblog-app', 'kpopblogConfig', array(
@@ -34,8 +45,32 @@ function kpopblog_enqueue_assets() {
 			'defaultReason' => (string) $mod['default_reason'],
 		),
 	) );
+
+	// Styles are printed inside wp_head() (priority 8) — by the time the
+	// [kpopblog] shortcode itself runs (during the_content(), well after
+	// wp_head() has already finished), it's too late to enqueue the
+	// stylesheet and have it actually output. Enqueue eagerly here whenever
+	// we can already tell this request will render the app, so the CSS
+	// (and script, for consistent load order) make it into <head>/<body>.
+	if ( kpopblog_current_page_needs_app_assets() ) {
+		wp_enqueue_style( 'kpopblog-app' );
+		wp_enqueue_script( 'kpopblog-app' );
+	}
 }
 add_action( 'wp_enqueue_scripts', 'kpopblog_enqueue_assets' );
+
+function kpopblog_current_page_needs_app_assets() {
+	if ( function_exists( 'kpopblog_current_request_is_app_shell' ) && kpopblog_current_request_is_app_shell() ) {
+		return true;
+	}
+	if ( is_singular() ) {
+		$post = get_post();
+		if ( $post && ( has_shortcode( $post->post_content, 'kpopblog' ) || has_block( 'kpopblog/app', $post ) ) ) {
+			return true;
+		}
+	}
+	return false;
+}
 
 function kpopblog_shortcode( $atts ) {
 	$atts = shortcode_atts( array( 'route' => '/' ), $atts, 'kpopblog' );
