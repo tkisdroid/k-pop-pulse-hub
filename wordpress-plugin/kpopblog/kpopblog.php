@@ -29,6 +29,7 @@ require_once KPOPBLOG_PATH . 'includes/meta.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';
 require_once KPOPBLOG_PATH . 'includes/rest-write.php';
 require_once KPOPBLOG_PATH . 'includes/auth.php';
+require_once KPOPBLOG_PATH . 'includes/community.php';
 require_once KPOPBLOG_PATH . 'includes/user-admin.php';
 require_once KPOPBLOG_PATH . 'includes/admin-fields.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';

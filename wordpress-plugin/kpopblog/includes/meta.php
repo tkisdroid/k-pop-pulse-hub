@@ -70,7 +70,13 @@ function kpopblog_register_meta() {
 		register_post_meta( 'kb_thread', $k, $str );
 	}
 	register_post_meta( 'kb_thread', 'kb_rumor', array( 'type' => 'boolean', 'single' => true, 'show_in_rest' => true, 'auth_callback' => '__return_true' ) );
+	foreach ( array( 'kb_pinned', 'kb_locked', 'kb_official' ) as $key ) {
+		register_post_meta( 'kb_thread', $key, array( 'type' => 'boolean', 'single' => true, 'show_in_rest' => true, 'auth_callback' => '__return_true' ) );
+	}
 	register_post_meta( 'kb_thread', 'kb_related_artist_slugs', $arr );
+
+	register_post_meta( 'kb_community', 'kb_language', $str );
+	register_post_meta( 'kb_community', 'kb_artist_slug', $str );
 
 	// Polls.
 	register_post_meta( 'kb_poll', 'kb_ends_at',    $str );

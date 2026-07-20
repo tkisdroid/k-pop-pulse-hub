@@ -32,7 +32,12 @@ function kpopblog_register_cpts() {
 		'kb_thread' => array(
 			'singular' => 'Forum thread', 'plural' => 'Forum threads',
 			'icon' => 'dashicons-format-chat', 'slug' => 'threads',
-			'supports' => array( 'title', 'editor', 'author' ),
+			'supports' => array( 'title', 'editor', 'author', 'comments', 'custom-fields' ),
+		),
+		'kb_community' => array(
+			'singular' => 'Community post', 'plural' => 'Community posts',
+			'icon' => 'dashicons-format-status', 'slug' => 'community',
+			'supports' => array( 'editor', 'author', 'comments', 'custom-fields' ),
 		),
 		'kb_poll' => array(
 			'singular' => 'Poll', 'plural' => 'Polls',
@@ -68,5 +73,46 @@ function kpopblog_register_cpts() {
 		'show_in_rest' => true,
 		'hierarchical' => false,
 	) );
+
+	register_taxonomy( 'kb_forum_category', array( 'kb_thread' ), array(
+		'label'        => 'Forum categories',
+		'labels'       => array(
+			'name'          => 'Forum categories',
+			'singular_name' => 'Forum category',
+			'menu_name'     => 'Forum categories',
+		),
+		'public'       => true,
+		'show_in_rest' => true,
+		'hierarchical' => true,
+		'rewrite'      => array( 'slug' => 'forum' ),
+	) );
 }
 add_action( 'init', 'kpopblog_register_cpts' );
+
+function kpopblog_seed_forum_categories() {
+	$categories = array(
+		'general'   => array( 'General', 'General K-pop discussion.' ),
+		'news'      => array( 'News', 'Discuss verified K-pop news and announcements.' ),
+		'comebacks' => array( 'Comebacks', 'Albums, singles, teasers, and performances.' ),
+		'concerts'  => array( 'Concerts', 'Tours, festivals, tickets, and live events.' ),
+	);
+	foreach ( $categories as $slug => $category ) {
+		if ( ! term_exists( $slug, 'kb_forum_category' ) ) {
+			wp_insert_term( $category[0], 'kb_forum_category', array( 'slug' => $slug, 'description' => $category[1] ) );
+		}
+	}
+}
+add_action( 'init', 'kpopblog_seed_forum_categories', 20 );
+
+function kpopblog_ensure_published_thread_slug( $new_status, $old_status, WP_Post $post ) {
+	if ( 'publish' !== $new_status || 'kb_thread' !== $post->post_type || $post->post_name !== '' ) {
+		return;
+	}
+	global $wpdb;
+	$slug = wp_unique_post_slug( sanitize_title( $post->post_title ), $post->ID, 'publish', 'kb_thread', $post->post_parent );
+	if ( $slug !== '' ) {
+		$wpdb->update( $wpdb->posts, array( 'post_name' => $slug ), array( 'ID' => $post->ID ), array( '%s' ), array( '%d' ) );
+		clean_post_cache( $post->ID );
+	}
+}
+add_action( 'transition_post_status', 'kpopblog_ensure_published_thread_slug', 10, 3 );
