@@ -17,6 +17,20 @@ This design preserves the existing React 19, TanStack Router, TypeScript, Vite, 
 - There is no PHP executable or WP-CLI on the host. Docker is available and will be the reproducible WordPress runtime.
 - `wordpress-plugin/kpopblog/templates/app-shell.php` contains an existing uncommitted user change. This work must preserve it unless a later task specifically requires a compatible edit.
 
+### Confirmed production baseline
+
+A read-only administrator inspection on 2026-07-21 established the production baseline:
+
+- The live site is `https://thekpopblog.com`, not the older `kpopblog.com` value still present in plugin metadata and public copy.
+- Production runs WordPress 7.0.2 and KpopBlog 1.0.0.
+- The plugin is active and its Artists, Members, Comebacks, Charts, Forum Threads, Polls, Newsletter, moderation, and webhook menus are registered.
+- The public homepage mounts the React application but displays the repository demo articles and includes `demo build` copy. WordPress is not yet the public source of truth.
+- Service-worker registration fails because `/sw.js` responds with HTML instead of JavaScript.
+- An existing AI trend screen offers manual trend analysis and content generation, but does not expose evidence of scheduled source ingestion, deduplication, or automatic publication.
+- An existing AdSense administration menu opens an empty content area while the public page loads AdSense directly. The final advertising implementation must consolidate ownership and prevent duplicate loaders.
+- Twenty-four comments are awaiting moderation and the visible samples are spam, so moderation and rate limiting are release requirements rather than optional hardening.
+- Production includes Betheme, WP Super Cache, NinjaFirewall, Login Lockdown, Two Factor, Contact Form 7, Make Connector, and host-provided must-use loaders. Plugin code must coexist with these components and must not deactivate or reconfigure them automatically.
+
 ## Product Boundaries
 
 The platform is divided into five independently testable delivery units.
