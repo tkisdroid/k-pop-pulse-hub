@@ -23,6 +23,7 @@ define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
 
 require_once KPOPBLOG_PATH . 'includes/install.php';
+require_once KPOPBLOG_PATH . 'includes/admin.php';
 require_once KPOPBLOG_PATH . 'includes/cpt.php';
 require_once KPOPBLOG_PATH . 'includes/meta.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';

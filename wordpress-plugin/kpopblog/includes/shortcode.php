@@ -38,6 +38,7 @@ function kpopblog_enqueue_assets() {
 		'wpApiUrl'   => esc_url_raw( rest_url( 'wp/v2' ) ),
 		'nonce'      => wp_create_nonce( 'wp_rest' ),
 		'siteUrl'    => esc_url_raw( home_url( '/' ) ),
+		'adminUrl'   => current_user_can( 'manage_options' ) ? esc_url_raw( admin_url( 'admin.php?page=kpopblog-admin' ) ) : '',
 		'locale'     => substr( get_locale(), 0, 2 ),
 		'moderation' => array(
 			'enabled'       => (bool) $mod['enabled'],
