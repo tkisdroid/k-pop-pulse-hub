@@ -30,6 +30,7 @@ wordpress-plugin/kpopblog.zip
 !.vscode/extensions.json
 .idea
 .worktrees/
+.playwright-cli/
 .DS_Store
 *.suo
 *.ntvs*

@@ -28,6 +28,8 @@ try {
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/runtime-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/plugin-foundation-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/admin-smoke.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/identity-smoke.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/community-smoke.ps1')
 
     if (-not (Test-Path -LiteralPath $gitBash)) {
         throw 'Git Bash is required to run wordpress-plugin/build-plugin.sh.'
@@ -47,6 +49,8 @@ try {
             'kpopblog/kpopblog.php',
             'kpopblog/includes/install.php',
             'kpopblog/includes/admin.php',
+            'kpopblog/includes/community.php',
+            'kpopblog/includes/moderation-admin.php',
             'kpopblog/assets/manifest.json'
         )
         foreach ($entry in $requiredEntries) {

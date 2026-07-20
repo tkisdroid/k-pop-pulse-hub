@@ -164,17 +164,26 @@ function kpopblog_collection_args() {
 		'per_page' => array( 'type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100 ),
 		'page'     => array( 'type' => 'integer', 'default' => 1,  'minimum' => 1 ),
 		'search'   => array( 'type' => 'string' ),
+		'category' => array( 'type' => 'string' ),
 	);
 }
 
 function kpopblog_query( $post_type, WP_REST_Request $r ) {
-	return new WP_Query( array(
+	$args = array(
 		'post_type'      => $post_type,
 		'post_status'    => 'publish',
 		'posts_per_page' => (int) $r->get_param( 'per_page' ),
 		'paged'          => (int) $r->get_param( 'page' ),
 		's'              => (string) $r->get_param( 'search' ),
-	) );
+	);
+	if ( 'kb_thread' === $post_type && $r->get_param( 'category' ) ) {
+		$args['tax_query'] = array( array(
+			'taxonomy' => 'kb_forum_category',
+			'field'    => 'slug',
+			'terms'    => sanitize_title( (string) $r->get_param( 'category' ) ),
+		) );
+	}
+	return new WP_Query( $args );
 }
 
 function kpopblog_register_routes() {

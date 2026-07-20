@@ -107,6 +107,38 @@ function kpopblog_map_report( $row ) {
 	);
 }
 
+function kpopblog_update_report_status( $report_id, $status, $note = '' ) {
+	global $wpdb;
+	if ( ! current_user_can( 'kb_moderate_community' ) ) {
+		return new WP_Error( 'rest_forbidden', 'Moderator access required.', array( 'status' => 403 ) );
+	}
+	$status = sanitize_key( (string) $status );
+	if ( ! in_array( $status, array( 'resolved', 'dismissed' ), true ) ) {
+		return new WP_Error( 'invalid_report_action', 'Report action must be resolved or dismissed.', array( 'status' => 400 ) );
+	}
+	$table = $wpdb->prefix . 'kb_reports';
+	$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $report_id ) );
+	if ( ! $row ) {
+		return new WP_Error( 'report_not_found', 'Report not found.', array( 'status' => 404 ) );
+	}
+	if ( 'pending' !== $row->status ) {
+		return new WP_Error( 'report_closed', 'Report is already closed.', array( 'status' => 409 ) );
+	}
+	$note = substr( sanitize_textarea_field( (string) $note ), 0, 2000 );
+	$updated = $wpdb->update( $table, array(
+		'status'          => $status,
+		'open_key'        => null,
+		'resolved_by'     => get_current_user_id(),
+		'resolution_note' => $note,
+		'resolved_at'     => current_time( 'mysql', true ),
+	), array( 'id' => (int) $report_id ), array( '%s', '%s', '%d', '%s', '%s' ), array( '%d' ) );
+	if ( 1 !== $updated ) {
+		return new WP_Error( 'report_update_failed', 'Report could not be updated.', array( 'status' => 500 ) );
+	}
+	kpopblog_audit( 'report_' . $status, 'report', (int) $report_id, array( 'note' => $note ) );
+	return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $report_id ) );
+}
+
 function kpopblog_report_target_exists( $target_type, $target_id ) {
 	if ( 'user' === $target_type ) {
 		return (bool) get_userdata( $target_id );
@@ -372,27 +404,9 @@ function kpopblog_register_community_routes() {
 		'methods'             => 'POST',
 		'permission_callback' => 'kpopblog_require_moderator',
 		'callback'            => function ( WP_REST_Request $request ) {
-			global $wpdb;
-			$table = $wpdb->prefix . 'kb_reports';
 			$report_id = (int) $request->get_param( 'id' );
-			$status = sanitize_key( (string) $request->get_param( 'action' ) );
-			if ( ! in_array( $status, array( 'resolved', 'dismissed' ), true ) ) {
-				return new WP_Error( 'invalid_report_action', 'Report action must be resolved or dismissed.', array( 'status' => 400 ) );
-			}
-			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $report_id ) );
-			if ( ! $row ) { return new WP_Error( 'report_not_found', 'Report not found.', array( 'status' => 404 ) ); }
-			if ( 'pending' !== $row->status ) { return new WP_Error( 'report_closed', 'Report is already closed.', array( 'status' => 409 ) ); }
-			$note = substr( sanitize_textarea_field( (string) $request->get_param( 'note' ) ), 0, 2000 );
-			$updated = $wpdb->update( $table, array(
-				'status'          => $status,
-				'open_key'        => null,
-				'resolved_by'     => get_current_user_id(),
-				'resolution_note' => $note,
-				'resolved_at'     => current_time( 'mysql', true ),
-			), array( 'id' => $report_id ), array( '%s', '%s', '%d', '%s', '%s' ), array( '%d' ) );
-			if ( 1 !== $updated ) { return new WP_Error( 'report_update_failed', 'Report could not be updated.', array( 'status' => 500 ) ); }
-			kpopblog_audit( 'report_' . $status, 'report', $report_id, array( 'note' => $note ) );
-			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $report_id ) );
+			$row = kpopblog_update_report_status( $report_id, $request->get_param( 'action' ), $request->get_param( 'note' ) );
+			if ( is_wp_error( $row ) ) { return $row; }
 			return rest_ensure_response( array( 'report' => kpopblog_map_report( $row ) ) );
 		},
 	) );

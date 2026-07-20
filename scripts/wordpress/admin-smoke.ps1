@@ -24,6 +24,17 @@ foreach ( (array) $menu as $item ) {
 if ( ! $menu_found ) {
     throw new Exception( 'K-pop Pulse Hub administrator menu missing' );
 }
+global $submenu;
+$moderation_found = false;
+foreach ( isset( $submenu['kpopblog-admin'] ) ? (array) $submenu['kpopblog-admin'] : array() as $item ) {
+    if ( isset( $item[2] ) && 'kpopblog-community-moderation' === $item[2] ) {
+        $moderation_found = true;
+        break;
+    }
+}
+if ( ! $moderation_found ) {
+    throw new Exception( 'community moderation submenu missing' );
+}
 
 $request = new WP_REST_Request( 'GET', '/kpopblog/v1/admin/health' );
 $response = rest_do_request( $request );
@@ -35,6 +46,9 @@ foreach ( array( 'pluginVersion', 'schemaVersion', 'wordpressVersion', 'phpVersi
     if ( ! array_key_exists( $key, $data ) ) {
         throw new Exception( 'health response key missing: ' . $key );
     }
+}
+if ( ! isset( $data['counts']['content']['kb_community'] ) || ! array_key_exists( 'openReports', $data['counts'] ) ) {
+    throw new Exception( 'community administrator counts missing' );
 }
 $check_ids = wp_list_pluck( $data['checks'], 'id' );
 foreach ( array( 'assets', 'homepage', 'permalinks', 'registration', 'cron', 'runtime_data', 'service_worker' ) as $check_id ) {

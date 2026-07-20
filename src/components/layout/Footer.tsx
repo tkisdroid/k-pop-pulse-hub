@@ -3,9 +3,34 @@ import { useI18n } from "@/hooks/useI18n";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 
 const COLS = [
-  { title: "About", links: [["About", "/about"], ["Contact", "/contact"], ["Advertise", "/advertise"], ["Submit News Tip", "/submit"]] },
-  { title: "Community", links: [["Forum", "/forum"], ["Polls", "/polls"], ["Community Wall", "/community"], ["Community Guidelines", "/community-guidelines"]] },
-  { title: "Legal", links: [["Privacy Policy", "/privacy"], ["Terms", "/terms"], ["DMCA / Copyright", "/copyright"], ["Corrections", "/corrections"], ["Cookie Settings", "/cookie-settings"]] },
+  {
+    title: "About",
+    links: [
+      ["About", "/about"],
+      ["Contact", "/contact"],
+      ["Advertise", "/advertise"],
+      ["Submit News Tip", "/submit"],
+    ],
+  },
+  {
+    title: "Community",
+    links: [
+      ["Forum", "/forum"],
+      ["Polls", "/polls"],
+      ["Community Wall", "/community"],
+      ["Community Guidelines", "/community-guidelines"],
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      ["Privacy Policy", "/privacy"],
+      ["Terms", "/terms"],
+      ["DMCA / Copyright", "/copyright"],
+      ["Corrections", "/corrections"],
+      ["Cookie Settings", "/cookie-settings"],
+    ],
+  },
 ] as const;
 
 export function Footer() {
@@ -19,7 +44,9 @@ export function Footer() {
         <div>
           <Link to="/" className="flex items-center gap-2">
             <div className="size-8 rounded-lg gradient-neon" />
-            <span className="font-display text-xl font-bold">Kpop<span className="text-gradient">Blog</span></span>
+            <span className="font-display text-xl font-bold">
+              Kpop<span className="text-gradient">Blog</span>
+            </span>
           </Link>
           <p className="mt-3 text-sm text-muted-foreground">{t("site.tagline")}</p>
         </div>
@@ -28,7 +55,11 @@ export function Footer() {
             <h4 className="font-semibold mb-3">{c.title}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {c.links.map(([l, h]) => (
-                <li key={h}><Link to={h as any} className="hover:text-foreground">{l}</Link></li>
+                <li key={h}>
+                  <Link to={h} className="hover:text-foreground">
+                    {l}
+                  </Link>
+                </li>
               ))}
             </ul>
           </div>
@@ -36,8 +67,10 @@ export function Footer() {
       </div>
       <div className="border-t border-border">
         <div className="mx-auto max-w-7xl px-4 py-4 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
-          <span>© {new Date().getFullYear()} KpopBlog. All trademarks belong to their respective owners.</span>
-          <span>kpopblog.com — demo build</span>
+          <span>
+            © {new Date().getFullYear()} KpopBlog. All trademarks belong to their respective owners.
+          </span>
+          <span>thekpopblog.com</span>
         </div>
       </div>
     </footer>

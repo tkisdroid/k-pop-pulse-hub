@@ -1,94 +1,224 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
-import { Lock, Pin, Flag, Languages } from "lucide-react";
+import { communityProvider } from "@/services/community";
+import type { ForumPost, ForumThread } from "@/types";
+import { Flag, Lock, Pin } from "lucide-react";
 
 export const Route = createFileRoute("/thread/$threadSlug")({
-  loader: ({ params }) => {
-    const t = demoData.threads.find((x) => x.slug === params.threadSlug);
-    if (!t) throw notFound();
-    return t;
-  },
-  head: ({ loaderData }) => buildHead({ title: loaderData?.title ?? "Thread", canonical: `/thread/${loaderData?.slug}` }),
+  head: ({ params }) =>
+    buildHead({ title: "Forum thread", canonical: `/thread/${params.threadSlug}` }),
   component: ThreadPage,
 });
 
 function ThreadPage() {
-  const t = Route.useLoaderData();
-  const author = demoData.users.find((u) => u.id === t.authorId)!;
-  const posts = demoData.posts.filter((p) => p.threadId === t.id);
+  const { threadSlug } = Route.useParams();
   const { user } = useAuth();
   const { show } = useAuthModal();
-  const isMod = user?.role === "admin" || user?.role === "moderator";
+  const [thread, setThread] = useState<ForumThread | null>(null);
+  const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const nextThread = await communityProvider.getThread(threadSlug);
+      if (!nextThread) {
+        setThread(null);
+        setPosts([]);
+        return;
+      }
+      const replies = await communityProvider.listReplies(threadSlug);
+      setThread(nextThread);
+      setPosts(replies.items);
+    } catch (loadError) {
+      setError((loadError as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [threadSlug]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function reply() {
+    if (!draft.trim() || posting || !thread) return;
+    setPosting(true);
+    setError(null);
+    try {
+      const created = await communityProvider.createReply(thread.slug, draft.trim());
+      setDraft("");
+      if (created.pending) setNotice("Your reply was submitted for moderator review.");
+      else setPosts((current) => [...current, created.item]);
+    } catch (replyError) {
+      setError((replyError as Error).message);
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  async function report(targetType: "thread" | "reply", targetId: string) {
+    if (!user) {
+      show("Log in to report content");
+      return;
+    }
+    const reason = window.prompt("Briefly explain why this content should be reviewed:");
+    if (!reason?.trim()) return;
+    try {
+      await communityProvider.report({ targetType, targetId, reason: reason.trim() });
+      setNotice("Report submitted to the moderation queue.");
+    } catch (reportError) {
+      setError((reportError as Error).message);
+    }
+  }
+
+  if (loading)
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center text-muted-foreground">
+        Loading discussion…
+      </div>
+    );
+  if (!thread)
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold">Thread not found</h1>
+        <Button asChild className="mt-4">
+          <Link to="/forum">Back to forum</Link>
+        </Button>
+      </div>
+    );
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-center gap-2 mb-2 text-xs flex-wrap">
-        {t.pinned && <span className="px-1.5 py-0.5 rounded bg-primary text-primary-foreground"><Pin className="inline size-3" /> PINNED</span>}
-        {t.locked && <span className="px-1.5 py-0.5 rounded bg-muted"><Lock className="inline size-3" /> LOCKED</span>}
-        {t.flair && <span className="px-1.5 py-0.5 rounded bg-accent">{t.flair}</span>}
-        {t.rumor && <span className="px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground">RUMOR — verify sources</span>}
-      </div>
-      <h1 className="font-display text-3xl font-bold">{t.title}</h1>
-      <div className="mt-3 flex items-center gap-3 text-sm">
-        <img src={author.avatar} alt="" className="size-8 rounded-full" />
-        <span className="font-medium">{author.displayName}</span>
-        <span className="text-muted-foreground">· {new Date(t.createdAt).toLocaleDateString()}</span>
-      </div>
-      <div className="mt-4 p-4 rounded-xl bg-card border border-border">
-        <p>{t.body}</p>
-        <div className="mt-3 flex gap-2 text-xs">
-          <Button size="sm" variant="outline">♥ React ({t.reactions})</Button>
-          <Button size="sm" variant="outline"><Languages className="size-3" /> Translate</Button>
-          <Button size="sm" variant="ghost" onClick={() => (user ? null : show())}><Flag className="size-3" /> Report</Button>
-        </div>
-      </div>
-
-      {isMod && (
-        <div className="mt-4 p-3 rounded-xl bg-accent/50 border border-border">
-          <div className="text-xs font-semibold mb-2">Moderator tools</div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary">Pin</Button>
-            <Button size="sm" variant="secondary">Lock</Button>
-            <Button size="sm" variant="secondary">Mark official</Button>
-            <Button size="sm" variant="secondary">Mark rumor</Button>
-            <Button size="sm" variant="destructive">Hide</Button>
-          </div>
+      {error && (
+        <div
+          className="mb-4 rounded-md border border-destructive/40 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {error}{" "}
+          <Button size="sm" variant="ghost" onClick={() => void load()}>
+            Retry
+          </Button>
         </div>
       )}
+      {notice && (
+        <p className="mb-4 rounded-md bg-accent p-3 text-sm" role="status">
+          {notice}
+        </p>
+      )}
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        {thread.pinned && (
+          <span className="rounded bg-primary px-1.5 py-0.5 text-primary-foreground">
+            <Pin className="inline size-3" /> PINNED
+          </span>
+        )}
+        {thread.locked && (
+          <span className="rounded bg-muted px-1.5 py-0.5">
+            <Lock className="inline size-3" /> LOCKED
+          </span>
+        )}
+        {thread.flair && <span className="rounded bg-accent px-1.5 py-0.5">{thread.flair}</span>}
+        {thread.rumor && (
+          <span className="rounded bg-destructive px-1.5 py-0.5 text-destructive-foreground">
+            RUMOR — verify sources
+          </span>
+        )}
+      </div>
+      <h1 className="font-display text-3xl font-bold">{thread.title}</h1>
+      <div className="mt-3 flex items-center gap-3 text-sm">
+        {thread.author?.avatar && (
+          <img src={thread.author.avatar} alt="" className="size-8 rounded-full" />
+        )}
+        <span className="font-medium">{thread.author?.displayName ?? "Community member"}</span>
+        <span className="text-muted-foreground">
+          · {new Date(thread.createdAt).toLocaleDateString()}
+        </span>
+      </div>
+      <article className="mt-4 rounded-xl border border-border bg-card p-4">
+        <p className="whitespace-pre-wrap">{thread.body}</p>
+        <div className="mt-3 flex gap-2 text-xs">
+          <Button size="sm" variant="ghost" onClick={() => void report("thread", thread.id)}>
+            <Flag className="size-3" /> Report
+          </Button>
+        </div>
+      </article>
 
-      <h2 className="font-display text-xl font-bold mt-8 mb-3">{posts.length} replies</h2>
+      <h2 className="mb-3 mt-8 font-display text-xl font-bold">{posts.length} published replies</h2>
       <div className="space-y-3">
-        {posts.map((p) => {
-          const u = demoData.users.find((x) => x.id === p.authorId)!;
-          return (
-            <div key={p.id} className="p-3 rounded-xl bg-card border border-border">
-              <div className="flex items-center gap-2 text-sm mb-1">
-                <img src={u.avatar} alt="" className="size-7 rounded-full" />
-                <span className="font-medium">{u.displayName}</span>
-                <span className="text-xs text-muted-foreground">· {new Date(p.createdAt).toLocaleTimeString()}</span>
-              </div>
-              <p className="text-sm">{p.body}</p>
-              <div className="mt-2 flex gap-2 text-xs text-muted-foreground">
-                <button>♥ {p.reactions}</button>
-                <button>Reply</button>
-                <button>Quote</button>
-              </div>
+        {posts.length === 0 && (
+          <p className="py-8 text-center text-muted-foreground">No published replies yet.</p>
+        )}
+        {posts.map((post) => (
+          <article key={post.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="mb-1 flex items-center gap-2 text-sm">
+              {post.author?.avatar && (
+                <img src={post.author.avatar} alt="" className="size-7 rounded-full" />
+              )}
+              <span className="font-medium">{post.author?.displayName ?? "Community member"}</span>
+              <span className="text-xs text-muted-foreground">
+                · {new Date(post.createdAt).toLocaleString()}
+              </span>
             </div>
-          );
-        })}
+            <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => void report("reply", post.id)}
+              >
+                Report
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
 
       <div className="mt-8">
         {user ? (
-          <form onSubmit={(e) => e.preventDefault()}>
-            <textarea className="w-full p-3 rounded-md bg-background border border-input min-h-24" placeholder="Write a reply..." />
-            <div className="mt-2 flex justify-end gap-2"><Button variant="ghost">Spoiler tag</Button><Button>Post reply</Button></div>
-          </form>
+          thread.locked ? (
+            <p className="rounded-md bg-muted p-4 text-sm">This thread is locked.</p>
+          ) : (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void reply();
+              }}
+            >
+              <label htmlFor="reply-body" className="sr-only">
+                Write a reply
+              </label>
+              <textarea
+                id="reply-body"
+                required
+                maxLength={10000}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                className="min-h-24 w-full rounded-md border border-input bg-background p-3"
+                placeholder="Write a reply..."
+              />
+              <div className="mt-2 flex justify-end">
+                <Button type="submit" disabled={posting || !draft.trim()}>
+                  {posting ? "Posting…" : "Post reply"}
+                </Button>
+              </div>
+            </form>
+          )
         ) : (
-          <div className="p-4 rounded-md bg-muted/40 flex items-center justify-between"><span className="text-sm">Log in to reply.</span><Button size="sm" onClick={() => show("Log in to reply")}>Log in</Button></div>
+          <div className="flex items-center justify-between rounded-md bg-muted/40 p-4">
+            <span className="text-sm">Log in to reply.</span>
+            <Button size="sm" onClick={() => show("Log in to reply")}>
+              Log in
+            </Button>
+          </div>
         )}
       </div>
     </div>

@@ -95,6 +95,14 @@ try {
     wp_publish_post( $thread_id );
     wp_set_current_user( $user_id );
 
+    $category_request = new WP_REST_Request( 'GET', '/kpopblog/v1/threads' );
+    $category_request->set_param( 'category', 'general' );
+    $category_response = rest_do_request( $category_request );
+    $category_items = $category_response->get_data();
+    if ( 200 !== $category_response->get_status() || 1 !== count( $category_items ) || $thread_id !== (int) $category_items[0]['id'] ) {
+        throw new Exception( 'thread category filter did not return the published thread' );
+    }
+
     $reply_request = new WP_REST_Request( 'POST', '/kpopblog/v1/threads/' . get_post_field( 'post_name', $thread_id ) . '/replies' );
     $reply_request->set_body_params( array( 'body' => 'Forum reply from the runtime smoke test.' ) );
     $reply_response = rest_do_request( $reply_request );

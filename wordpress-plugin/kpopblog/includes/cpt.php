@@ -38,6 +38,7 @@ function kpopblog_register_cpts() {
 			'singular' => 'Community post', 'plural' => 'Community posts',
 			'icon' => 'dashicons-format-status', 'slug' => 'community',
 			'supports' => array( 'editor', 'author', 'comments', 'custom-fields' ),
+			'public' => false, 'has_archive' => false, 'rewrite' => false,
 		),
 		'kb_poll' => array(
 			'singular' => 'Poll', 'plural' => 'Polls',
@@ -56,13 +57,15 @@ function kpopblog_register_cpts() {
 				'edit_item'     => 'Edit ' . strtolower( $c['singular'] ),
 				'menu_name'     => 'KpopBlog ' . $c['plural'],
 			),
-			'public'       => true,
-			'has_archive'  => true,
+			'public'       => isset( $c['public'] ) ? (bool) $c['public'] : true,
+			'show_ui'      => true,
+			'show_in_menu' => 'kpopblog-admin',
+			'has_archive'  => isset( $c['has_archive'] ) ? (bool) $c['has_archive'] : true,
 			'show_in_rest' => true, // Gutenberg + /wp-json/wp/v2/{type}
 			'rest_base'    => $key,
 			'menu_icon'    => $c['icon'],
 			'supports'     => $c['supports'],
-			'rewrite'      => array( 'slug' => $c['slug'] ),
+			'rewrite'      => array_key_exists( 'rewrite', $c ) ? $c['rewrite'] : array( 'slug' => $c['slug'] ),
 		) );
 	}
 
@@ -81,10 +84,11 @@ function kpopblog_register_cpts() {
 			'singular_name' => 'Forum category',
 			'menu_name'     => 'Forum categories',
 		),
-		'public'       => true,
+		'public'       => false,
+		'show_ui'      => true,
 		'show_in_rest' => true,
 		'hierarchical' => true,
-		'rewrite'      => array( 'slug' => 'forum' ),
+		'rewrite'      => false,
 	) );
 }
 add_action( 'init', 'kpopblog_register_cpts' );

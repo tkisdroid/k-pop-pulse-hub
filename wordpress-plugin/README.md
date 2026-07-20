@@ -14,8 +14,10 @@ WordPress admin (editor UX)
    ├── KpopBlog Members     → kb_member
    ├── KpopBlog Comebacks   → kb_comeback   (+ release date meta)
    ├── KpopBlog Charts      → kb_chart      (+ entries JSON)
+   ├── Community Posts      → kb_community
    ├── KpopBlog Threads     → kb_thread
-   └── KpopBlog Polls       → kb_poll       (+ options JSON)
+   ├── KpopBlog Polls       → kb_poll       (+ options JSON)
+   └── Community Moderation → reports and pending content
                 │
                 ▼
    /wp-json/kpopblog/v1/{articles|artists|members|comebacks|charts|threads|polls}
@@ -65,6 +67,18 @@ subscribers. Its health section verifies packaged assets, the static homepage,
 permalinks, user registration, and WordPress cron. It also displays explicit
 readiness warnings while demo runtime data or the service-worker delivery issue
 remain.
+
+The same menu contains **Community Posts** and **Community Moderation**.
+Subscriber submissions remain pending until an administrator publishes them.
+The moderation screen lists open user reports together with pending community
+posts and replies; resolving or dismissing a report is nonce-protected and
+recorded in the plugin audit log.
+
+`verify-foundation.ps1` builds both front-end distributions and exercises the
+installed plugin through real WordPress REST requests. Its identity and
+community checks cover registration policy, rate limiting, public/private
+profile boundaries, pending submissions, locked threads, duplicate reports,
+moderator permissions, and report resolution.
 
 Plugin deactivation only clears rewrite rules and scheduled plugin hooks; it
 does not remove posts, users, settings, subscriptions, or the audit table. No

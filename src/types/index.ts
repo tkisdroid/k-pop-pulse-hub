@@ -1,4 +1,5 @@
-export type UserRole = "guest" | "member" | "contributor" | "trusted_member" | "moderator" | "editor" | "admin";
+export type UserRole =
+  "guest" | "member" | "contributor" | "trusted_member" | "moderator" | "editor" | "admin";
 
 export interface UserCapabilities {
   moderateCommunity: boolean;
@@ -24,6 +25,15 @@ export interface User {
   followedArtists: string[];
   createdAt: string;
   capabilities?: UserCapabilities;
+}
+
+export type PublicProfile = Omit<User, "email" | "capabilities">;
+
+export interface PublicAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar?: string;
 }
 
 export interface Article {
@@ -103,6 +113,7 @@ export interface ForumThread {
   title: string;
   body: string;
   authorId: string;
+  author?: PublicAuthor;
   flair?: string;
   pinned?: boolean;
   locked?: boolean;
@@ -113,6 +124,7 @@ export interface ForumThread {
   reactions: number;
   lastActivityAt: string;
   createdAt: string;
+  status?: "publish" | "pending" | "draft" | "private";
 }
 
 export interface ForumPost {
@@ -120,10 +132,12 @@ export interface ForumPost {
   threadId: string;
   parentId?: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   reactions: number;
   createdAt: string;
   editedAt?: string;
+  status?: "published" | "pending";
 }
 
 export interface ComebackEvent {
@@ -151,11 +165,13 @@ export interface Poll {
 export interface CommunityPost {
   id: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   language: string;
   reactions: number;
   createdAt: string;
   artistId?: string;
+  status?: "publish" | "pending" | "draft" | "private";
 }
 
 export interface Comment {
@@ -188,10 +204,13 @@ export interface Badge {
 
 export interface Report {
   id: string;
-  targetType: "article" | "thread" | "post" | "comment" | "user";
+  targetType: "article" | "thread" | "community" | "post" | "reply" | "comment" | "user";
   targetId: string;
   reporterId: string;
   reason: string;
   status: "pending" | "resolved" | "dismissed";
   createdAt: string;
+  resolutionNote?: string;
+  resolvedBy?: string;
+  resolvedAt?: string | null;
 }

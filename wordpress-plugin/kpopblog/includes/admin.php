@@ -108,7 +108,7 @@ function kpopblog_get_health_checks() {
  */
 function kpopblog_get_admin_counts() {
 	$content = array();
-	foreach ( array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_thread', 'kb_poll' ) as $post_type ) {
+	foreach ( array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_thread', 'kb_community', 'kb_poll' ) as $post_type ) {
 		$counts = wp_count_posts( $post_type );
 		$content[ $post_type ] = $counts && isset( $counts->publish ) ? (int) $counts->publish : 0;
 	}
@@ -127,12 +127,18 @@ function kpopblog_get_admin_counts() {
 			),
 		),
 	) );
+	global $wpdb;
+	$reports_table = $wpdb->prefix . 'kb_reports';
+	$open_reports = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $reports_table ) ) === $reports_table
+		? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$reports_table} WHERE status = 'pending'" )
+		: 0;
 
 	return array(
 		'content'              => $content,
 		'users'                => isset( $user_counts['total_users'] ) ? (int) $user_counts['total_users'] : 0,
 		'pendingComments'      => isset( $comment_counts->moderated ) ? (int) $comment_counts->moderated : 0,
 		'confirmedSubscribers' => (int) $subscribers->found_posts,
+		'openReports'          => $open_reports,
 	);
 }
 
@@ -177,6 +183,7 @@ function kpopblog_render_admin_dashboard() {
 		'Comebacks'   => admin_url( 'edit.php?post_type=kb_comeback' ),
 		'Charts'      => admin_url( 'edit.php?post_type=kb_chart' ),
 		'Threads'     => admin_url( 'edit.php?post_type=kb_thread' ),
+		'Community'   => admin_url( 'edit.php?post_type=kb_community' ),
 		'Polls'       => admin_url( 'edit.php?post_type=kb_poll' ),
 		'Users'       => admin_url( 'users.php' ),
 		'Comments'    => admin_url( 'edit-comments.php' ),
@@ -191,9 +198,9 @@ function kpopblog_render_admin_dashboard() {
 		</style>
 		<div class="kb-grid">
 			<?php foreach ( $links as $label => $url ) :
-				$key = array_search( $label, array( 'Articles', 'Artists', 'Members', 'Comebacks', 'Charts', 'Threads', 'Polls' ), true );
+				$key = array_search( $label, array( 'Articles', 'Artists', 'Members', 'Comebacks', 'Charts', 'Threads', 'Community', 'Polls' ), true );
 				if ( false !== $key ) {
-					$post_types = array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_thread', 'kb_poll' );
+					$post_types = array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_thread', 'kb_community', 'kb_poll' );
 					$value = $counts['content'][ $post_types[ $key ] ];
 				} elseif ( $label === 'Users' ) {
 					$value = $counts['users'];
