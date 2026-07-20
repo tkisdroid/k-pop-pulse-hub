@@ -42,6 +42,35 @@ by `wp_localize_script`) and routes all CMS reads through
 `/wp-json/kpopblog/v1`. Outside WordPress (e.g. preview), it falls back to
 the demo provider.
 
+## Local WordPress operations
+
+The repository includes a repeatable WordPress runtime backed by Docker
+Compose. The credentials in `.env.wordpress.example` are only for local
+development; copy them to the ignored local file before starting the stack:
+
+```powershell
+Copy-Item .env.wordpress.example .env.wordpress
+pwsh -File scripts/wordpress/bootstrap.ps1
+pwsh -File scripts/wordpress/verify-foundation.ps1
+```
+
+The public site is available at `http://localhost:8088` and WordPress
+administration at `http://localhost:8088/wp-admin/`. The bootstrap script is
+idempotent: it installs WordPress only when needed, activates KpopBlog, creates
+the app homepage, and leaves existing content and users intact.
+
+Administrators can open **K-pop Pulse Hub** from the WordPress sidebar. The
+dashboard summarizes content, users, pending comments, and confirmed newsletter
+subscribers. Its health section verifies packaged assets, the static homepage,
+permalinks, user registration, and WordPress cron. It also displays explicit
+readiness warnings while demo runtime data or the service-worker delivery issue
+remain.
+
+Plugin deactivation only clears rewrite rules and scheduled plugin hooks; it
+does not remove posts, users, settings, subscriptions, or the audit table. No
+repository script removes the named Docker volumes, so local WordPress and
+MariaDB data remain available across ordinary bootstrap and verification runs.
+
 ### Design/menu parity with the Lovable build
 
 The "full page" template (`includes/template.php` +

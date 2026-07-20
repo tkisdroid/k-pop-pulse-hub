@@ -2,7 +2,7 @@
 Contributors: kpopblog
 Tags: kpop, blog, community, music, react
 Requires at least: 6.2
-Tested up to: 6.6
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
@@ -11,6 +11,11 @@ Premium K-pop community blog as a WordPress plugin. Manage every content
 surface (articles, artists, members, comebacks, charts, forum threads,
 polls) from the WordPress admin and render the React front-end via the
 [kpopblog] shortcode or the "KpopBlog App" Gutenberg block.
+
+Administrators also receive a K-pop Pulse Hub operations dashboard with
+content and subscriber counts, direct management links, and health checks for
+assets, homepage configuration, permalinks, registration, and cron. Plugin
+deactivation preserves all WordPress content and plugin data.
 
 == Installation ==
 

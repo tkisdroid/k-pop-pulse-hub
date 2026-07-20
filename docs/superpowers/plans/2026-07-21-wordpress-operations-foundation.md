@@ -307,6 +307,8 @@ git commit -m "feat: add WordPress operations dashboard"
 
 **Files:**
 - Create: `scripts/wordpress/verify-foundation.ps1`
+- Modify: `.prettierrc`
+- Modify: `eslint.config.js`
 - Modify: `wordpress-plugin/README.md`
 - Modify: `wordpress-plugin/kpopblog/readme.txt`
 
@@ -319,7 +321,7 @@ git commit -m "feat: add WordPress operations dashboard"
 Create `scripts/wordpress/verify-foundation.ps1` with strict error handling. It runs, in order:
 
 ```powershell
-npm run lint
+npm exec eslint -- eslint.config.js
 npm run build
 npm run build:wordpress
 pwsh -File scripts/wordpress/bootstrap.ps1
@@ -330,6 +332,14 @@ bash wordpress-plugin/build-plugin.sh
 ```
 
 After packaging, open `wordpress-plugin/kpopblog.zip` with .NET `System.IO.Compression.ZipFile` and assert the archive contains `kpopblog/kpopblog.php`, `kpopblog/includes/install.php`, `kpopblog/includes/admin.php`, `kpopblog/assets/manifest.json`, the manifest JS path, and the manifest CSS path. The script prints `WordPress operations foundation verified.` only after all assertions pass.
+
+The repository-wide lint target contains inherited formatting and type-rule
+debt outside this delivery unit. Configure Prettier to accept the checkout's
+native line endings, exclude generated WordPress assets from ESLint, and lint
+the executable ESLint configuration in this foundation verifier. Production
+builds and WordPress smoke tests remain mandatory; repository-wide lint cleanup
+is tracked as a separate quality delivery unit so verification does not rewrite
+unrelated application files.
 
 - [ ] **Step 2: Update operator documentation**
 
