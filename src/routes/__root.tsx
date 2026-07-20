@@ -72,6 +72,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "KpopBlog" },
+      { property: "og:title", content: "KpopBlog — Your global K-pop newsroom & fan community" },
+      { name: "twitter:title", content: "KpopBlog — Your global K-pop newsroom & fan community" },
+      { property: "og:description", content: "K-pop news, artist profiles, comeback calendar, polls and a global fan community." },
+      { name: "twitter:description", content: "K-pop news, artist profiles, comeback calendar, polls and a global fan community." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
