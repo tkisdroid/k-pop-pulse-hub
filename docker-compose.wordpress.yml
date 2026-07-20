@@ -1,0 +1,69 @@
+services:
+  db:
+    image: mariadb:11.4.12
+    environment:
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME}
+      MARIADB_USER: ${WORDPRESS_DB_USER}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${WORDPRESS_DB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - kpopblog_db_data:/var/lib/mysql
+    restart: unless-stopped
+
+  wordpress:
+    image: wordpress:7-php8.2-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WORDPRESS_PORT:-8088}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_DEBUG: "1"
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        define( 'WP_ENVIRONMENT_TYPE', 'local' );
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "php -r '$$socket = @fsockopen(\"127.0.0.1\", 80); if (!$$socket) { exit(1); } fclose($$socket);'",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - kpopblog_wordpress_data:/var/www/html
+      - ./wordpress-plugin/kpopblog:/var/www/html/wp-content/plugins/kpopblog
+    restart: unless-stopped
+
+  cli:
+    image: wordpress:cli-php8.2
+    depends_on:
+      db:
+        condition: service_healthy
+      wordpress:
+        condition: service_healthy
+    user: "33:33"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+    entrypoint: ["wp"]
+    volumes:
+      - kpopblog_wordpress_data:/var/www/html
+      - ./wordpress-plugin/kpopblog:/var/www/html/wp-content/plugins/kpopblog
+
+volumes:
+  kpopblog_db_data:
+  kpopblog_wordpress_data:
