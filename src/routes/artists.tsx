@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
@@ -13,10 +13,13 @@ export const Route = createFileRoute("/artists")({
 const TYPES = [["all", "All"], ["boy_group", "Boy Groups"], ["girl_group", "Girl Groups"], ["soloist", "Soloists"], ["coed", "Co-ed"], ["band", "Bands"]] as const;
 
 function Artists() {
+  const { data, isLoading, error } = useRuntimeData();
   const [type, setType] = useState<string>("all");
   const [gen, setGen] = useState<number | null>(null);
   const [q, setQ] = useState("");
-  let artists = [...demoData.artists];
+  if (isLoading) return <p className="py-20 text-center text-muted-foreground">Loading artists…</p>;
+  if (error) return <p className="py-20 text-center text-destructive" role="alert">{error}</p>;
+  let artists = [...data.artists];
   if (type !== "all") artists = artists.filter((a) => a.type === type);
   if (gen) artists = artists.filter((a) => a.generation === gen);
   if (q) artists = artists.filter((a) => a.name.toLowerCase().includes(q.toLowerCase()) || a.agency.toLowerCase().includes(q.toLowerCase()));
@@ -37,6 +40,7 @@ function Artists() {
         </div>
       </div>
       <div data-reveal-children className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {artists.length === 0 && <p className="col-span-full py-16 text-center text-muted-foreground">No published artists yet.</p>}
         {artists.map((a) => (
           <Link key={a.id} to="/artist/$slug" params={{ slug: a.slug }} className="rounded-xl overflow-hidden bg-card border border-border hover:border-primary/40 group">
             <div className="aspect-[3/4] overflow-hidden"><img src={a.image} alt={a.name} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>

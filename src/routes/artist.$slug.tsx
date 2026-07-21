@@ -1,58 +1,34 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
-import { buildHead, breadcrumbLd } from "@/components/layout/seo";
-import { Button } from "@/components/ui/button";
+import { buildHead } from "@/components/layout/seo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { useRuntimeData } from "@/services/cms/runtimeData";
+import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
+import { ShareButtons } from "@/components/articles/ShareButtons";
 
 export const Route = createFileRoute("/artist/$slug")({
-  loader: ({ params }) => {
-    const a = demoData.artists.find((x) => x.slug === params.slug);
-    if (!a) throw notFound();
-    return a;
-  },
-  head: ({ loaderData }) => {
-    if (!loaderData) return buildHead({ title: "Artist" });
-    const a = loaderData;
-    const canonical = `/artist/${a.slug}`;
-    const groupLd = {
-      "@context": "https://schema.org",
-      "@type": "MusicGroup",
-      name: a.name,
-      alternateName: a.koreanName,
-      foundingDate: a.debutDate,
-      genre: "K-pop",
-      image: a.image,
-      url: canonical,
-      description: a.bio,
-    };
-    const crumbs = breadcrumbLd([
-      { name: "Home", path: "/" },
-      { name: "Artists", path: "/artists" },
-      { name: a.name, path: canonical },
-    ]);
-    return buildHead({
-      title: a.name,
-      description: a.bio,
-      canonical,
-      ogImage: a.image,
-      ogType: "profile",
-      jsonLd: [groupLd, crumbs],
-    });
-  },
+  head: ({ params }) => buildHead({ title: "Artist", canonical: `/artist/${params.slug}` }),
   component: ArtistPage,
 });
 
-const TABS = ["Overview", "News", "Videos", "Members", "Discography", "Comebacks", "Photos", "Forum", "Polls", "Facts"] as const;
+const TABS = ["Overview", "News", "Videos", "Members", "Comebacks", "Forum", "Polls"] as const;
 
 function ArtistPage() {
-  const artist = Route.useLoaderData();
+  const { slug } = Route.useParams();
+  const { data, isLoading, error } = useRuntimeData();
   const [tab, setTab] = useState<typeof TABS[number]>("Overview");
-  const members = demoData.members.filter((m) => m.groupId === artist.id);
-  const news = demoData.articles.filter((a) => a.relatedArtistIds.includes(artist.id));
-  const videos = demoData.videos.filter((v) => v.artistId === artist.id);
-  const comebacks = demoData.comebacks.filter((c) => c.artistId === artist.id);
-  const threads = demoData.threads.filter((t) => true).slice(0, 4);
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading artist…</div>;
+  if (error) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{error}</div>;
+
+  const artist = data.artists.find((item) => item.slug === slug);
+  if (!artist) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Artist not found.</div>;
+
+  const artistKeys = new Set([artist.id, artist.slug]);
+  const members = data.members.filter((m) => artistKeys.has(m.groupId));
+  const news = data.articles.filter((a) => a.relatedArtistIds.some((id) => artistKeys.has(id)));
+  const videos = data.videos.filter((v) => artistKeys.has(v.artistId));
+  const comebacks = data.comebacks.filter((c) => artistKeys.has(c.artistId));
+  const threads = data.threads.slice(0, 4);
 
   return (
     <div>
@@ -68,7 +44,7 @@ function ArtistPage() {
             <h1 className="font-display text-4xl font-bold">{artist.name}</h1>
             <p className="text-sm text-muted-foreground">Fandom: {artist.fandomName} · Debut {new Date(artist.debutDate).toLocaleDateString()} · {artist.followerCount.toLocaleString()} followers</p>
           </div>
-          <div className="flex gap-2"><Button>Follow</Button><Button variant="outline">Share</Button></div>
+          <div className="flex flex-wrap gap-2"><FollowArtistButton artist={artist} /><ShareButtons title={`${artist.name} on KpopBlog`} url={typeof window !== "undefined" ? window.location.href : `/artist/${artist.slug}`} /></div>
         </div>
         <div className="mt-6 flex gap-1 overflow-x-auto scrollbar-hide border-b border-border">
           {TABS.map((t) => (
@@ -132,27 +108,17 @@ function ArtistPage() {
               ))}
             </div>
           )}
-          {tab === "Discography" && <div className="text-muted-foreground py-8">Discography sync will appear once CMS is connected.</div>}
           {tab === "Comebacks" && (
             <div className="grid gap-3">
               {comebacks.map((c) => <div key={c.id} className="p-3 rounded-xl bg-card border border-border"><div className="font-semibold">{c.title}</div><div className="text-xs text-muted-foreground">{c.type} · {new Date(c.releaseAt).toDateString()}</div></div>)}
             </div>
           )}
-          {tab === "Photos" && <div className="grid grid-cols-3 md:grid-cols-6 gap-2">{Array.from({ length: 12 }).map((_, i) => <div key={i} className="aspect-square rounded-md overflow-hidden"><img src={artist.image} alt="" loading="lazy" decoding="async" width={300} height={300} className="size-full object-cover" /></div>)}</div>}
           {tab === "Forum" && (
             <div className="grid gap-2">
               {threads.map((t) => <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="p-3 rounded-xl bg-card border border-border">{t.title}</Link>)}
             </div>
           )}
-          {tab === "Polls" && <div className="grid gap-3 sm:grid-cols-2">{demoData.polls.slice(0, 2).map((p) => <Link key={p.id} to="/polls/$slug" params={{ slug: p.slug }} className="p-4 rounded-xl bg-card border border-border"><div className="font-semibold">{p.title}</div></Link>)}</div>}
-          {tab === "Facts" && (
-            <ul className="space-y-2">
-              {["Debuted in " + new Date(artist.debutDate).getFullYear(), "Fandom: " + artist.fandomName, "Agency: " + artist.agency, "Nationality: " + artist.nationality].map((f, i) => (
-                <li key={i} className="p-3 rounded-md bg-card border border-border text-sm">{f}</li>
-              ))}
-              <li className="text-xs text-muted-foreground">Facts are community-submitted and reviewed by moderators.</li>
-            </ul>
-          )}
+          {tab === "Polls" && <div className="grid gap-3 sm:grid-cols-2">{data.polls.slice(0, 2).map((p) => <Link key={p.id} to="/polls/$slug" params={{ slug: p.slug }} className="p-4 rounded-xl bg-card border border-border"><div className="font-semibold">{p.title}</div></Link>)}</div>}
         </div>
       </div>
     </div>

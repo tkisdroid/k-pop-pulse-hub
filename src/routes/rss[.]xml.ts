@@ -4,6 +4,7 @@ import { demoData } from "@/data/demo";
 
 const SITE_NAME = "KpopBlog";
 const SITE_DESCRIPTION = "Global K-pop news, artists, comebacks and fan community.";
+const BASE_URL = "https://thekpopblog.com";
 
 function esc(s: string) {
   return s.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/rss.xml")({
           .map((a) => [
             "    <item>",
             `      <title>${esc(a.title)}</title>`,
-            `      <link>/news/${a.slug}</link>`,
+            `      <link>${BASE_URL}/news/${a.slug}</link>`,
             `      <guid isPermaLink="false">${a.id}</guid>`,
             `      <pubDate>${new Date(a.publishedAt).toUTCString()}</pubDate>`,
             `      <description>${esc(a.excerpt ?? "")}</description>`,
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/rss.xml")({
           '<rss version="2.0">',
           "  <channel>",
           `    <title>${SITE_NAME}</title>`,
-          "    <link>/</link>",
+          `    <link>${BASE_URL}/</link>`,
           `    <description>${SITE_DESCRIPTION}</description>`,
           "    <language>en</language>",
           items,

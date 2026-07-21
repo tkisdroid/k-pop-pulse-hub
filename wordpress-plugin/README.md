@@ -14,8 +14,10 @@ WordPress admin (editor UX)
    ├── KpopBlog Members     → kb_member
    ├── KpopBlog Comebacks   → kb_comeback   (+ release date meta)
    ├── KpopBlog Charts      → kb_chart      (+ entries JSON)
+   ├── Community Posts      → kb_community
    ├── KpopBlog Threads     → kb_thread
-   └── KpopBlog Polls       → kb_poll       (+ options JSON)
+   ├── KpopBlog Polls       → kb_poll       (+ options JSON)
+   └── Community Moderation → reports and pending content
                 │
                 ▼
    /wp-json/kpopblog/v1/{articles|artists|members|comebacks|charts|threads|polls}
@@ -41,6 +43,71 @@ The React app auto-detects WordPress via `window.kpopblogConfig` (injected
 by `wp_localize_script`) and routes all CMS reads through
 `/wp-json/kpopblog/v1`. Outside WordPress (e.g. preview), it falls back to
 the demo provider.
+
+## Local WordPress operations
+
+The repository includes a repeatable WordPress runtime backed by Docker
+Compose. The credentials in `.env.wordpress.example` are only for local
+development; copy them to the ignored local file before starting the stack:
+
+```powershell
+Copy-Item .env.wordpress.example .env.wordpress
+pwsh -File scripts/wordpress/bootstrap.ps1
+pwsh -File scripts/wordpress/verify-foundation.ps1
+```
+
+The public site is available at `http://localhost:8088` and WordPress
+administration at `http://localhost:8088/wp-admin/`. The bootstrap script is
+idempotent: it installs WordPress only when needed, activates KpopBlog, creates
+the app homepage, and leaves existing content and users intact.
+
+Administrators can open **K-pop Pulse Hub** from the WordPress sidebar. The
+dashboard summarizes content, users, pending comments, and confirmed newsletter
+subscribers. Its health section verifies packaged assets, the static homepage,
+permalinks, user registration, and WordPress cron. It also displays explicit
+readiness warnings while demo runtime data remains or AdSense has not been
+configured. Service-worker registration stays disabled in WordPress mode so an
+invalid `/sw.js` response or stale application cache cannot break the embedded
+application.
+
+The same menu contains **Community Posts** and **Community Moderation**.
+Subscriber submissions remain pending until an administrator publishes them.
+The moderation screen lists open user reports together with pending community
+posts and replies; resolving or dismissing a report is nonce-protected and
+recorded in the plugin audit log.
+
+**Newsletter subscribers** shows confirmed, pending, and unsubscribed records
+with topic, frequency, consent, confirmation, and suppression metadata. Admins
+can filter by status, resend a pending confirmation, unsubscribe a record, or
+export a CSV. Confirmation and unsubscribe tokens are stored only as salted
+hashes; public unsubscribe requests require the secure email link. The plugin
+also participates in WordPress personal-data export and erasure workflows.
+
+**Notifications** queues administrator broadcasts and processes recipients in
+cron batches. Topic and artist preferences are stored on the WordPress user,
+while each inbox item and its read timestamp are stored in plugin tables. The
+React header reads this server inbox in WordPress mode and never seeds demo
+notifications there. Optional outbound webhooks remain HMAC signed.
+
+**AdSense** accepts one validated `ca-pub-` publisher ID and explicit responsive
+display-unit slot IDs for the app's approved logical placements. WordPress mode
+does not show demo ad placeholders, inject Auto Ads, or load Google's advertising
+script before the visitor grants advertising consent. Before enabling ads in
+production, configure a Google-certified consent management platform through
+AdSense Privacy & messaging for every region where Google requires one; the
+in-app privacy controls are the local script gate, not a certified CMP.
+
+`verify-foundation.ps1` builds both front-end distributions and exercises the
+installed plugin through real WordPress REST requests. Its identity and
+community checks cover registration policy, rate limiting, public/private
+profile boundaries, pending submissions, locked threads, duplicate reports,
+moderator permissions, report resolution, double opt-in token handling,
+subscription privacy, inbox isolation, read state, and broadcast delivery.
+
+Plugin deactivation only clears rewrite rules and scheduled plugin hooks; it
+does not remove posts, users, settings, subscriptions, or the audit table. No
+repository script removes the named Docker volumes, so local WordPress and
+MariaDB data remain available across ordinary bootstrap and verification runs.
 
 ### Design/menu parity with the Lovable build
 

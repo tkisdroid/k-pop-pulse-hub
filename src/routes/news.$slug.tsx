@@ -1,5 +1,4 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
 import { buildHead, breadcrumbLd } from "@/components/layout/seo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSummary } from "@/components/articles/ArticleSummary";
@@ -22,10 +21,13 @@ import { ReadingProgress } from "@/components/articles/ReadingProgress";
 import { ArticleToc, extractHeadings } from "@/components/articles/ArticleToc";
 import { useProseLightbox } from "@/components/articles/Lightbox";
 import { ShareButtons } from "@/components/articles/ShareButtons";
+import { useRuntimeData } from "@/services/cms/runtimeData";
+import type { Comment } from "@/types";
+import { communityProvider } from "@/services/community";
 
 export const Route = createFileRoute("/news/$slug")({
-  loader: ({ params }) => {
-    const article = demoData.articles.find((a) => a.slug === params.slug);
+  loader: async ({ params }) => {
+    const article = await cmsProvider.getArticleBySlug(params.slug);
     if (!article) throw notFound();
     return article;
   },
@@ -70,6 +72,7 @@ export const Route = createFileRoute("/news/$slug")({
 
 function ArticlePage() {
   const article = Route.useLoaderData();
+  const { data } = useRuntimeData();
   const { user } = useAuth();
   const { show } = useAuthModal();
   const { lang } = useI18n();
@@ -79,14 +82,17 @@ function ArticlePage() {
   const [posting, setPosting] = useState(false);
   const [modError, setModError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [commentLikes, setCommentLikes] = useState<Record<string, number>>({});
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
-  const [replies, setReplies] = useState<Record<string, { id: string; body: string; at: string }[]>>({});
-  const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
-  const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
-  const comments = demoData.comments.filter((c) => c.articleId === article.id);
+  const [replyPosting, setReplyPosting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const artists = data.artists.filter((a) => article.relatedArtistIds.includes(a.id) || article.relatedArtistIds.includes(a.slug));
+  const related = data.articles.filter((a) => a.id !== article.id).slice(0, 4);
+  const rootComments = comments.filter((comment) => !comment.parentId);
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { html: contentHtml, headings } = useMemo(() => extractHeadings(article.content), [article.content]);
@@ -101,6 +107,21 @@ function ArticlePage() {
     gamification.award(2, "articlesRead");
     cmsProvider.recordEngagement?.(article.slug, "view");
   }, [article.id, article.slug, article.tags, article.title, article.featuredImage]);
+
+  useEffect(() => {
+    if (!cmsProvider.listArticleComments) {
+      setComments(data.comments.filter((comment) => comment.articleId === article.id));
+      return;
+    }
+    let active = true;
+    setCommentsLoading(true);
+    setModError(null);
+    void cmsProvider.listArticleComments(article.slug)
+      .then((items) => { if (active) setComments(items); })
+      .catch((requestError) => { if (active) setModError(requestError instanceof Error ? requestError.message : "Comments could not be loaded."); })
+      .finally(() => { if (active) setCommentsLoading(false); });
+    return () => { active = false; };
+  }, [article.id, article.slug, data.comments]);
 
   const gate = (action: () => void) => () => (user ? action() : show("Log in to interact"));
 
@@ -118,25 +139,23 @@ function ArticlePage() {
     }
   }
 
-  function onLikeComment(id: string) {
-    setLikedComments((prev) => {
-      const next = new Set(prev);
-      const liked = next.has(id);
-      if (liked) next.delete(id); else next.add(id);
-      setCommentLikes((c) => ({ ...c, [id]: (c[id] ?? 0) + (liked ? -1 : 1) }));
-      return next;
-    });
-  }
-
-  function onSubmitReply(parentId: string) {
+  async function onSubmitReply(parentId: string) {
     if (!replyDraft.trim()) return;
-    setReplies((prev) => ({
-      ...prev,
-      [parentId]: [...(prev[parentId] ?? []), { id: crypto.randomUUID(), body: replyDraft.trim(), at: new Date().toISOString() }],
-    }));
-    setReplyDraft("");
-    setReplyTo(null);
-    gamification.award(3, "commentsPosted");
+    setReplyPosting(true);
+    setModError(null);
+    try {
+      const result = await cmsProvider.postComment?.(article.slug, replyDraft.trim(), parentId);
+      if (!result?.ok) {
+        setModError(result?.error ?? "Reply could not be saved.");
+        return;
+      }
+      if (result.item && !result.pending) setComments((current) => [...current, result.item!]);
+      setReplyDraft("");
+      setReplyTo(null);
+      gamification.award(3, "commentsPosted");
+    } finally {
+      setReplyPosting(false);
+    }
   }
 
 
@@ -166,11 +185,29 @@ function ArticlePage() {
         setModError(res.error ?? "Failed to post comment");
         return;
       }
+      if (res?.item && !res.pending) setComments((current) => [res.item!, ...current]);
       gamification.award(5, "commentsPosted");
       notifications.notify({ kind: "reply", title: "Comment posted", body: draft.slice(0, 80), href: `/news/${article.slug}` });
       setDraft("");
     } finally {
       setPosting(false);
+    }
+  }
+
+  async function onReportArticle(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reportReason.trim()) return;
+    setReporting(true);
+    setModError(null);
+    try {
+      await communityProvider.report({ targetType: "article", targetId: article.id, reason: reportReason.trim() });
+      setReportReason("");
+      setReportOpen(false);
+      notifications.notify({ kind: "system", title: "Report submitted", body: "Moderators will review this article.", href: `/news/${article.slug}` });
+    } catch (reportError) {
+      setModError(reportError instanceof Error ? reportError.message : "Report could not be submitted.");
+    } finally {
+      setReporting(false);
     }
   }
 
@@ -213,8 +250,14 @@ function ArticlePage() {
         <Button size="sm" variant="outline" disabled={translating} onClick={onTranslate}>
           {translating ? <Loader2 className="size-3 animate-spin" /> : <Languages className="size-3" />} Translate
         </Button>
-        <Button size="sm" variant="ghost" onClick={gate(() => {})}><Flag className="size-3" /> Report</Button>
+        <Button size="sm" variant="ghost" onClick={gate(() => setReportOpen((open) => !open))}><Flag className="size-3" /> Report</Button>
       </div>
+      {reportOpen && (
+        <form onSubmit={onReportArticle} className="mt-3 rounded-xl border border-border bg-card p-3">
+          <label className="text-sm font-medium">Why should moderators review this article?<textarea value={reportReason} onChange={(event) => setReportReason(event.target.value)} minLength={3} maxLength={500} required className="mt-2 w-full min-h-20 rounded-md border border-input bg-background p-2 text-sm" /></label>
+          <div className="mt-2 flex justify-end gap-2"><Button type="button" size="sm" variant="ghost" onClick={() => setReportOpen(false)}>Cancel</Button><Button type="submit" size="sm" disabled={reporting || reportReason.trim().length < 3}>{reporting && <Loader2 className="size-3 animate-spin" />} Submit report</Button></div>
+        </form>
+      )}
       <div className="mt-3">
         <ShareButtons title={article.title} />
       </div>
@@ -269,25 +312,18 @@ function ArticlePage() {
           </div>
         )}
         <div className="space-y-4">
-          {comments.map((c) => {
-            const u = demoData.users.find((x) => x.id === c.authorId)!;
-            const liked = likedComments.has(c.id);
-            const likeDelta = commentLikes[c.id] ?? 0;
-            const childReplies = replies[c.id] ?? [];
+          {commentsLoading && <div className="py-6 text-sm text-muted-foreground">Loading comments…</div>}
+          {!commentsLoading && rootComments.length === 0 && <div className="py-6 text-sm text-muted-foreground">No published comments yet.</div>}
+          {rootComments.map((c) => {
+            const u = c.author;
+            const childReplies = comments.filter((reply) => reply.parentId === c.id);
             return (
               <div key={c.id} className="flex gap-3">
-                <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" />
+                {u?.avatar ? <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" /> : <div className="size-9 rounded-full bg-muted" aria-hidden="true" />}
                 <div className="flex-1">
-                  <div className="text-sm"><span className="font-semibold">{u.displayName}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
+                  <div className="text-sm"><span className="font-semibold">{u?.displayName ?? "Community member"}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
                   <p className="text-sm">{c.body}</p>
                   <div className="text-xs text-muted-foreground mt-1 flex gap-3 items-center">
-                    <button
-                      onClick={gate(() => onLikeComment(c.id))}
-                      className={`transition hover:text-primary inline-flex items-center gap-1 ${liked ? "text-primary" : ""}`}
-                      aria-pressed={liked}
-                    >
-                      <Heart className={`size-3 ${liked ? "fill-current" : ""}`} /> {c.reactions + likeDelta}
-                    </button>
                     <button
                       className="hover:text-primary"
                       onClick={gate(() => setReplyTo(replyTo === c.id ? null : c.id))}
@@ -302,7 +338,7 @@ function ArticlePage() {
                         <li key={r.id} className="text-sm flex gap-2">
                           <CornerDownRight className="size-3 mt-1 shrink-0 text-muted-foreground" />
                           <div>
-                            <div className="text-xs text-muted-foreground">You · {new Date(r.at).toLocaleTimeString()}</div>
+                            <div className="text-xs text-muted-foreground">{r.author?.displayName ?? "Community member"} · {new Date(r.createdAt).toLocaleTimeString()}</div>
                             <p>{r.body}</p>
                           </div>
                         </li>
@@ -316,13 +352,13 @@ function ArticlePage() {
                         autoFocus
                         value={replyDraft}
                         onChange={(e) => setReplyDraft(e.target.value)}
-                        placeholder={`Reply to ${u.displayName}...`}
+                        placeholder={`Reply to ${u?.displayName ?? "community member"}...`}
                         maxLength={1000}
                         className="w-full p-2 text-sm rounded-md bg-background border border-input min-h-16"
                       />
                       <div className="mt-1 flex justify-end gap-2">
                         <Button size="sm" variant="ghost" onClick={() => { setReplyTo(null); setReplyDraft(""); }}>Cancel</Button>
-                        <Button size="sm" onClick={() => onSubmitReply(c.id)} disabled={!replyDraft.trim()}>Post reply</Button>
+                        <Button size="sm" onClick={() => void onSubmitReply(c.id)} disabled={replyPosting || !replyDraft.trim()}>{replyPosting && <Loader2 className="size-3 animate-spin" />} Post reply</Button>
                       </div>
                     </div>
                   )}

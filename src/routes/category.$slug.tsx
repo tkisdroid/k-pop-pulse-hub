@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
@@ -11,7 +11,8 @@ export const Route = createFileRoute("/category/$slug")({
 
 function CategoryPage() {
   const { slug } = Route.useParams();
-  const articles = demoData.articles.filter((a) => a.category.toLowerCase() === slug.toLowerCase());
+  const { data } = useRuntimeData();
+  const articles = data.articles.filter((a) => a.category.toLowerCase() === slug.toLowerCase());
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="Category" title={slug.charAt(0).toUpperCase() + slug.slice(1)} subtitle={`All ${slug} stories from the KpopBlog team and contributors.`} />

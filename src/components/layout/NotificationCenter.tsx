@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, Calendar, MessageCircle, Newspaper, UserPlus, Sparkles, Check } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { notifications, type NotificationItem, type NotificationKind } from "@/services/notifications/store";
-import { startNotificationRealtime } from "@/services/notifications/realtime";
+import {
+  notifications,
+  type NotificationItem,
+  type NotificationKind,
+} from "@/services/notifications/store";
+import {
+  startNotificationRealtime,
+  stopNotificationRealtime,
+} from "@/services/notifications/realtime";
 
 const ICON: Record<NotificationKind, typeof Bell> = {
   comeback: Calendar,
@@ -28,7 +35,10 @@ export function NotificationCenter() {
   useEffect(() => {
     const unsub = notifications.subscribe(setItems);
     startNotificationRealtime();
-    return () => { unsub(); };
+    return () => {
+      unsub();
+      stopNotificationRealtime();
+    };
   }, []);
 
   useEffect(() => {
@@ -61,7 +71,7 @@ export function NotificationCenter() {
           <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <div className="font-semibold text-sm">Notifications</div>
             <button
-              onClick={() => notifications.markAllRead()}
+              onClick={() => void notifications.markAllRead()}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
               <Check className="size-3" /> Mark all read
@@ -69,19 +79,27 @@ export function NotificationCenter() {
           </div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 && (
-              <div className="p-6 text-center text-sm text-muted-foreground">You're all caught up.</div>
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                You're all caught up.
+              </div>
             )}
             {items.map((n) => {
               const Icon = ICON[n.kind] ?? Bell;
               const body = (
-                <div className={`flex gap-3 p-3 border-b border-border/60 hover:bg-accent/40 ${n.read ? "opacity-60" : ""}`}>
+                <div
+                  className={`flex gap-3 p-3 border-b border-border/60 hover:bg-accent/40 ${n.read ? "opacity-60" : ""}`}
+                >
                   <div className="size-8 rounded-full bg-accent grid place-items-center shrink-0">
                     <Icon className="size-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium leading-snug line-clamp-2">{n.title}</div>
-                    {n.body && <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>}
-                    <div className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.createdAt)} ago</div>
+                    {n.body && (
+                      <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground mt-1">
+                      {timeAgo(n.createdAt)} ago
+                    </div>
                   </div>
                   {!n.read && <span className="size-2 rounded-full bg-primary mt-2 shrink-0" />}
                 </div>
@@ -91,21 +109,25 @@ export function NotificationCenter() {
                   key={n.id}
                   to={n.href}
                   onClick={() => {
-                    notifications.markRead(n.id);
+                    void notifications.markRead(n.id);
                     setOpen(false);
                   }}
                 >
                   {body}
                 </Link>
               ) : (
-                <button key={n.id} onClick={() => notifications.markRead(n.id)} className="w-full text-left">
+                <button
+                  key={n.id}
+                  onClick={() => void notifications.markRead(n.id)}
+                  className="w-full text-left"
+                >
                   {body}
                 </button>
               );
             })}
           </div>
           <div className="px-3 py-2 border-t border-border text-xs text-muted-foreground text-center">
-            Live updates via WordPress webhook
+            Stored securely in your WordPress inbox
           </div>
         </div>
       )}

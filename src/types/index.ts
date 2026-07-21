@@ -1,4 +1,13 @@
-export type UserRole = "guest" | "member" | "contributor" | "trusted_member" | "moderator" | "editor" | "admin";
+export type UserRole =
+  "guest" | "member" | "contributor" | "trusted_member" | "moderator" | "editor" | "admin";
+
+export interface UserCapabilities {
+  moderateCommunity: boolean;
+  manageAutomation: boolean;
+  manageNotifications: boolean;
+  manageAds: boolean;
+  manageOptions: boolean;
+}
 
 export interface User {
   id: string;
@@ -15,6 +24,16 @@ export interface User {
   badges: string[];
   followedArtists: string[];
   createdAt: string;
+  capabilities?: UserCapabilities;
+}
+
+export type PublicProfile = Omit<User, "email" | "capabilities">;
+
+export interface PublicAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar?: string;
 }
 
 export interface Article {
@@ -32,7 +51,7 @@ export interface Article {
   tags: string[];
   relatedArtistIds: string[];
   language: string;
-  source: "editorial" | "wordpress" | "wire" | "user";
+  source: "editorial" | "wordpress" | "wire" | "user" | "ai-grounded";
   status: "draft" | "published" | "archived";
   viewCount: number;
   commentCount: number;
@@ -94,6 +113,7 @@ export interface ForumThread {
   title: string;
   body: string;
   authorId: string;
+  author?: PublicAuthor;
   flair?: string;
   pinned?: boolean;
   locked?: boolean;
@@ -104,6 +124,7 @@ export interface ForumThread {
   reactions: number;
   lastActivityAt: string;
   createdAt: string;
+  status?: "publish" | "pending" | "draft" | "private";
 }
 
 export interface ForumPost {
@@ -111,10 +132,12 @@ export interface ForumPost {
   threadId: string;
   parentId?: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   reactions: number;
   createdAt: string;
   editedAt?: string;
+  status?: "published" | "pending";
 }
 
 export interface ComebackEvent {
@@ -126,6 +149,20 @@ export interface ComebackEvent {
   description?: string;
   image?: string;
   threadId?: string;
+}
+
+export interface Video {
+  id: string;
+  slug?: string;
+  title: string;
+  artistId: string;
+  artistSlug: string;
+  category: string;
+  youtubeId: string;
+  thumbnail: string;
+  duration: string;
+  description?: string;
+  commentCount?: number;
 }
 
 export interface Poll {
@@ -142,21 +179,25 @@ export interface Poll {
 export interface CommunityPost {
   id: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   language: string;
   reactions: number;
   createdAt: string;
   artistId?: string;
+  status?: "publish" | "pending" | "draft" | "private";
 }
 
 export interface Comment {
   id: string;
   articleId: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   parentId?: string;
   reactions: number;
   createdAt: string;
+  status?: "published" | "pending";
 }
 
 export interface Notification {
@@ -179,10 +220,13 @@ export interface Badge {
 
 export interface Report {
   id: string;
-  targetType: "article" | "thread" | "post" | "comment" | "user";
+  targetType: "article" | "thread" | "community" | "post" | "reply" | "comment" | "user";
   targetId: string;
   reporterId: string;
   reason: string;
   status: "pending" | "resolved" | "dismissed";
   createdAt: string;
+  resolutionNote?: string;
+  resolvedBy?: string;
+  resolvedAt?: string | null;
 }

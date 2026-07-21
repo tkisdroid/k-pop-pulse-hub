@@ -1,51 +1,31 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
+import { useRuntimeData } from "@/services/cms/runtimeData";
+import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
 
 export const Route = createFileRoute("/member/$slug")({
-  loader: ({ params }) => {
-    const m = demoData.members.find((x) => x.slug === params.slug);
-    if (!m) throw notFound();
-    return m;
-  },
-  head: ({ loaderData }) => {
-    if (!loaderData) return buildHead({ title: "Member" });
-    const m = loaderData;
-    const canonical = `/member/${m.slug}`;
-    const personLd = {
-      "@context": "https://schema.org",
-      "@type": "Person",
-      name: m.stageName,
-      alternateName: m.koreanName,
-      birthDate: m.birthday,
-      nationality: m.nationality,
-      image: m.image,
-      url: canonical,
-      jobTitle: Array.isArray(m.position) ? m.position.join(", ") : undefined,
-    };
-    return buildHead({
-      title: m.stageName,
-      description: `${m.stageName} — profile, facts and updates.`,
-      canonical,
-      ogImage: m.image,
-      ogType: "profile",
-      jsonLd: personLd,
-    });
-  },
+  head: ({ params }) => buildHead({ title: "Member", canonical: `/member/${params.slug}` }),
   component: MemberPage,
 });
 
 function MemberPage() {
-  const m = Route.useLoaderData();
-  const group = demoData.artists.find((a) => a.id === m.groupId)!;
+  const { slug } = Route.useParams();
+  const { data, isLoading, error } = useRuntimeData();
+  if (isLoading) return <div className="mx-auto max-w-5xl px-4 py-12 text-muted-foreground">Loading member…</div>;
+  if (error) return <div className="mx-auto max-w-5xl px-4 py-12 text-destructive">{error}</div>;
+
+  const m = data.members.find((item) => item.slug === slug);
+  if (!m) return <div className="mx-auto max-w-5xl px-4 py-12 text-muted-foreground">Member not found.</div>;
+
+  const group = data.artists.find((artist) => artist.id === m.groupId || artist.slug === m.groupId);
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 grid gap-6 md:grid-cols-3">
       <div>
         <div className="rounded-2xl overflow-hidden"><img src={m.image} alt={m.stageName} fetchPriority="high" decoding="async" width={800} height={800} className="w-full aspect-square object-cover" /></div>
       </div>
       <div className="md:col-span-2">
-        <div className="text-xs uppercase text-primary"><Link to="/artist/$slug" params={{ slug: group.slug }}>{group.name}</Link></div>
+        <div className="text-xs uppercase text-primary">{group ? <Link to="/artist/$slug" params={{ slug: group.slug }}>{group.name}</Link> : "Independent artist"}</div>
         <h1 className="font-display text-4xl font-bold">{m.stageName}</h1>
         <p className="text-muted-foreground">{m.fullName} · {m.koreanName}</p>
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -56,7 +36,7 @@ function MemberPage() {
         </div>
         <h2 className="font-display text-xl font-bold mt-6 mb-2">Facts</h2>
         <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">{m.facts.map((f: string, i: number) => <li key={i}>{f}</li>)}</ul>
-        <div className="mt-6 flex gap-2"><Button>Follow</Button><Button variant="outline">Suggest correction</Button></div>
+        <div className="mt-6 flex gap-2">{group && <FollowArtistButton artist={group} />}<Button variant="outline" asChild><Link to="/submit">Suggest correction</Link></Button></div>
       </div>
     </div>
   );

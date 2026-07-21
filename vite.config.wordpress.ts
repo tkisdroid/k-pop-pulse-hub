@@ -9,6 +9,7 @@
 import path from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
 
@@ -32,7 +33,26 @@ export default defineConfig(({ mode }) => {
         "@tanstack/query-core",
       ],
     },
-    plugins: [tailwindcss(), tsConfigPaths({ projects: ["./tsconfig.json"] }), viteReact()],
+    plugins: [
+      tanstackRouter({
+        target: "react",
+        autoCodeSplitting: true,
+        routeTreeFileFooter: [
+          `import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}`,
+        ],
+      }),
+      tailwindcss(),
+      tsConfigPaths({ projects: ["./tsconfig.json"] }),
+      viteReact(),
+    ],
     // Assets are served from a nested WordPress plugin path
     // (/wp-content/plugins/kpopblog/assets/assets/...), so chunk/asset URLs
     // must resolve relative to the bundle itself, not the site root.

@@ -1,284 +1,308 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { demoData } from "@/data/demo";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
 import { buildHead } from "@/components/layout/seo";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { gamification, BADGES, type ActivityEntry, type GamificationStats } from "@/services/gamification";
-import { personalization } from "@/services/personalization";
-import { Newspaper, MessageCircle, Vote, Heart, Flame, Trophy, Shield, Trash2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { communityProvider } from "@/services/community";
+import { fetchNewsletterSettings } from "@/services/newsletter";
+import { subscriptionProvider } from "@/services/notifications/subscriptions";
+import type { PublicProfile } from "@/types";
 
 export const Route = createFileRoute("/profile/$username")({
-  head: ({ params }) => buildHead({ title: `${params.username}`, canonical: `/profile/${params.username}` }),
+  head: ({ params }) =>
+    buildHead({ title: params.username, canonical: `/profile/${params.username}` }),
   component: ProfilePage,
 });
-
-const STAT_ICON = {
-  articlesRead: Newspaper,
-  commentsPosted: MessageCircle,
-  pollsVoted: Vote,
-  artistsFollowed: Heart,
-  streakDays: Flame,
-  points: Trophy,
-} as const;
-
-function timeAgo(iso: string) {
-  const s = Math.floor((Date.now() - +new Date(iso)) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
-}
 
 function ProfilePage() {
   const { username } = Route.useParams();
   const { user: me } = useAuth();
-  let user = demoData.users.find((u) => u.username === username);
-  if (username === "me" && me) user = me;
-  if (!user) throw notFound();
-  const isMe = me?.id === user.id;
+  const resolvedUsername = username === "me" ? me?.username : username;
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ displayName: "", bio: "", country: "", language: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [availableTopics, setAvailableTopics] = useState<string[]>([]);
+  const [subscribedTopics, setSubscribedTopics] = useState<string[]>([]);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [savingTopic, setSavingTopic] = useState<string | null>(null);
 
-  const [stats, setStats] = useState<GamificationStats>(() => gamification.stats());
-  const [activity, setActivity] = useState<ActivityEntry[]>(() => gamification.activity());
-  const [followedIds, setFollowedIds] = useState<string[]>(() =>
-    isMe ? personalization.signals().followedArtists : user!.followedArtists,
-  );
-  const [consent, setConsentState] = useState<boolean>(() => personalization.hasConsent());
+  const load = useCallback(async () => {
+    if (!resolvedUsername) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const next = await communityProvider.getProfile(resolvedUsername);
+      setProfile(next);
+      if (next)
+        setForm({
+          displayName: next.displayName,
+          bio: next.bio ?? "",
+          country: next.country ?? "",
+          language: next.language ?? "",
+        });
+    } catch (loadError) {
+      setError((loadError as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [resolvedUsername]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const isMe = Boolean(me && profile && me.id === profile.id);
 
   useEffect(() => {
     if (!isMe) return;
-    const u1 = gamification.subscribe(setStats);
-    const u2 = gamification.subscribeActivity(setActivity);
-    const sync = () => {
-      setFollowedIds(personalization.signals().followedArtists);
-      setConsentState(personalization.hasConsent());
+    let active = true;
+    setSubscriptionLoading(true);
+    Promise.all([fetchNewsletterSettings(), subscriptionProvider.list()])
+      .then(([settings, subscriptions]) => {
+        if (!active) return;
+        setAvailableTopics(settings.availableTopics);
+        setSubscribedTopics(subscriptions.topics);
+      })
+      .catch((subscriptionError: Error) => {
+        if (active) setError(subscriptionError.message);
+      })
+      .finally(() => {
+        if (active) setSubscriptionLoading(false);
+      });
+    return () => {
+      active = false;
     };
-    window.addEventListener("storage", sync);
-    return () => { u1(); u2(); window.removeEventListener("storage", sync); };
   }, [isMe]);
 
-  const points = isMe ? stats.points : user.points;
-  const { current, next, pct } = gamification.progress(points);
-  const earnedBadgeIds = new Set(
-    isMe ? gamification.earnedBadges().map((b) => b.id) : user.badges,
-  );
-  const followedArtists = followedIds
-    .map((id) => demoData.artists.find((a) => a.id === id || a.slug === id))
-    .filter(Boolean) as typeof demoData.artists;
+  async function toggleTopic(topic: string) {
+    if (savingTopic) return;
+    const subscribed = !subscribedTopics.includes(topic);
+    setSavingTopic(topic);
+    setError(null);
+    try {
+      const state = await subscriptionProvider.setTopic(topic, subscribed);
+      setSubscribedTopics(state.topics);
+      setNotice(
+        subscribed
+          ? `Subscribed to ${topic.replace(/-/g, " ")}.`
+          : `Unsubscribed from ${topic.replace(/-/g, " ")}.`,
+      );
+    } catch (subscriptionError) {
+      setError((subscriptionError as Error).message);
+    } finally {
+      setSavingTopic(null);
+    }
+  }
+
+  async function save() {
+    if (!isMe || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await communityProvider.updateProfile(form);
+      setProfile(updated);
+      setEditing(false);
+      setNotice("Profile updated.");
+    } catch (saveError) {
+      setError((saveError as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading)
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-muted-foreground">
+        Loading profile…
+      </div>
+    );
+  if (!resolvedUsername)
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center">
+        <p>Log in to view your profile.</p>
+        <Button asChild className="mt-4">
+          <Link to="/login">Log in</Link>
+        </Button>
+      </div>
+    );
+  if (!profile)
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold">Profile not found</h1>
+      </div>
+    );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        <div className="relative">
-          <img src={user.avatar} alt="" className="size-24 rounded-full" />
-          <span
-            className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-background"
-            style={{ background: current.color }}
-          >
-            LV {current.level}
-          </span>
+      {error && (
+        <div
+          className="mb-4 rounded-md border border-destructive/40 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          {error}{" "}
+          <Button size="sm" variant="ghost" onClick={() => void load()}>
+            Retry
+          </Button>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-display text-3xl font-bold">{user.displayName}</h1>
+      )}
+      {notice && (
+        <p className="mb-4 rounded-md bg-accent p-3 text-sm" role="status">
+          {notice}
+        </p>
+      )}
+      <div className="mb-8 flex flex-col gap-6 md:flex-row">
+        {profile.avatar && <img src={profile.avatar} alt="" className="size-24 rounded-full" />}
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-3xl font-bold">{profile.displayName}</h1>
           <div className="text-sm text-muted-foreground">
-            @{user.username} · {user.role} · Trust level {user.trustLevel}
+            @{profile.username} · {profile.role} · Trust level {profile.trustLevel}
           </div>
-          <p className="mt-2 text-sm">{user.bio ?? "K-pop fan from around the world."}</p>
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-semibold" style={{ color: current.color }}>{current.title}</span>
-              <span className="text-muted-foreground">
-                {next ? `${points - current.minPoints} / ${next.minPoints - current.minPoints} XP to ${next.title}` : "Max level"}
-              </span>
-            </div>
-            <Progress value={pct} />
+          <p className="mt-2 whitespace-pre-wrap text-sm">
+            {profile.bio || "This member has not added a bio."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>{profile.points} points</span>
+            {profile.country && <span>Country: {profile.country}</span>}
+            {profile.language && <span>Language: {profile.language.toUpperCase()}</span>}
+            <span>Joined {new Date(profile.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          {!isMe ? <Button>Follow</Button> : <Button variant="outline">Edit profile</Button>}
-        </div>
+        {isMe && (
+          <Button variant="outline" onClick={() => setEditing((value) => !value)}>
+            {editing ? "Cancel" : "Edit profile"}
+          </Button>
+        )}
       </div>
 
-      {/* Stat cards */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mb-8">
-        {[
-          { k: "points", v: points, label: "Points" },
-          { k: "articlesRead", v: stats.articlesRead, label: "Articles read" },
-          { k: "commentsPosted", v: stats.commentsPosted, label: "Comments" },
-          { k: "pollsVoted", v: stats.pollsVoted, label: "Polls voted" },
-        ].map(({ k, v, label }) => {
-          const Icon = STAT_ICON[k as keyof typeof STAT_ICON] ?? Trophy;
-          return (
-            <div key={k} className="p-4 rounded-xl bg-card border border-border">
-              <Icon className="size-4 text-primary mb-2" />
-              <div className="text-2xl font-bold">{(isMe ? v : k === "points" ? user.points : "—").toString()}</div>
-              <div className="text-xs text-muted-foreground">{label}</div>
+      {editing && (
+        <form
+          className="mb-8 space-y-3 rounded-xl border border-border bg-card p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          <label className="block text-sm font-medium" htmlFor="profile-display-name">
+            Display name
+          </label>
+          <input
+            id="profile-display-name"
+            required
+            minLength={2}
+            maxLength={80}
+            value={form.displayName}
+            onChange={(event) => setForm({ ...form, displayName: event.target.value })}
+            className="h-10 w-full rounded-md border border-input bg-background px-3"
+          />
+          <label className="block text-sm font-medium" htmlFor="profile-bio">
+            Bio
+          </label>
+          <textarea
+            id="profile-bio"
+            maxLength={500}
+            value={form.bio}
+            onChange={(event) => setForm({ ...form, bio: event.target.value })}
+            className="min-h-24 w-full rounded-md border border-input bg-background p-3"
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium" htmlFor="profile-country">
+                Country
+              </label>
+              <input
+                id="profile-country"
+                maxLength={64}
+                value={form.country}
+                onChange={(event) => setForm({ ...form, country: event.target.value })}
+                className="h-10 w-full rounded-md border border-input bg-background px-3"
+              />
             </div>
-          );
-        })}
-      </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium" htmlFor="profile-language">
+                Language
+              </label>
+              <input
+                id="profile-language"
+                maxLength={12}
+                value={form.language}
+                onChange={(event) => setForm({ ...form, language: event.target.value })}
+                className="h-10 w-full rounded-md border border-input bg-background px-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save profile"}
+            </Button>
+          </div>
+        </form>
+      )}
 
-      {/* Badges */}
-      <section className="mb-8">
-        <h2 className="font-display text-xl font-bold mb-3">Badges</h2>
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
-          {BADGES.map((b) => {
-            const earned = earnedBadgeIds.has(b.id);
-            return (
-              <div
-                key={b.id}
-                className={`p-3 rounded-xl border text-center ${earned ? "border-primary/40 bg-primary/5" : "border-border bg-muted/30 opacity-50"}`}
-              >
-                <div className="text-3xl">{b.emoji}</div>
-                <div className="text-sm font-semibold mt-1">{b.label}</div>
-                <div className="text-[11px] text-muted-foreground">{b.description}</div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Two-column: followed artists + activity */}
-      <div className="grid gap-8 md:grid-cols-2">
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">Followed artists ({followedArtists.length})</h2>
-          {followedArtists.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-border text-sm text-muted-foreground text-center">
-              Not following anyone yet. <Link to="/artists" className="text-primary hover:underline">Browse artists →</Link>
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h2 className="font-display text-xl font-bold">Badges</h2>
+          {profile.badges.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {profile.badges.map((badge) => (
+                <span key={badge} className="rounded-full bg-accent px-3 py-1 text-xs">
+                  {badge}
+                </span>
+              ))}
             </div>
           ) : (
-            <ul className="grid gap-2">
-              {followedArtists.map((a) => (
-                <li key={a.id}>
-                  <Link
-                    to="/artist/$slug"
-                    params={{ slug: a.slug }}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/40"
-                  >
-                    <img src={a.image} alt="" className="size-10 rounded-full object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate">{a.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{a.koreanName ?? a.agency ?? ""}</div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-2 text-sm text-muted-foreground">No badges yet.</p>
           )}
         </section>
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h2 className="font-display text-xl font-bold">Followed artists</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {profile.followedArtists.length} artist subscriptions managed by this account.
+          </p>
+        </section>
+      </div>
 
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">Recent activity</h2>
-          {!isMe ? (
-            <div className="p-4 rounded-xl border border-dashed border-border text-sm text-muted-foreground text-center">
-              Activity is private to the user.
-            </div>
-          ) : activity.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-border text-sm text-muted-foreground text-center">
-              No activity yet. Read articles or comment to earn points.
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {activity.slice(0, 20).map((a) => {
-                const Icon = STAT_ICON[a.kind] ?? Trophy;
+      {isMe && (
+        <section className="mt-4 rounded-xl border border-border bg-card p-4">
+          <h2 className="font-display text-xl font-bold">Notification topics</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choose which editorial updates are delivered to your WordPress notification inbox.
+          </p>
+          {subscriptionLoading ? (
+            <p className="mt-3 text-sm text-muted-foreground">Loading subscriptions…</p>
+          ) : availableTopics.length ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {availableTopics.map((topic) => {
+                const checked = subscribedTopics.includes(topic);
                 return (
-                  <li key={a.id} className="flex items-center gap-3 p-2 rounded-lg bg-card border border-border">
-                    <div className="size-8 rounded-full bg-accent grid place-items-center shrink-0">
-                      <Icon className="size-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm">{a.label}</div>
-                      <div className="text-[11px] text-muted-foreground">{timeAgo(a.at)}</div>
-                    </div>
-                    {a.points > 0 && (
-                      <span className="text-xs font-semibold text-primary">+{a.points}</span>
+                  <label
+                    key={topic}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={savingTopic !== null}
+                      onChange={() => void toggleTopic(topic)}
+                    />
+                    <span className="capitalize">{topic.replace(/-/g, " ")}</span>
+                    {savingTopic === topic && (
+                      <span className="ml-auto text-xs text-muted-foreground">Saving…</span>
                     )}
-                  </li>
+                  </label>
                 );
               })}
-            </ul>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              No notification topics are currently available.
+            </p>
           )}
-        </section>
-      </div>
-
-      {/* Privacy & Personalization */}
-      {isMe && (
-        <section className="mt-8 rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="size-5 text-primary" />
-            <h2 className="font-display text-xl font-bold">Privacy & Personalization</h2>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-sm font-medium">Allow personalization data collection</div>
-              <div className="text-xs text-muted-foreground">
-                We use reading history and followed artists to recommend content. You can delete this data at any time.
-              </div>
-            </div>
-            <Switch
-              checked={consent}
-              onCheckedChange={(v) => {
-                personalization.setConsent(v);
-                setConsentState(v);
-                if (!v) {
-                  setFollowedIds([]);
-                } else {
-                  setFollowedIds(personalization.signals().followedArtists);
-                }
-              }}
-            />
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-4 pt-4 border-t border-border">
-            <div>
-              <div className="text-sm font-medium">Reset personalization data</div>
-              <div className="text-xs text-muted-foreground">
-                Clear your reading history, followed artists, and tag preferences.
-              </div>
-            </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
-                  <Trash2 className="size-3.5" /> Delete data
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete personalization data?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently remove your reading history, followed artists, and tag preferences stored locally. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => {
-                      personalization.resetData();
-                      setFollowedIds([]);
-                      setConsentState(false);
-                      personalization.setConsent(false);
-                    }}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
         </section>
       )}
     </div>

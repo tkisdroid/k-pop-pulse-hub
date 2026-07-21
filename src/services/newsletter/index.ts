@@ -46,15 +46,18 @@ function apiBase(): string | null {
   // The plugin injects apiUrl already including the /wp-json/kpopblog/v1
   // namespace. Strip it so callers can append clean /wp-json/... paths
   // without producing a double prefix.
-  return String(raw).replace(/\/$/, "").replace(/\/wp-json\/kpopblog\/v1$/, "");
+  return String(raw)
+    .replace(/\/$/, "")
+    .replace(/\/wp-json\/kpopblog\/v1$/, "");
 }
 
 export async function fetchNewsletterSettings(): Promise<NewsletterSettings> {
   if (typeof window === "undefined") return NEWSLETTER_DEFAULTS;
   try {
-    const cached = JSON.parse(sessionStorage.getItem(SETTINGS_CACHE_KEY) ?? "null") as
-      | { at: number; settings: NewsletterSettings }
-      | null;
+    const cached = JSON.parse(sessionStorage.getItem(SETTINGS_CACHE_KEY) ?? "null") as {
+      at: number;
+      settings: NewsletterSettings;
+    } | null;
     if (cached && Date.now() - cached.at < SETTINGS_TTL_MS) return cached.settings;
   } catch {
     /* ignore */
@@ -62,7 +65,9 @@ export async function fetchNewsletterSettings(): Promise<NewsletterSettings> {
   const base = apiBase();
   if (!base) return NEWSLETTER_DEFAULTS;
   try {
-    const res = await fetch(`${base}/wp-json/kpopblog/v1/newsletter/settings`, { credentials: "omit" });
+    const res = await fetch(`${base}/wp-json/kpopblog/v1/newsletter/settings`, {
+      credentials: "omit",
+    });
     if (!res.ok) return NEWSLETTER_DEFAULTS;
     const data = (await res.json()) as NewsletterSettings;
     sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ at: Date.now(), settings: data }));
@@ -126,18 +131,28 @@ export async function subscribeNewsletter(input: SubscribeInput): Promise<Subscr
         topics: input.topics ?? [],
         frequency: input.frequency,
         source: input.source ?? "site",
-        locale: input.locale ?? (typeof navigator !== "undefined" ? navigator.language.slice(0, 2) : "en"),
+        locale:
+          input.locale ??
+          (typeof navigator !== "undefined" ? navigator.language.slice(0, 2) : "en"),
       }),
     });
-    const json = (await res.json().catch(() => ({}))) as Partial<SubscribeResult> & { message?: string };
+    const json = (await res.json().catch(() => ({}))) as Partial<SubscribeResult> & {
+      message?: string;
+    };
     if (!res.ok) {
-      return { ok: false, pending: false, message: json.message || "Subscription failed. Please try again." };
+      return {
+        ok: false,
+        pending: false,
+        message: json.message || "Subscription failed. Please try again.",
+      };
     }
-    rememberLocal(email);
-    return { ok: true, pending: !!json.pending, message: json.message || NEWSLETTER_DEFAULTS.successMessage };
+    return {
+      ok: true,
+      pending: !!json.pending,
+      message: json.message || NEWSLETTER_DEFAULTS.successMessage,
+    };
   } catch {
-    rememberLocal(email);
-    return { ok: true, pending: false, message: NEWSLETTER_DEFAULTS.successMessage };
+    return { ok: false, pending: false, message: "Subscription failed. Please try again." };
   }
 }
 
@@ -151,23 +166,33 @@ export async function confirmNewsletter(token: string): Promise<SubscribeResult>
       body: JSON.stringify({ token }),
     });
     const json = (await res.json().catch(() => ({}))) as { message?: string };
-    return { ok: res.ok, pending: false, message: json.message || NEWSLETTER_DEFAULTS.confirmMessage };
+    return {
+      ok: res.ok,
+      pending: false,
+      message: json.message || NEWSLETTER_DEFAULTS.confirmMessage,
+    };
   } catch {
     return { ok: false, pending: false, message: "Confirmation failed." };
   }
 }
 
-export async function unsubscribeNewsletter(emailOrToken: { email?: string; token?: string }): Promise<{ ok: boolean }> {
+export async function unsubscribeNewsletter(
+  token: string,
+): Promise<{ ok: boolean; message: string }> {
   const base = apiBase();
-  if (!base) return { ok: true };
+  if (!base) return { ok: true, message: "You've been unsubscribed." };
   try {
     const res = await fetch(`${base}/wp-json/kpopblog/v1/newsletter/unsubscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(emailOrToken),
+      body: JSON.stringify({ token }),
     });
-    return { ok: res.ok };
+    const json = (await res.json().catch(() => ({}))) as { message?: string };
+    return {
+      ok: res.ok,
+      message: json.message || (res.ok ? "You've been unsubscribed." : "Could not unsubscribe."),
+    };
   } catch {
-    return { ok: false };
+    return { ok: false, message: "Could not unsubscribe." };
   }
 }

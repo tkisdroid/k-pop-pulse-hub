@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronRight, Home } from "lucide-react";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 
 const LABELS: Record<string, string> = {
   news: "News",
@@ -41,39 +41,28 @@ function humanize(slug: string) {
   return decodeURIComponent(slug).replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-function resolveLabel(prevSeg: string | undefined, seg: string) {
-  if (LABELS[seg]) return LABELS[seg];
-  // Dynamic segment — try to resolve to a real name from demo data
-  if (prevSeg === "artist") {
-    const a = demoData.artists.find((x) => x.slug === seg);
-    if (a) return a.name;
-  }
-  if (prevSeg === "member") {
-    const m = demoData.members.find((x) => x.slug === seg);
-    if (m) return m.stageName;
-  }
-  if (prevSeg === "news") {
-    const a = demoData.articles.find((x) => x.slug === seg);
-    if (a) return a.title.length > 48 ? a.title.slice(0, 45) + "…" : a.title;
-  }
-  if (prevSeg === "watch") {
-    const v = demoData.videos.find((x) => x.id === seg);
-    if (v) return v.title.length > 48 ? v.title.slice(0, 45) + "…" : v.title;
-  }
-  if (prevSeg === "polls") {
-    const p = demoData.polls.find((x) => x.slug === seg);
-    if (p) return p.title.length > 48 ? p.title.slice(0, 45) + "…" : p.title;
-  }
-  if (prevSeg === "thread") {
-    const t = demoData.threads.find((x) => x.slug === seg);
-    if (t) return t.title.length > 48 ? t.title.slice(0, 45) + "…" : t.title;
-  }
-  return humanize(seg);
-}
-
 export function Breadcrumbs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data } = useRuntimeData();
   if (pathname === "/" || HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+
+  const resolveLabel = (prevSeg: string | undefined, seg: string) => {
+    if (LABELS[seg]) return LABELS[seg];
+    const match = prevSeg === "artist"
+      ? data.artists.find((item) => item.slug === seg)?.name
+      : prevSeg === "member"
+        ? data.members.find((item) => item.slug === seg)?.stageName
+        : prevSeg === "news"
+          ? data.articles.find((item) => item.slug === seg)?.title
+          : prevSeg === "watch"
+            ? data.videos.find((item) => item.id === seg || item.slug === seg)?.title
+            : prevSeg === "polls"
+              ? data.polls.find((item) => item.slug === seg)?.title
+              : prevSeg === "thread"
+                ? data.threads.find((item) => item.slug === seg)?.title
+                : undefined;
+    return match ? (match.length > 48 ? `${match.slice(0, 45)}…` : match) : humanize(seg);
+  };
 
   const segs = pathname.split("/").filter(Boolean);
   const crumbs = segs.map((seg, i) => {

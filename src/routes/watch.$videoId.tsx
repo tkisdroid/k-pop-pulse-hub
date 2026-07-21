@@ -1,50 +1,22 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { demoData } from "@/data/demo";
 import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { AdSlot } from "@/components/ads/AdSlot";
-import { Play, MessageSquare, ThumbsUp, Trash2 } from "lucide-react";
-
-type LocalComment = {
-  id: string;
-  videoId: string;
-  author: string;
-  body: string;
-  likes: number;
-  createdAt: string;
-};
-
-const STORAGE_KEY = "kpopblog:videoComments";
-
-function loadComments(): LocalComment[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveComments(c: LocalComment[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-}
+import { Play, MessageSquare, Loader2 } from "lucide-react";
+import { useRuntimeData } from "@/services/cms/runtimeData";
+import { cmsProvider } from "@/services/cms";
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthModal } from "@/hooks/useAuthModal";
+import type { Comment } from "@/types";
 
 export const Route = createFileRoute("/watch/$videoId")({
-  loader: ({ params }) => {
-    const video = demoData.videos.find((v) => v.id === params.videoId);
-    if (!video) throw notFound();
-    const artist = demoData.artists.find((a) => a.id === video.artistId);
-    return { video, artist };
-  },
-  head: ({ loaderData }) =>
+  head: ({ params }) =>
     buildHead({
-      title: loaderData?.video.title ?? "Watch",
-      description: `Watch ${loaderData?.video.title} on ${loaderData?.artist?.name ?? "K-Pop Blog"} and join the conversation.`,
-      canonical: `/watch/${loaderData?.video.id}`,
-      ogImage: loaderData?.video.thumbnail,
+      title: "Watch",
+      description: "Watch K-pop videos and join the conversation.",
+      canonical: `/watch/${params.videoId}`,
     }),
   component: WatchPage,
   notFoundComponent: () => (
@@ -56,61 +28,70 @@ export const Route = createFileRoute("/watch/$videoId")({
 });
 
 function WatchPage() {
-  const { video, artist } = Route.useLoaderData();
+  const { videoId } = Route.useParams();
+  const { data, isLoading, error: runtimeError } = useRuntimeData();
+  const { user } = useAuth();
+  const { show } = useAuthModal();
+  const video = data.videos.find((item) => item.id === videoId || item.slug === videoId);
+  const artist = video ? data.artists.find((item) => item.id === video.artistId || item.slug === video.artistId || item.slug === video.artistSlug) : undefined;
   const related = useMemo(
-    () => demoData.videos.filter((v) => v.artistId === video.artistId && v.id !== video.id),
-    [video.id, video.artistId]
+    () => video ? data.videos.filter((item) => (item.artistId === video.artistId || item.artistSlug === video.artistSlug) && item.id !== video.id) : [],
+    [data.videos, video]
   );
   const other = useMemo(
-    () => demoData.videos.filter((v) => v.artistId !== video.artistId).slice(0, 6),
-    [video.artistId]
+    () => video ? data.videos.filter((item) => item.artistId !== video.artistId && item.artistSlug !== video.artistSlug).slice(0, 6) : [],
+    [data.videos, video]
   );
 
-  const [allComments, setAllComments] = useState<LocalComment[]>([]);
-  const [name, setName] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentNotice, setCommentNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    setAllComments(loadComments());
-    const savedName = localStorage.getItem("kpopblog:commentName") ?? "";
-    setName(savedName);
-  }, []);
+    const slug = video?.slug;
+    if (!slug || !cmsProvider.listVideoComments) {
+      setComments([]);
+      return;
+    }
+    let active = true;
+    setLoadingComments(true);
+    setCommentError(null);
+    void cmsProvider.listVideoComments(slug)
+      .then((items) => { if (active) setComments(items); })
+      .catch((requestError) => { if (active) setCommentError(requestError instanceof Error ? requestError.message : "Comments could not be loaded."); })
+      .finally(() => { if (active) setLoadingComments(false); });
+    return () => { active = false; };
+  }, [video?.slug]);
 
-  const comments = allComments
-    .filter((c) => c.videoId === video.id)
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-
-  function addComment(e: React.FormEvent) {
+  async function addComment(e: React.FormEvent) {
     e.preventDefault();
     const trimmedBody = body.trim();
-    const author = (name.trim() || "Anonymous").slice(0, 40);
     if (!trimmedBody) return;
-    localStorage.setItem("kpopblog:commentName", author);
-    const next: LocalComment = {
-      id: `lc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      videoId: video.id,
-      author,
-      body: trimmedBody.slice(0, 1000),
-      likes: 0,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [next, ...allComments];
-    setAllComments(updated);
-    saveComments(updated);
+    if (!user) {
+      show("Log in to comment");
+      return;
+    }
+    if (!video?.slug || !cmsProvider.postVideoComment) return;
+    setPosting(true);
+    setCommentError(null);
+    setCommentNotice(null);
+    const result = await cmsProvider.postVideoComment(video.slug, trimmedBody);
+    setPosting(false);
+    if (!result.ok) {
+      setCommentError(result.error ?? "Comment could not be saved.");
+      return;
+    }
+    if (result.item && !result.pending) setComments((current) => [result.item!, ...current]);
     setBody("");
+    setCommentNotice(result.pending ? "Your comment is awaiting moderation." : "Your comment was posted.");
   }
 
-  function likeComment(id: string) {
-    const updated = allComments.map((c) => (c.id === id ? { ...c, likes: c.likes + 1 } : c));
-    setAllComments(updated);
-    saveComments(updated);
-  }
-
-  function deleteComment(id: string) {
-    const updated = allComments.filter((c) => c.id !== id);
-    setAllComments(updated);
-    saveComments(updated);
-  }
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading video…</div>;
+  if (runtimeError) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{runtimeError}</div>;
+  if (!video) return <div className="mx-auto max-w-3xl px-4 py-16 text-center"><h1 className="font-display text-2xl font-bold">Video not found</h1><Link to="/videos" className="text-primary mt-4 inline-block">Browse all videos</Link></div>;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -155,16 +136,10 @@ function WatchPage() {
             <MessageSquare className="size-5" /> Comments ({comments.length})
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Comments are posted in-site and stored on your device. Be respectful — moderators review all reports.
+            Comments are saved to WordPress and may be reviewed by moderators.
           </p>
 
           <form onSubmit={addComment} className="mt-4 space-y-2 rounded-xl border border-border bg-card p-4">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Display name (optional)"
-              maxLength={40}
-            />
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -175,12 +150,15 @@ function WatchPage() {
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{body.length}/1000</span>
-              <Button type="submit" disabled={!body.trim()}>Post comment</Button>
+              <Button type="submit" disabled={posting || !body.trim()}>{posting && <Loader2 className="size-3 animate-spin" />} Post comment</Button>
             </div>
           </form>
+          {commentError && <p role="alert" className="mt-3 text-sm text-destructive">{commentError}</p>}
+          {commentNotice && <p role="status" className="mt-3 text-sm text-primary">{commentNotice}</p>}
 
           <ul className="mt-4 space-y-3">
-            {comments.length === 0 && (
+            {loadingComments && <li className="text-sm text-muted-foreground py-6 text-center">Loading comments…</li>}
+            {comments.length === 0 && !loadingComments && (
               <li className="text-sm text-muted-foreground py-6 text-center border border-dashed border-border rounded-xl">
                 Be the first to comment on this video.
               </li>
@@ -188,18 +166,11 @@ function WatchPage() {
             {comments.map((c) => (
               <li key={c.id} className="p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold text-sm">{c.author}</div>
+                  <div className="font-semibold text-sm">{c.author?.displayName ?? "Community member"}</div>
                   <div className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString()}</div>
                 </div>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
-                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                  <button onClick={() => likeComment(c.id)} className="inline-flex items-center gap-1 hover:text-primary">
-                    <ThumbsUp className="size-3.5" /> {c.likes}
-                  </button>
-                  <button onClick={() => deleteComment(c.id)} className="inline-flex items-center gap-1 hover:text-destructive">
-                    <Trash2 className="size-3.5" /> Delete
-                  </button>
-                </div>
+                {c.status === "pending" && <div className="mt-2 text-xs text-muted-foreground">Awaiting moderation</div>}
               </li>
             ))}
           </ul>

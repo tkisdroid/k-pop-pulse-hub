@@ -16,13 +16,20 @@ export function registerPwa() {
     }
   })();
   const host = window.location.hostname;
-  const isPreviewHost =
-    host.includes("id-preview--") || host.includes("lovableproject.com");
-  const isDev = (import.meta as any).env?.DEV === true;
+  const isPreviewHost = host.includes("id-preview--") || host.includes("lovableproject.com");
+  const isDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+  const isWordPress = Boolean(
+    (window as { kpopblogConfig?: { apiUrl?: string } }).kpopblogConfig?.apiUrl,
+  );
+
+  if (isWordPress) return;
 
   if (isInIframe || isPreviewHost || isDev) {
     // Kill any stale registration so the preview never serves cached HTML.
-    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((rs) => rs.forEach((r) => r.unregister()))
+      .catch(() => {});
     return;
   }
 

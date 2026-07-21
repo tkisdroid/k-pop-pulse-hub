@@ -125,10 +125,14 @@ function kpopblog_map_thread( WP_Post $p ) {
 		'slug'         => $p->post_name,
 		'categoryId'   => kpopblog_meta( $p->ID, 'kb_category_slug', 'general' ),
 		'title'        => get_the_title( $p ),
-		'body'         => $p->post_content,
+		'body'         => wp_strip_all_tags( $p->post_content ),
 		'authorId'     => (string) $p->post_author,
+		'author'       => function_exists( 'kpopblog_public_author' ) ? kpopblog_public_author( $p->post_author ) : array(),
 		'flair'        => kpopblog_meta( $p->ID, 'kb_flair' ),
 		'rumor'        => (bool) get_post_meta( $p->ID, 'kb_rumor', true ),
+		'pinned'       => (bool) get_post_meta( $p->ID, 'kb_pinned', true ),
+		'locked'       => (bool) get_post_meta( $p->ID, 'kb_locked', true ),
+		'official'     => (bool) get_post_meta( $p->ID, 'kb_official', true ),
 		'views'        => kpopblog_int( get_post_meta( $p->ID, 'kb_views', true ) ),
 		'replies'      => (int) $p->comment_count,
 		'reactions'    => kpopblog_int( get_post_meta( $p->ID, 'kb_reactions', true ) ),
@@ -160,17 +164,43 @@ function kpopblog_collection_args() {
 		'per_page' => array( 'type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100 ),
 		'page'     => array( 'type' => 'integer', 'default' => 1,  'minimum' => 1 ),
 		'search'   => array( 'type' => 'string' ),
+		'category' => array( 'type' => 'string' ),
+	);
+}
+
+function kpopblog_map_video( WP_Post $p ) {
+	$youtube_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) kpopblog_meta( $p->ID, 'kb_youtube_id' ) );
+	return array(
+		'id'          => (string) $p->ID,
+		'slug'        => $p->post_name,
+		'title'       => get_the_title( $p ),
+		'artistId'    => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
+		'artistSlug'  => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
+		'category'    => (string) kpopblog_meta( $p->ID, 'kb_video_category', 'Other' ),
+		'youtubeId'   => $youtube_id,
+		'thumbnail'   => $youtube_id ? 'https://i.ytimg.com/vi/' . rawurlencode( $youtube_id ) . '/hqdefault.jpg' : kpopblog_thumb_url( $p->ID ),
+		'duration'    => (string) kpopblog_meta( $p->ID, 'kb_duration' ),
+		'description' => wp_strip_all_tags( $p->post_content ),
+		'commentCount'=> (int) $p->comment_count,
 	);
 }
 
 function kpopblog_query( $post_type, WP_REST_Request $r ) {
-	return new WP_Query( array(
+	$args = array(
 		'post_type'      => $post_type,
 		'post_status'    => 'publish',
 		'posts_per_page' => (int) $r->get_param( 'per_page' ),
 		'paged'          => (int) $r->get_param( 'page' ),
 		's'              => (string) $r->get_param( 'search' ),
-	) );
+	);
+	if ( 'kb_thread' === $post_type && $r->get_param( 'category' ) ) {
+		$args['tax_query'] = array( array(
+			'taxonomy' => 'kb_forum_category',
+			'field'    => 'slug',
+			'terms'    => sanitize_title( (string) $r->get_param( 'category' ) ),
+		) );
+	}
+	return new WP_Query( $args );
 }
 
 function kpopblog_register_routes() {
@@ -180,6 +210,7 @@ function kpopblog_register_routes() {
 		'members'   => array( 'kb_member',   'kpopblog_map_member'   ),
 		'comebacks' => array( 'kb_comeback', 'kpopblog_map_comeback' ),
 		'charts'    => array( 'kb_chart',    'kpopblog_map_chart'    ),
+		'videos'    => array( 'kb_video',    'kpopblog_map_video'    ),
 		'threads'   => array( 'kb_thread',   'kpopblog_map_thread'   ),
 		'polls'     => array( 'kb_poll',     'kpopblog_map_poll'     ),
 	);
@@ -230,8 +261,11 @@ function kpopblog_register_routes() {
 				'members'   => $pick( 'kb_member',   'kpopblog_map_member',   60 ),
 				'comebacks' => $pick( 'kb_comeback', 'kpopblog_map_comeback', 30 ),
 				'charts'    => $pick( 'kb_chart',    'kpopblog_map_chart',    5  ),
+				'videos'    => $pick( 'kb_video',    'kpopblog_map_video',    40 ),
 				'threads'   => $pick( 'kb_thread',   'kpopblog_map_thread',   20 ),
 				'polls'     => $pick( 'kb_poll',     'kpopblog_map_poll',     10 ),
+				'community' => function_exists( 'kpopblog_map_community_post' ) ? $pick( 'kb_community', 'kpopblog_map_community_post', 20 ) : array(),
+				'categories'=> function_exists( 'kpopblog_get_forum_categories_data' ) ? kpopblog_get_forum_categories_data() : array(),
 			) );
 		},
 	) );

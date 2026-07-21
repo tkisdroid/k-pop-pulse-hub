@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
@@ -12,9 +12,10 @@ export const Route = createFileRoute("/trending")({
 });
 
 function Trending() {
-  const articles = [...demoData.articles].sort((a, b) => b.reactionCount - a.reactionCount);
-  const artists = [...demoData.artists].sort((a, b) => b.followerCount - a.followerCount).slice(0, 6);
-  const threads = [...demoData.threads].sort((a, b) => b.views - a.views).slice(0, 5);
+  const { data } = useRuntimeData();
+  const articles = [...data.articles].sort((a, b) => b.reactionCount - a.reactionCount);
+  const artists = [...data.artists].sort((a, b) => b.followerCount - a.followerCount).slice(0, 6);
+  const threads = [...data.threads].sort((a, b) => b.views - a.views).slice(0, 5);
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-12">
       <section>

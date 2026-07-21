@@ -31,6 +31,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { KeepExploring } from "@/components/layout/KeepExploring";
 import { ScrollProgress } from "@/components/layout/ScrollProgress";
 import { RevealOnScroll } from "@/components/layout/RevealOnScroll";
+import { ConsentBanner } from "@/components/privacy/ConsentBanner";
 
 function NotFoundComponent() {
   return (
@@ -69,6 +70,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#0b0b10" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "KpopBlog" },
@@ -79,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
     ],
-    links: [
+    links: typeof window !== "undefined" && window.kpopblogConfig?.apiUrl ? [] : [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
@@ -179,7 +181,7 @@ function RootComponent() {
               </div>
               <OfflineBadge />
               <AuthModal />
-
+              <ConsentBanner />
             </AuthModalProvider>
           </AuthProviderShell>
         </I18nProvider>

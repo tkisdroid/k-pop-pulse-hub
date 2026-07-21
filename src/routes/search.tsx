@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { buildHead } from "@/components/layout/seo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 
@@ -10,12 +10,13 @@ export const Route = createFileRoute("/search")({
 });
 
 function Search() {
+  const { data } = useRuntimeData();
   const [q, setQ] = useState("");
   const ql = q.toLowerCase();
-  const articles = q ? demoData.articles.filter((a) => a.title.toLowerCase().includes(ql)) : [];
-  const artists = q ? demoData.artists.filter((a) => a.name.toLowerCase().includes(ql)) : [];
-  const members = q ? demoData.members.filter((m) => m.stageName.toLowerCase().includes(ql)) : [];
-  const threads = q ? demoData.threads.filter((t) => t.title.toLowerCase().includes(ql)) : [];
+  const articles = q ? data.articles.filter((a) => a.title.toLowerCase().includes(ql)) : [];
+  const artists = q ? data.artists.filter((a) => a.name.toLowerCase().includes(ql)) : [];
+  const members = q ? data.members.filter((m) => m.stageName.toLowerCase().includes(ql)) : [];
+  const threads = q ? data.threads.filter((t) => t.title.toLowerCase().includes(ql)) : [];
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">

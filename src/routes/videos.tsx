@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { Play } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 
 export const Route = createFileRoute("/videos")({
   head: () => buildHead({ title: "Videos", canonical: "/videos", description: "Watch real K-pop MVs and performances right inside the site, and join the conversation per artist." }),
@@ -12,12 +12,16 @@ export const Route = createFileRoute("/videos")({
 });
 
 function Videos() {
-  const artists = demoData.artists;
+  const { data, isLoading, error } = useRuntimeData();
+  const artists = data.artists;
   const [filter, setFilter] = useState<string>("all");
   const videos = useMemo(
-    () => (filter === "all" ? demoData.videos : demoData.videos.filter((v) => v.artistId === filter)),
-    [filter]
+    () => (filter === "all" ? data.videos : data.videos.filter((v) => v.artistId === filter || v.artistSlug === filter)),
+    [data.videos, filter]
   );
+
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading videos…</div>;
+  if (error) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{error}</div>;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -44,7 +48,7 @@ function Videos() {
 
       <div data-reveal-children className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {videos.map((v) => {
-          const artist = demoData.artists.find((a) => a.id === v.artistId);
+          const artist = data.artists.find((a) => a.id === v.artistId || a.slug === v.artistId || a.slug === v.artistSlug);
           return (
             <Link
               key={v.id}
@@ -67,6 +71,7 @@ function Videos() {
           );
         })}
       </div>
+      {videos.length === 0 && <div className="rounded-xl border border-dashed border-border p-10 text-center text-muted-foreground">No published videos yet.</div>}
     </div>
   );
 }

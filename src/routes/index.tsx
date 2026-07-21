@@ -1,20 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ForYouSection } from "@/components/articles/ForYouSection";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
-import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
+import { Flame, Calendar, Vote, MessageSquare, ArrowRight } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { DailyQuizWidget } from "@/components/quiz/DailyQuizWidget";
+import { NotifyButton } from "@/components/notifications/NotifyButton";
+import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => {
     const head = buildHead({ title: "Home", description: "Latest K-pop news, comebacks, artists and fan discussions.", canonical: "/" });
-    const hero = demoData.articles[0]?.featuredImage;
-    if (hero) head.links.push({ rel: "preload", as: "image", href: hero, fetchpriority: "high" });
     return head;
   },
   component: Index,
@@ -23,15 +23,22 @@ export const Route = createFileRoute("/")({
 const LABELS = ["BREAKING", "COMEBACK", "TOUR", "AWARD", "OFFICIAL", "RUMOR"];
 
 function Index() {
-  const featured = demoData.articles[0];
-  const secondary = demoData.articles.slice(1, 4);
-  const trending = demoData.articles.slice(0, 5);
-  const latest = demoData.articles.slice(2, 8);
-  const upcoming = demoData.comebacks.slice(0, 5);
-  const spotlightArtists = demoData.artists.slice(0, 3);
-  const hotThreads = demoData.threads.slice(0, 5);
-  const polls = demoData.polls.slice(0, 2);
-  const community = demoData.community.slice(0, 4);
+  const { data, isLoading, error } = useRuntimeData();
+  const [latestCategory, setLatestCategory] = useState("All");
+  if (isLoading) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">Loading current K-pop coverage…</p>;
+  if (error) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-destructive" role="alert">{error}</p>;
+  if (data.articles.length === 0) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">No published articles yet.</p>;
+
+  const featured = data.articles[0];
+  const secondary = data.articles.slice(1, 4);
+  const trending = data.articles.slice(0, 5);
+  const categories = ["All", ...Array.from(new Set(data.articles.map((article) => article.category).filter(Boolean)))];
+  const latest = data.articles.filter((article) => latestCategory === "All" || article.category === latestCategory).slice(0, 8);
+  const upcoming = data.comebacks.slice(0, 5);
+  const spotlightArtists = data.artists.slice(0, 3);
+  const hotThreads = data.threads.slice(0, 5);
+  const polls = data.polls.slice(0, 2);
+  const community = data.community.slice(0, 4);
 
   return (
     <div>
@@ -40,7 +47,7 @@ function Index() {
         <div className="mx-auto max-w-7xl px-4 py-2 flex items-center gap-4">
           <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-destructive text-destructive-foreground">BREAKING</span>
           <div className="flex gap-6 overflow-x-auto scrollbar-hide text-sm">
-            {demoData.articles.slice(0, 6).map((a, i) => (
+            {data.articles.slice(0, 6).map((a, i) => (
               <Link key={a.id} to="/news/$slug" params={{ slug: a.slug }} className="whitespace-nowrap hover:text-primary">
                 <span className="text-primary mr-2 font-semibold">{LABELS[i % LABELS.length]}</span>
                 {a.title}
@@ -70,7 +77,7 @@ function Index() {
 
       <div className="mx-auto max-w-7xl px-4"><AdSlot slotId="home-after-hero" variant="leaderboard" /></div>
 
-      <ForYouSection pool={demoData.articles} />
+      <ForYouSection pool={data.articles} />
 
       {/* Trending */}
 
@@ -96,8 +103,8 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Latest News" title="Fresh off the wire" />
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-3 mb-4">
-          {["All", "Music", "Comeback", "Tour", "Awards", "Drama", "Variety", "Fashion", "Business", "Rumors", "Official Statements"].map((c) => (
-            <button key={c} className="shrink-0 px-3 py-1.5 rounded-full text-sm bg-accent hover:bg-primary hover:text-primary-foreground transition-colors">{c}</button>
+          {categories.map((c) => (
+            <button key={c} type="button" onClick={() => setLatestCategory(c)} aria-pressed={latestCategory === c} className={`shrink-0 px-3 py-1.5 rounded-full text-sm transition-colors ${latestCategory === c ? "bg-primary text-primary-foreground" : "bg-accent hover:bg-primary hover:text-primary-foreground"}`}>{c}</button>
           ))}
         </div>
         <div data-reveal-children className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -112,7 +119,7 @@ function Index() {
           <SectionHeader eyebrow="Comeback Calendar" title="Upcoming releases" />
           <div className="grid gap-3">
             {upcoming.map((c) => {
-              const artist = demoData.artists.find((a) => a.id === c.artistId)!;
+              const artist = data.artists.find((a) => a.id === c.artistId || a.slug === c.artistId);
               const days = Math.max(0, Math.ceil((+new Date(c.releaseAt) - Date.now()) / 86400000));
               return (
                 <div key={c.id} className="flex items-center gap-4 p-3 rounded-xl bg-card border border-border">
@@ -120,11 +127,11 @@ function Index() {
                   <div className="flex-1 min-w-0">
                     <div className="text-xs uppercase text-primary">{c.type}</div>
                     <div className="font-semibold truncate">{c.title}</div>
-                    <div className="text-xs text-muted-foreground">{artist.name} · {new Date(c.releaseAt).toDateString()}</div>
+                    <div className="text-xs text-muted-foreground">{artist?.name ?? c.artistId} · {new Date(c.releaseAt).toDateString()}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-display text-2xl text-gradient font-bold">{days}d</div>
-                    <Button size="sm" variant="outline">Remind me</Button>
+                    <NotifyButton label="Remind me" reminder={{ id: `home-comeback:${c.id}`, kind: "comeback", title: c.title, body: `${artist?.name ?? c.artistId} ${c.type} starts soon`, url: "/comebacks", icon: c.image, fireAt: c.releaseAt, leadMinutes: 15 }} />
                   </div>
                 </div>
               );
@@ -154,17 +161,17 @@ function Index() {
           <SectionHeader eyebrow="Hot Forum Threads" title="Where fans are talking" />
           <div className="grid gap-2">
             {hotThreads.map((t) => {
-              const cat = demoData.categories.find((c) => c.id === t.categoryId)!;
+              const cat = data.categories.find((c) => c.id === t.categoryId || c.slug === t.categoryId);
               return (
                 <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/40">
-                  <div className="size-10 grid place-items-center rounded-lg bg-accent">{cat.icon}</div>
+                  <div className="size-10 grid place-items-center rounded-lg bg-accent">{cat?.icon ?? "💬"}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {t.pinned && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground">PINNED</span>}
                       {t.flair && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent">{t.flair}</span>}
                     </div>
                     <div className="font-semibold truncate">{t.title}</div>
-                    <div className="text-xs text-muted-foreground">{cat.name} · {t.replies} replies · {t.views} views</div>
+                    <div className="text-xs text-muted-foreground">{cat?.name ?? "Forum"} · {t.replies} replies · {t.views} views</div>
                   </div>
                   <MessageSquare className="size-4 text-muted-foreground" />
                 </Link>
@@ -211,18 +218,17 @@ function Index() {
         <SectionHeader eyebrow="Community Wall" title="Fans around the world" />
         <div data-reveal-children className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {community.map((c) => {
-            const user = demoData.users.find((u) => u.id === c.authorId)!;
+            const user = data.users.find((u) => u.id === c.authorId);
             return (
               <div key={c.id} className="p-4 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="size-7 rounded-full overflow-hidden"><img src={user.avatar} alt="" /></div>
-                  <div className="text-xs"><div className="font-medium">{user.displayName}</div><div className="text-muted-foreground">{c.language.toUpperCase()}</div></div>
+                  {(c.author?.avatar || user?.avatar) && <div className="size-7 rounded-full overflow-hidden"><img src={c.author?.avatar ?? user?.avatar} alt="" /></div>}
+                  <div className="text-xs"><div className="font-medium">{c.author?.displayName ?? user?.displayName ?? "Community member"}</div><div className="text-muted-foreground">{c.language.toUpperCase()}</div></div>
                 </div>
                 <p className="text-sm">{c.body}</p>
-                <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                  <button className="hover:text-primary">♥ {c.reactions}</button>
-                  <button className="hover:text-primary">Translate</button>
-                  <button className="hover:text-destructive ml-auto">Report</button>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>♥ {c.reactions}</span>
+                  <Link to="/community" className="hover:text-primary">Join discussion →</Link>
                 </div>
               </div>
             );
@@ -230,18 +236,6 @@ function Index() {
         </div>
       </section>
 
-      {/* Newsletter */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="rounded-3xl gradient-neon p-8 md:p-12 text-white text-center">
-          <Bell className="size-8 mx-auto mb-3 opacity-90" />
-          <h2 className="font-display text-3xl md:text-4xl font-bold">Never miss a comeback</h2>
-          <p className="mt-2 opacity-90 max-w-xl mx-auto">Get breaking K-pop news, comeback alerts and weekly fan picks straight to your inbox.</p>
-          <form className="mt-5 max-w-md mx-auto flex gap-2" onSubmit={(e) => e.preventDefault()}>
-            <input type="email" placeholder="you@email.com" className="flex-1 h-11 px-4 rounded-md text-foreground bg-background/95" />
-            <Button type="submit" variant="secondary">Subscribe</Button>
-          </form>
-        </div>
-      </section>
     </div>
   );
 }

@@ -15,6 +15,9 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env.loca
+.playwright-mcp/
+.env.wordpress
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -28,6 +31,8 @@ wordpress-plugin/kpopblog.zip
 .vscode/*
 !.vscode/extensions.json
 .idea
+.worktrees/
+.playwright-cli/
 .DS_Store
 *.suo
 *.ntvs*
