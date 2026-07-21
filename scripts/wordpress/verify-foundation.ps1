@@ -1,9 +1,12 @@
 [CmdletBinding()]
-param()
+param([string]$ComposeProjectName = 'k-pop-pulse-hub')
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $gitBash = 'C:\Program Files\Git\bin\bash.exe'
+. (Join-Path $PSScriptRoot 'compose-context.ps1')
+$composeContext = Resolve-KpopBlogComposeContext -RepositoryRoot $repoRoot -ProjectName $ComposeProjectName
+$env:COMPOSE_PROJECT_NAME = $composeContext.ProjectName
 
 function Invoke-Checked {
     param(
@@ -25,7 +28,7 @@ try {
     Invoke-Checked 'npm.cmd' @('run', 'build')
     Invoke-Checked 'npm.cmd' @('run', 'build:wordpress')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/asset-budget-smoke.ps1')
-    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/bootstrap.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/bootstrap.ps1', '-ComposeProjectName', $composeContext.ProjectName)
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/runtime-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/plugin-foundation-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/admin-smoke.ps1')
@@ -34,9 +37,14 @@ try {
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/content-interactions-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/subscription-notification-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/ads-smoke.ps1')
-    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/automation-smoke.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/automation-smoke.ps1', '-ComposeProjectName', $composeContext.ProjectName)
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/automation-smoke.ps1', '-InjectAutomationFailure', '-ComposeProjectName', $composeContext.ProjectName)
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/runtime-content-smoke.ps1')
-    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/seo-runtime-smoke.ps1')
+    $faultOutput = & pwsh -File scripts/wordpress/seo-runtime-smoke.ps1 -InjectPostCreationParseFailure -ComposeProjectName $composeContext.ProjectName 2>&1
+    if ($LASTEXITCODE -eq 0 -or ($faultOutput -join "`n") -notmatch 'Fault injection confirmed outbound_requests=0') {
+        throw 'SEO parse-failure injection did not fail at the expected guarded parse point.'
+    }
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/seo-runtime-smoke.ps1', '-ComposeProjectName', $composeContext.ProjectName)
 
     if (-not (Test-Path -LiteralPath $gitBash)) {
         throw 'Git Bash is required to run wordpress-plugin/build-plugin.sh.'
@@ -66,6 +74,7 @@ try {
             'kpopblog/includes/automation.php',
             'kpopblog/includes/automation-admin.php',
             'kpopblog/includes/discoverability.php',
+            'kpopblog/includes/validation.php',
             'kpopblog/assets/manifest.json'
         )
         foreach ($entry in $requiredEntries) {

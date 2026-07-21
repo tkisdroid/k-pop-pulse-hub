@@ -1,16 +1,16 @@
 [CmdletBinding()]
 param(
-    [switch]$InjectAutomationFailure
+    [switch]$InjectAutomationFailure,
+    [string]$ComposeProjectName = 'k-pop-pulse-hub'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$compose = Join-Path $repoRoot 'docker-compose.wordpress.yml'
-$envFile = Join-Path $repoRoot '.env.wordpress'
-
-if (-not (Test-Path -LiteralPath $envFile)) {
-    $envFile = Join-Path $repoRoot '.env.wordpress.example'
-}
+. (Join-Path $PSScriptRoot 'compose-context.ps1')
+$composeContext = Resolve-KpopBlogComposeContext -RepositoryRoot $repoRoot -ProjectName $ComposeProjectName
+$compose = $composeContext.ComposePath
+$envFile = $composeContext.EnvironmentPath
+Assert-KpopBlogComposeMount -Context $composeContext
 
 $assertions = @'
 global $wpdb, $submenu;
@@ -577,6 +577,28 @@ try {
     }
 }
 
+$strict_date_fixture = array(
+    'kind' => 'comeback',
+    'title' => 'Strict event date validation fixture',
+    'excerpt' => str_repeat( 'Validated schedule excerpt. ', 3 ),
+    'content' => str_repeat( 'Validated schedule content remains long enough for editorial validation. ', 3 ),
+    'artist_slugs' => array( 'fixture-artist' ),
+    'event_type' => 'album',
+    'confidence' => 0.99,
+    'sources' => array( array( 'url' => 'https://example.com/strict-date', 'title' => 'Strict date source', 'publisher' => 'Example', 'published_at' => '2030-01-01T00:00:00Z' ) ),
+);
+foreach ( array( 'next Friday at noon', '2030-01-15T12:00:00' ) as $invalid_event_date ) {
+    $candidate = $strict_date_fixture;
+    $candidate['event_date'] = $invalid_event_date;
+    if ( ! is_wp_error( kpopblog_validate_automation_item( $candidate ) ) ) {
+        throw new Exception( 'automation accepted non-strict event date: ' . $invalid_event_date );
+    }
+}
+$strict_date_fixture['event_date'] = '2030-01-15T12:00:00+09:00';
+if ( is_wp_error( kpopblog_validate_automation_item( $strict_date_fixture ) ) ) {
+    throw new Exception( 'automation rejected a strict timezone-qualified event date' );
+}
+
 if ( $get_marker_post_ids() ) {
     throw new Exception( 'automation marker posts remained after cleanup' );
 }
@@ -628,7 +650,7 @@ if ( get_option( '_transient_' . $notification_lock_name, null ) !== $notificati
 $injectFailureLiteral = if ($InjectAutomationFailure) { 'true' } else { 'false' }
 $assertions = $assertions.Replace('__INJECT_AUTOMATION_FAILURE__', $injectFailureLiteral)
 
-docker compose --env-file $envFile -f $compose run --rm --no-deps cli eval $assertions
+('<?php' + "`n" + $assertions) | docker compose --project-name $composeContext.ProjectName --env-file $envFile -f $compose run --rm --no-deps -T cli eval-file -
 if ($LASTEXITCODE -ne 0) {
     throw 'AI automation assertions failed.'
 }

@@ -3,7 +3,7 @@
  * Plugin Name:       KpopBlog
  * Plugin URI:        https://thekpopblog.com
  * Description:       K-pop publishing and community platform with articles, artists, videos, comebacks, forums, polls, submissions, subscriptions, notifications, advertising, and source-grounded content automation managed from WordPress.
- * Version:           1.3.0
+ * Version:           1.3.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            thekpopblog.com
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.3.0' );
+define( 'KPOPBLOG_VERSION', '1.3.1' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
@@ -26,6 +26,7 @@ require_once KPOPBLOG_PATH . 'includes/install.php';
 require_once KPOPBLOG_PATH . 'includes/admin.php';
 require_once KPOPBLOG_PATH . 'includes/cpt.php';
 require_once KPOPBLOG_PATH . 'includes/meta.php';
+require_once KPOPBLOG_PATH . 'includes/validation.php';
 require_once KPOPBLOG_PATH . 'includes/rest.php';
 require_once KPOPBLOG_PATH . 'includes/discoverability.php';
 require_once KPOPBLOG_PATH . 'includes/rest-write.php';

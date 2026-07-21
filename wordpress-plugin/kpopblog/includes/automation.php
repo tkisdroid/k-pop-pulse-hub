@@ -292,7 +292,7 @@ function kpopblog_validate_automation_item( $raw ) {
 	$event_date = isset( $raw['event_date'] ) ? sanitize_text_field( (string) $raw['event_date'] ) : '';
 	$event_type = isset( $raw['event_type'] ) ? sanitize_key( (string) $raw['event_type'] ) : '';
 	if ( 'news' !== $kind ) {
-		if ( false === strtotime( $event_date ) || ! in_array( $event_type, array( 'album', 'single', 'mv', 'teaser', 'concert', 'debut', 'birthday', 'event' ), true ) ) {
+		if ( ! kpopblog_is_strict_iso8601_date( $event_date ) || ! in_array( $event_type, array( 'album', 'single', 'mv', 'teaser', 'concert', 'debut', 'birthday', 'event' ), true ) ) {
 			return new WP_Error( 'invalid_event', 'The schedule item has an invalid date or type.' );
 		}
 	} else {

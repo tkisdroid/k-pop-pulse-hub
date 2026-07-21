@@ -1,21 +1,13 @@
 [CmdletBinding()]
-param()
+param([string]$ComposeProjectName = 'k-pop-pulse-hub')
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$compose = Join-Path $repoRoot 'docker-compose.wordpress.yml'
-$envFile = Join-Path $repoRoot '.env.wordpress'
-
-if (-not (Test-Path -LiteralPath $envFile)) {
-    $envFile = Join-Path $repoRoot '.env.wordpress.example'
-}
-
-if (-not (Test-Path -LiteralPath $compose)) {
-    throw "Missing $compose"
-}
-if (-not (Test-Path -LiteralPath $envFile)) {
-    throw "Missing $envFile"
-}
+. (Join-Path $PSScriptRoot 'compose-context.ps1')
+$composeContext = Resolve-KpopBlogComposeContext -RepositoryRoot $repoRoot -ProjectName $ComposeProjectName
+$compose = $composeContext.ComposePath
+$envFile = $composeContext.EnvironmentPath
+$env:COMPOSE_PROJECT_NAME = $composeContext.ProjectName
 
 $settings = @{}
 foreach ($line in Get-Content -LiteralPath $envFile) {
@@ -77,6 +69,7 @@ function Invoke-Wp {
 }
 
 Invoke-Compose -Arguments @('up', '-d', 'db', 'wordpress')
+Assert-KpopBlogComposeMount -Context $composeContext
 
 $ready = $false
 $deadline = [DateTime]::UtcNow.AddSeconds(180)

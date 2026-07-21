@@ -1,16 +1,17 @@
 [CmdletBinding()]
 param(
-    [switch]$InjectPostCreationParseFailure
+    [switch]$InjectPostCreationParseFailure,
+    [string]$ComposeProjectName = 'k-pop-pulse-hub'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$compose = Join-Path $repoRoot 'docker-compose.wordpress.yml'
-$envFile = Join-Path $repoRoot '.env.wordpress'
-if (-not (Test-Path -LiteralPath $envFile)) {
-    $envFile = Join-Path $repoRoot '.env.wordpress.example'
-}
-$projectName = 'k-pop-pulse-hub'
+. (Join-Path $PSScriptRoot 'compose-context.ps1')
+$composeContext = Resolve-KpopBlogComposeContext -RepositoryRoot $repoRoot -ProjectName $ComposeProjectName
+$compose = $composeContext.ComposePath
+$envFile = $composeContext.EnvironmentPath
+$projectName = $composeContext.ProjectName
+Assert-KpopBlogComposeMount -Context $composeContext
 $baseUrl = 'http://localhost:8088'
 $temporaryScheduleId = 0
 $temporaryArticleId = 0
@@ -73,14 +74,15 @@ if ( ! $ids ) {
     echo wp_json_encode( array( 'deleted_ids' => array(), 'outbound_requests' => 0 ) );
     return;
 }
-if ( count( $ids ) > 4 ) {
+if ( count( $ids ) > 5 ) {
     throw new Exception( 'SEO smoke marker matched too many posts; refusing cleanup' );
 }
 $expected = array(
     $fixture_marker                => array( 'kb_comeback', 'KpopBlog SEO runtime temporary schedule' ),
-    $fixture_marker . ':article'   => array( 'post', 'KpopBlog SEO malicious </script><script id="review-injected">injected</script> article' ),
+    $fixture_marker . ':article'   => array( 'post', 'KpopBlog SEO [review](unsafe) </script><script id="review-injected">injected</script> article' ),
     $fixture_marker . ':secondary' => array( 'kb_comeback', 'KpopBlog SEO runtime secondary schedule' ),
     $fixture_marker . ':malformed' => array( 'kb_comeback', 'KpopBlog SEO runtime malformed schedule' ),
+    $fixture_marker . ':image'     => array( 'attachment', 'KpopBlog SEO featured image' ),
 );
 $outbound_requests = 0;
 $deleted_ids = array();
@@ -97,7 +99,8 @@ try {
         if ( ! $post || ! isset( $expected[ $marker ] ) || $expected[ $marker ][0] !== $post->post_type || $expected[ $marker ][1] !== $post->post_title ) {
             throw new Exception( 'SEO smoke marker post identity mismatch; refusing cleanup' );
         }
-        if ( ! wp_delete_post( $post_id, true ) || get_post( $post_id ) ) {
+        $deleted = 'attachment' === $post->post_type ? wp_delete_attachment( $post_id, true ) : wp_delete_post( $post_id, true );
+        if ( ! $deleted || get_post( $post_id ) ) {
             throw new Exception( 'SEO smoke marker post cleanup failed' );
         }
         $deleted_ids[] = $post_id;
@@ -147,8 +150,8 @@ global $wpdb;
 $jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 $fixture_title = 'Comeback: KpopBlog SEO runtime temporary schedule';
 $fixture_marker = '__FIXTURE_MARKER__';
-$malicious_title = 'KpopBlog SEO malicious </script><script id="review-injected">injected</script> article';
-$malicious_description = 'Review description </script><script id="review-injected-description">injected</script> text.';
+$malicious_title = 'KpopBlog SEO [review](unsafe) </script><script id="review-injected">injected</script> article';
+$malicious_description = str_repeat( 'Oversized manual excerpt [review](unsafe) </script><script id="review-injected-description">injected</script> text. ', 30 );
 $primary_source = 'https://example.com/kpopblog-primary?ref=seo&item=1';
 $secondary_source = 'https://example.org/kpopblog-secondary';
 $job_count_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
@@ -208,6 +211,7 @@ try {
             'kb_source_url'   => $primary_source,
             'kb_source_urls'  => array( $primary_source ),
             'kb_source_title' => 'Primary schedule source',
+            'kb_artist_slug'  => 'blackpink',
         )
     );
     $article_slug = 'kpopblog-seo-malicious-' . substr( md5( $fixture_marker ), 0, 12 );
@@ -218,10 +222,10 @@ try {
         array(
             'post_content'      => '<p>Malicious stored content fixture.</p>',
             'post_excerpt'      => $malicious_description,
-            'post_date'         => '2099-02-03 04:05:06',
-            'post_date_gmt'     => '2099-02-03 12:34:56',
-            'post_modified'     => '2099-03-04 01:02:03',
-            'post_modified_gmt' => '2099-03-04 05:06:07',
+            'post_date'         => '2030-02-03 21:34:56',
+            'post_date_gmt'     => '2030-02-03 12:34:56',
+            'post_modified'     => '2030-03-04 14:06:07',
+            'post_modified_gmt' => '2030-03-04 05:06:07',
         ),
         array(
             'kb_source'       => $fixture_marker . ':article',
@@ -230,6 +234,19 @@ try {
             'kb_source_title' => 'Review primary source',
         )
     );
+    $image_id = wp_insert_attachment( array(
+        'post_title'     => 'KpopBlog SEO featured image',
+        'post_status'    => 'inherit',
+        'post_mime_type' => 'image/jpeg',
+        'guid'           => home_url( '/wp-content/uploads/2030/02/kpopblog-seo-featured.jpg' ),
+    ), '', $article_id, true );
+    if ( is_wp_error( $image_id ) ) { throw new Exception( 'failed to create featured image fixture' ); }
+    $created_ids[] = (int) $image_id;
+    update_post_meta( $image_id, '_wp_attached_file', '2030/02/kpopblog-seo-featured.jpg' );
+    update_post_meta( $image_id, 'kb_source', $fixture_marker . ':image' );
+    set_post_thumbnail( $article_id, $image_id );
+    $featured_image = kpopblog_thumb_url( $article_id );
+    if ( '' === $featured_image ) { throw new Exception( 'featured image fixture URL is unavailable' ); }
     $secondary_id = $create_fixture(
         'kb_comeback',
         'KpopBlog SEO runtime secondary schedule',
@@ -287,8 +304,9 @@ try {
         'article_title'     => $malicious_title,
         'secondary_id'      => $secondary_id,
         'malformed_id'      => $malformed_id,
-        'published_utc'     => '2099-02-03T12:34:56+00:00',
-        'modified_utc'      => '2099-03-04T05:06:07+00:00',
+        'published_utc'     => '2030-02-03T12:34:56+00:00',
+        'modified_utc'      => '2030-03-04T05:06:07+00:00',
+        'featured_image'    => $featured_image,
         'primary_source'    => $primary_source,
         'secondary_source'  => $secondary_source,
         'job_count'         => $job_count_after,
@@ -298,7 +316,7 @@ try {
     ) );
 } catch ( Throwable $error ) {
     foreach ( $created_ids as $created_id ) {
-        wp_delete_post( $created_id, true );
+        'attachment' === get_post_type( $created_id ) ? wp_delete_attachment( $created_id, true ) : wp_delete_post( $created_id, true );
     }
     throw $error;
 } finally {
@@ -357,6 +375,18 @@ try {
         }
         if ([string]$jsonLd.datePublished -ne [string]$fixtureResult.published_utc -or [string]$jsonLd.dateModified -ne [string]$fixtureResult.modified_utc) {
             throw "Article JSON-LD timestamps are not the exact stored UTC instants for $agent."
+        }
+        if (@($jsonLd.image).Count -ne 1 -or [string]@($jsonLd.image)[0] -ne [string]$fixtureResult.featured_image) {
+            throw "Article JSON-LD featured image is incorrect for $agent."
+        }
+        $expectedMeta = @{
+            'article:published_time' = [string]$fixtureResult.published_utc
+            'article:modified_time' = [string]$fixtureResult.modified_utc
+            'og:image' = [string]$fixtureResult.featured_image
+        }
+        foreach ($meta in $expectedMeta.GetEnumerator()) {
+            $metaPattern = '(?i)<meta\b(?=[^>]*\bproperty\s*=\s*["'']' + [regex]::Escape($meta.Key) + '["''])(?=[^>]*\bcontent\s*=\s*["'']' + [regex]::Escape($meta.Value) + '["''])[^>]*>'
+            if ([regex]::Matches($response.Content, $metaPattern).Count -ne 1) { throw "Article HTML does not have exactly one correct $($meta.Key) tag for $agent." }
         }
         $citations = @($jsonLd.citation)
         if ($citations.Count -ne 2 -or $citations[0] -ne [string]$fixtureResult.primary_source -or $citations[1] -ne [string]$fixtureResult.secondary_source) {
@@ -417,6 +447,9 @@ echo wp_json_encode( array( 'output' => $output ) );
     foreach ($scheduleId in @($temporaryScheduleId, $secondaryScheduleId)) {
         if ($eventUrls -notcontains "$baseUrl/comebacks#event-$scheduleId") { throw "Comeback JSON-LD is missing valid schedule $scheduleId." }
     }
+    if ($comebacks.Content -notmatch [regex]::Escape('href="http://localhost:8088/artist/blackpink"')) {
+        throw 'Comeback fallback is missing the safe artist link.'
+    }
     if ($eventUrls -contains "$baseUrl/comebacks#event-$malformedScheduleId" -or $comebacks.Content -match [regex]::Escape('id="event-' + $malformedScheduleId + '"')) {
         throw 'Malformed relative-date schedule was emitted as semantic comeback content.'
     }
@@ -473,6 +506,16 @@ echo wp_json_encode( array( 'output' => $output ) );
     if ($rss.Content -match [regex]::Escape('http://example.net/not-https')) {
         throw 'WordPress RSS exposed an unvalidated source URL.'
     }
+    if ($rssItems.Count -gt 50) { throw 'WordPress RSS exceeded its global item bound.' }
+    foreach ($rssItem in $rssItems) {
+        if (([string]$rssItem.description).Length -gt 700) { throw 'WordPress RSS emitted an overlong final description.' }
+    }
+    $secondaryIndex = [array]::IndexOf(@($rssItems | ForEach-Object { [string]$_.link }), "$baseUrl/comebacks#event-$secondaryScheduleId")
+    $articleIndex = [array]::IndexOf(@($rssItems | ForEach-Object { [string]$_.link }), "$baseUrl$fixtureArticlePath")
+    $primaryIndex = [array]::IndexOf(@($rssItems | ForEach-Object { [string]$_.link }), "$baseUrl/comebacks#event-$temporaryScheduleId")
+    if ($secondaryIndex -lt 0 -or $articleIndex -lt 0 -or $primaryIndex -lt 0 -or -not ($secondaryIndex -lt $articleIndex -and $articleIndex -lt $primaryIndex)) {
+        throw 'WordPress RSS did not globally order interleaved article and schedule timestamps.'
+    }
 
     $sitemap = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -TimeoutSec 30
     if ($sitemap.StatusCode -ne 200 -or $sitemap.Headers['Content-Type'] -notmatch 'application/xml') {
@@ -486,7 +529,11 @@ echo wp_json_encode( array( 'output' => $output ) );
         throw 'WordPress sitemap is missing cache validators.'
     }
     $notModified = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = [string]$sitemap.Headers['ETag'] } -SkipHttpErrorCheck -TimeoutSec 30
-    if ($notModified.StatusCode -ne 304) { throw 'WordPress sitemap did not honor its ETag.' }
+    if ($notModified.StatusCode -ne 304 -or $notModified.Headers['Cache-Control'] -notmatch 'public') { throw 'WordPress sitemap did not honor its ETag with public cache headers.' }
+    $weakList = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = '"unrelated", W/' + [string]$sitemap.Headers['ETag'] } -SkipHttpErrorCheck -TimeoutSec 30
+    if ($weakList.StatusCode -ne 304) { throw 'WordPress sitemap did not honor weak or list-form If-None-Match validators.' }
+    $mismatched = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = '"not-current"'; 'If-Modified-Since' = [string]$sitemap.Headers['Last-Modified'] } -SkipHttpErrorCheck -TimeoutSec 30
+    if ($mismatched.StatusCode -ne 200 -or $mismatched.Headers['Content-Type'] -notmatch 'application/xml' -or $mismatched.Headers['Cache-Control'] -notmatch 'public') { throw 'If-None-Match did not take precedence with complete public response headers.' }
 
     $robots = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/robots.txt" -TimeoutSec 30
     $agents = @('OAI-SearchBot', 'GPTBot', 'ClaudeBot', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Google-Extended')
@@ -501,8 +548,25 @@ echo wp_json_encode( array( 'output' => $output ) );
         '/admin',
         '/moderation',
         '/onboarding',
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/submit',
         '/wp-json/kpopblog/v1/admin',
         '/wp-json/kpopblog/v1/auth',
+        '/wp-json/kpopblog/v1/profile/me',
+        '/wp-json/kpopblog/v1/submissions',
+        '/wp-json/kpopblog/v1/reports',
+        '/wp-json/kpopblog/v1/newsletter/subscribe',
+        '/wp-json/kpopblog/v1/newsletter/confirm',
+        '/wp-json/kpopblog/v1/newsletter/unsubscribe',
+        '/wp-json/kpopblog/v1/polls/*/vote',
+        '/wp-json/kpopblog/v1/artists/*/follow',
+        '/wp-json/kpopblog/v1/articles/*/engage',
+        '/wp-json/kpopblog/v1/articles/*/comments',
+        '/wp-json/kpopblog/v1/videos/*/comments',
+        '/wp-json/kpopblog/v1/threads',
+        '/wp-json/kpopblog/v1/community',
         '/wp-json/kpopblog/v1/subscriptions',
         '/wp-json/kpopblog/v1/notifications',
         '/wp-json/kpopblog/v1/events',
@@ -533,6 +597,21 @@ echo wp_json_encode( array( 'output' => $output ) );
     }
     if ($llms.Content -match $malformedScheduleAnchorPattern -or $llms.Content -match [regex]::Escape('http://example.net/not-https')) {
         throw 'WordPress llms output exposed a malformed schedule or unvalidated source URL.'
+    }
+    if ($llms.Content -notmatch [regex]::Escape('\\[review\\]\\(unsafe\\)') -or $llms.Content -match '- \[KpopBlog SEO \[review\]') {
+        throw 'WordPress llms output did not neutralize Markdown syntax in stored titles.'
+    }
+    $privateTransition = @'
+$post_id = __POST_ID__;
+global $wpdb;
+$updated = $wpdb->update( $wpdb->posts, array( 'post_status' => 'private' ), array( 'ID' => $post_id ) );
+clean_post_cache( $post_id );
+if ( 1 !== $updated || 'private' !== get_post_status( $post_id ) ) { throw new Exception( 'could not make cache fixture private' ); }
+'@.Replace('__POST_ID__', [string]$temporaryArticleId)
+    Invoke-WpCli 'eval' $privateTransition | Out-Null
+    $afterPrivate = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = [string]$sitemap.Headers['ETag']; 'If-Modified-Since' = [string]$sitemap.Headers['Last-Modified'] } -SkipHttpErrorCheck -TimeoutSec 30
+    if ($afterPrivate.StatusCode -ne 200 -or $afterPrivate.Content -match $fixtureArticlePattern -or [string]$afterPrivate.Headers['ETag'] -eq [string]$sitemap.Headers['ETag']) {
+        throw 'Discovery cache revalidation exposed a formerly public article after it became private.'
     }
 } finally {
     Remove-TemporaryFixtures -Marker $fixtureMarker
