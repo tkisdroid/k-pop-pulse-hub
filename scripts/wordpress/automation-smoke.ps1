@@ -68,6 +68,12 @@ $get_marker_post_ids = function () use ( $wpdb, $fixture_response_id ) {
         $fixture_response_id
     ) ) );
 };
+$get_fixture_run_ids = function () use ( $wpdb, $fixture_response_id ) {
+    return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}kb_automation_runs WHERE trigger_type = 'smoke' AND response_id = %s",
+        $fixture_response_id
+    ) ) );
+};
 $capture_cron_hook = function ( $hook ) {
     $events = array();
     foreach ( (array) _get_cron_array() as $timestamp => $hooks ) {
@@ -76,6 +82,15 @@ $capture_cron_hook = function ( $hook ) {
         }
     }
     return $events;
+};
+$record_test_cron_events = function ( $hook, array $before, array &$test_events ) use ( $capture_cron_hook ) {
+    foreach ( $capture_cron_hook( $hook ) as $timestamp => $events ) {
+        foreach ( $events as $event_key => $event ) {
+            if ( ! isset( $before[ $timestamp ][ $event_key ] ) ) {
+                $test_events[ $timestamp ][ $event_key ] = $event;
+            }
+        }
+    }
 };
 $restore_cron_hook = function ( $hook, array $before, array $test_events ) {
     $crons = (array) _get_cron_array();
@@ -103,7 +118,13 @@ $restore_cron_hook = function ( $hook, array $before, array $test_events ) {
 
 $old_settings = get_option( 'kpopblog_automation', null );
 $old_webhook_settings = get_option( KPOPBLOG_WEBHOOK_OPTION, null );
+$automation_last_success_exists_before = 1 === (int) $wpdb->get_var( $wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+    'kpopblog_automation_last_success'
+) );
+$automation_last_success_before = $automation_last_success_exists_before ? get_option( 'kpopblog_automation_last_success' ) : null;
 $notification_job_ids_before = $get_fixture_job_ids();
+$fixture_run_ids_before = $get_fixture_run_ids();
 $notification_cron_before = $capture_cron_hook( 'kpopblog_process_notification_jobs' );
 $automation_cron_before = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
 $notification_cron_test_events = array();
@@ -115,6 +136,7 @@ $notification_lock_timeout_before = get_option( '_transient_timeout_' . $notific
 $notification_lock_token = 'automation-smoke-' . wp_generate_uuid4();
 $notification_lock_owned = false;
 $notification_guard_timestamp = 0;
+$automation_guard_timestamp = 0;
 $captured_request = array();
 $internal_http_requests = array();
 $blocked_external_requests = array();
@@ -188,6 +210,7 @@ $mock_http = function ( $preempt, $args, $url ) use ( &$captured_request, &$inte
 
 $created_ids = array();
 $test_notification_job_ids = array();
+$test_run_ids = array();
 $draft_id = 0;
 try {
     if ( false !== $notification_lock_active_before ) {
@@ -204,14 +227,14 @@ try {
     if ( ! wp_schedule_single_event( $notification_guard_timestamp, 'kpopblog_process_notification_jobs' ) ) {
         throw new Exception( 'notification processing guard cron could not be scheduled' );
     }
-    $notification_cron_after_guard = $capture_cron_hook( 'kpopblog_process_notification_jobs' );
-    foreach ( $notification_cron_after_guard as $timestamp => $events ) {
-        foreach ( $events as $event_key => $event ) {
-            if ( ! isset( $notification_cron_before[ $timestamp ][ $event_key ] ) ) {
-                $notification_cron_test_events[ $timestamp ][ $event_key ] = $event;
-            }
-        }
+    $record_test_cron_events( 'kpopblog_process_notification_jobs', $notification_cron_before, $notification_cron_test_events );
+
+    wp_clear_scheduled_hook( 'kpopblog_run_scheduled_automation' );
+    $automation_guard_timestamp = time() + DAY_IN_SECONDS;
+    if ( ! wp_schedule_event( $automation_guard_timestamp, 'twicedaily', 'kpopblog_run_scheduled_automation' ) ) {
+        throw new Exception( 'automation execution guard cron could not be scheduled' );
     }
+    $record_test_cron_events( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
 
     update_option( KPOPBLOG_WEBHOOK_OPTION, array(
         'url'     => $fixture_webhook_url,
@@ -226,14 +249,7 @@ try {
         'max_items'     => 4,
         'artist_focus'  => 'BTS, BLACKPINK',
     ), false );
-    $automation_cron_after_settings = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
-    foreach ( $automation_cron_after_settings as $timestamp => $events ) {
-        foreach ( $events as $event_key => $event ) {
-            if ( ! isset( $automation_cron_before[ $timestamp ][ $event_key ] ) ) {
-                $automation_cron_test_events[ $timestamp ][ $event_key ] = $event;
-            }
-        }
-    }
+    $record_test_cron_events( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
 
     putenv( 'OPENAI_API_KEY=automation-smoke-key-not-real' );
     add_filter( 'pre_http_request', $mock_http, 10, 3 );
@@ -242,6 +258,7 @@ try {
     if ( is_wp_error( $result ) ) {
         throw new Exception( 'automation run failed: ' . $result->get_error_message() );
     }
+    $test_run_ids = array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) );
     $provenance_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
         "SELECT wp_post_id FROM {$wpdb->prefix}kb_automation_items WHERE response_id = %s",
         $fixture_response_id
@@ -422,6 +439,10 @@ try {
     }
 
     $second = kpopblog_run_automation( 'smoke' );
+    $test_run_ids = array_values( array_unique( array_merge(
+        array_map( 'intval', $test_run_ids ),
+        array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) )
+    ) ) );
     if ( is_wp_error( $second ) || 0 !== $second['created'] || 2 !== $second['skipped'] ) {
         throw new Exception( 'automation deduplication failed' );
     }
@@ -436,8 +457,19 @@ try {
     }
 
     kpopblog_sync_automation_schedule();
-    if ( ! wp_next_scheduled( 'kpopblog_run_scheduled_automation' ) ) {
-        throw new Exception( 'automation cron event missing' );
+    $record_test_cron_events( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
+    $automation_cron_during_test = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
+    $automation_event_count = 0;
+    foreach ( $automation_cron_during_test as $events ) { $automation_event_count += count( $events ); }
+    $automation_guard_events = $automation_cron_during_test[ (string) $automation_guard_timestamp ] ?? array();
+    $automation_guard_is_safe = false;
+    foreach ( $automation_guard_events as $event ) {
+        if ( 'twicedaily' === ( $event['schedule'] ?? '' ) && empty( $event['args'] ) ) {
+            $automation_guard_is_safe = true;
+        }
+    }
+    if ( 1 !== $automation_event_count || ! $automation_guard_is_safe ) {
+        throw new Exception( 'automation cron was not suppressed by the cross-process future guard' );
     }
 } finally {
     if ( $draft_id && ! is_wp_error( $draft_id ) ) { wp_delete_post( (int) $draft_id, true ); }
@@ -452,8 +484,28 @@ try {
         $wpdb->delete( $wpdb->prefix . 'kb_notifications', array( 'job_id' => (int) $notification_job_id ), array( '%d' ) );
         $wpdb->delete( $wpdb->prefix . 'kb_notification_jobs', array( 'id' => (int) $notification_job_id ), array( '%d' ) );
     }
+
+    $test_run_ids = array_values( array_unique( array_merge(
+        array_map( 'intval', $test_run_ids ),
+        array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) )
+    ) ) );
+    foreach ( $test_run_ids as $test_run_id ) {
+        $wpdb->delete(
+            $wpdb->prefix . 'kb_audit_log',
+            array( 'action' => 'automation_completed', 'object_type' => 'automation_run', 'object_id' => (int) $test_run_id ),
+            array( '%s', '%s', '%d' )
+        );
+    }
     $wpdb->delete( $wpdb->prefix . 'kb_automation_items', array( 'response_id' => $fixture_response_id ), array( '%s' ) );
-    $wpdb->query( "DELETE FROM {$wpdb->prefix}kb_automation_runs WHERE trigger_type = 'smoke'" );
+    foreach ( $test_run_ids as $test_run_id ) {
+        $wpdb->delete( $wpdb->prefix . 'kb_automation_runs', array( 'id' => (int) $test_run_id ), array( '%d' ) );
+    }
+
+    if ( $automation_last_success_exists_before ) {
+        update_option( 'kpopblog_automation_last_success', $automation_last_success_before, false );
+    } else {
+        delete_option( 'kpopblog_automation_last_success' );
+    }
 
     remove_action( 'update_option_' . KPOPBLOG_AUTOMATION_OPTION, 'kpopblog_sync_automation_schedule', 10 );
     if ( null === $old_settings ) {
@@ -470,8 +522,13 @@ try {
 
     $notification_lock_error = '';
     try {
+        $record_test_cron_events( 'kpopblog_process_notification_jobs', $notification_cron_before, $notification_cron_test_events );
+        $record_test_cron_events( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
         if ( $notification_guard_timestamp ) {
             wp_unschedule_event( $notification_guard_timestamp, 'kpopblog_process_notification_jobs' );
+        }
+        if ( $automation_guard_timestamp ) {
+            wp_unschedule_event( $automation_guard_timestamp, 'kpopblog_run_scheduled_automation' );
         }
         $restore_cron_hook( 'kpopblog_process_notification_jobs', $notification_cron_before, $notification_cron_test_events );
         $restore_cron_hook( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
@@ -507,6 +564,31 @@ sort( $fixture_job_ids_after );
 sort( $notification_job_ids_before );
 if ( $fixture_job_ids_after !== $notification_job_ids_before ) {
     throw new Exception( 'automation notification jobs were not restored to their pre-test state' );
+}
+$fixture_run_ids_after = $get_fixture_run_ids();
+sort( $fixture_run_ids_after );
+sort( $fixture_run_ids_before );
+if ( $fixture_run_ids_after !== $fixture_run_ids_before ) {
+    throw new Exception( 'automation smoke runs were not restored to their pre-test state' );
+}
+foreach ( $test_run_ids as $test_run_id ) {
+    $test_audit_count = (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM {$wpdb->prefix}kb_audit_log WHERE action = 'automation_completed' AND object_type = 'automation_run' AND object_id = %d",
+        $test_run_id
+    ) );
+    if ( 0 !== $test_audit_count ) {
+        throw new Exception( 'automation audit rows remained after cleanup for run ' . $test_run_id );
+    }
+}
+$automation_last_success_exists_after = 1 === (int) $wpdb->get_var( $wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+    'kpopblog_automation_last_success'
+) );
+if ( $automation_last_success_exists_after !== $automation_last_success_exists_before ) {
+    throw new Exception( 'automation last-success option existence was not restored after cleanup' );
+}
+if ( $automation_last_success_exists_before && get_option( 'kpopblog_automation_last_success' ) !== $automation_last_success_before ) {
+    throw new Exception( 'automation last-success option value was not restored after cleanup' );
 }
 if ( $capture_cron_hook( 'kpopblog_process_notification_jobs' ) !== $notification_cron_before ) {
     throw new Exception( 'notification processing cron was not restored to its pre-test state' );
