@@ -88,11 +88,25 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    /* Theme the root element, not just <body>. When the page is pinch-zoomed
+       out on mobile (or during iOS rubber-band overscroll), the browser
+       exposes the area outside <body>; without this it falls back to the UA's
+       white backdrop and reads as a white gutter/margin around the app. */
+    background-color: var(--color-background);
+  }
   html, body { font-family: var(--font-sans); }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    width: 100%;
+    /* Clip any accidental horizontal overflow so a stray wide child can never
+       widen the layout viewport past device-width — the root cause of the
+       white margin that appears when zooming out on mobile. Use `clip`, not
+       `hidden`: `hidden` makes <body> a scroll container and breaks the
+       `sticky` header, whereas `clip` contains the width without either. */
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
