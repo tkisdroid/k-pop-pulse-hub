@@ -123,6 +123,7 @@ $mock_http = function ( $preempt, $args, $url ) use ( &$captured_request ) {
 add_filter( 'pre_http_request', $mock_http, 10, 3 );
 
 $created_ids = array();
+$draft_id = 0;
 try {
     $result = kpopblog_run_automation( 'smoke' );
     if ( is_wp_error( $result ) ) {
@@ -157,6 +158,103 @@ try {
         }
     }
 
+    $article_id = 0;
+    $schedule_id = 0;
+    foreach ( $created_ids as $post_id ) {
+        $post_type = get_post_type( $post_id );
+        if ( 'post' === $post_type ) { $article_id = (int) $post_id; }
+        if ( 'kb_comeback' === $post_type ) { $schedule_id = (int) $post_id; }
+    }
+    if ( ! $article_id || ! $schedule_id ) {
+        throw new Exception( 'automation fixture post types are incomplete' );
+    }
+    $draft_id = wp_insert_post( array(
+        'post_type'    => 'post',
+        'post_status'  => 'draft',
+        'post_title'   => 'Automation discovery private draft',
+        'post_name'    => 'automation-discovery-private-draft',
+        'post_content' => 'This draft must never appear in public discovery output.',
+    ) );
+    if ( ! $draft_id || is_wp_error( $draft_id ) ) {
+        throw new Exception( 'automation discovery draft fixture could not be created' );
+    }
+
+    $fetch = function ( $path, $agent ) {
+        return wp_remote_get( 'http://wordpress' . $path, array(
+            'timeout' => 30,
+            'headers' => array( 'Host' => 'localhost:8088', 'User-Agent' => $agent ),
+        ) );
+    };
+    $article_slug = get_post_field( 'post_name', $article_id );
+    $article_path = '/news/' . $article_slug;
+    $draft_slug = get_post_field( 'post_name', $draft_id );
+    $draft_content = get_post_field( 'post_content', $draft_id );
+    $reference_html = '';
+    foreach ( array( 'OAI-SearchBot', 'GPTBot', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot' ) as $agent ) {
+        $response = $fetch( $article_path, $agent );
+        if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+            throw new Exception( 'crawler article request failed for ' . $agent );
+        }
+        $html = wp_remote_retrieve_body( $response );
+        foreach ( array( get_the_title( $article_id ), 'data-kpopblog-fallback="article"', 'NewsArticle', 'https://example.com/bts-release' ) as $needle ) {
+            if ( false === strpos( $html, $needle ) ) { throw new Exception( 'crawler article response missing ' . $needle ); }
+        }
+        if ( false !== strpos( $html, $draft_slug ) ) {
+            throw new Exception( 'crawler article response exposed the private draft slug' );
+        }
+        if ( '' === $reference_html ) { $reference_html = $html; }
+        if ( $html !== $reference_html ) { throw new Exception( 'crawler-specific HTML detected' ); }
+    }
+
+    $machine_documents = array();
+    foreach ( array( '/sitemap.xml', '/rss.xml', '/llms.txt' ) as $path ) {
+        $response = $fetch( $path, 'OAI-SearchBot' );
+        if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+            throw new Exception( 'machine discovery request failed for ' . $path );
+        }
+        $machine_documents[ $path ] = wp_remote_retrieve_body( $response );
+        if ( false === strpos( $machine_documents[ $path ], $article_path ) ) {
+            throw new Exception( 'machine discovery response missing article path for ' . $path );
+        }
+        if ( false !== strpos( $machine_documents[ $path ], $draft_slug ) ) {
+            throw new Exception( 'machine discovery response exposed the private draft slug for ' . $path );
+        }
+    }
+
+    $schedule_path = '/comebacks#event-' . $schedule_id;
+    foreach ( array( '/rss.xml', '/llms.txt' ) as $path ) {
+        if ( false === strpos( $machine_documents[ $path ], $schedule_path ) ) {
+            throw new Exception( 'machine discovery response missing schedule path for ' . $path );
+        }
+    }
+
+    $comebacks_response = $fetch( '/comebacks', 'Googlebot' );
+    if ( is_wp_error( $comebacks_response ) || 200 !== wp_remote_retrieve_response_code( $comebacks_response ) ) {
+        throw new Exception( 'crawler comeback request failed' );
+    }
+    $comebacks_html = wp_remote_retrieve_body( $comebacks_response );
+    if ( false === strpos( $comebacks_html, get_the_title( $schedule_id ) ) ) {
+        throw new Exception( 'crawler comeback response missing automation schedule title' );
+    }
+    if ( false !== strpos( $comebacks_html, $draft_slug ) ) {
+        throw new Exception( 'crawler comeback response exposed the private draft slug' );
+    }
+
+    $missing_slug = 'automation-discovery-missing-' . wp_generate_uuid4();
+    foreach ( array( '/news/' . $draft_slug, '/news/' . $missing_slug ) as $path ) {
+        $response = $fetch( $path, 'GPTBot' );
+        if ( is_wp_error( $response ) || 404 !== wp_remote_retrieve_response_code( $response ) ) {
+            throw new Exception( 'private or missing article did not return 404 for ' . $path );
+        }
+        $html = wp_remote_retrieve_body( $response );
+        if ( false === strpos( $html, 'noindex, nofollow' ) ) {
+            throw new Exception( 'private or missing article did not return noindex, nofollow for ' . $path );
+        }
+        if ( false !== strpos( $html, $draft_content ) ) {
+            throw new Exception( 'private or missing article exposed draft body content for ' . $path );
+        }
+    }
+
     $second = kpopblog_run_automation( 'smoke' );
     if ( is_wp_error( $second ) || 0 !== $second['created'] || 2 !== $second['skipped'] ) {
         throw new Exception( 'automation deduplication failed' );
@@ -180,6 +278,7 @@ try {
     putenv( 'OPENAI_API_KEY' );
     wp_set_current_user( 0 );
     wp_clear_scheduled_hook( 'kpopblog_run_scheduled_automation' );
+    if ( $draft_id ) { wp_delete_post( (int) $draft_id, true ); }
     foreach ( $created_ids as $post_id ) { wp_delete_post( (int) $post_id, true ); }
     $notification_job_ids = $wpdb->get_col(
         "SELECT id FROM {$wpdb->prefix}kb_notification_jobs WHERE title IN ('New article: BTS confirms a new group release schedule','Comeback: BLACKPINK Seoul concert')"
