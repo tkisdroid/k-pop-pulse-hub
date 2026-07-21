@@ -45,7 +45,7 @@ function kpopblog_template_include( $template ) {
 	if ( ! kpopblog_current_request_is_app_shell() ) {
 		return $template;
 	}
-	if ( is_404() ) {
+	if ( is_404() && ! kpopblog_public_context_is_missing() ) {
 		status_header( 200 ); // A client-side route, not a real 404.
 	}
 	return KPOPBLOG_PATH . 'templates/app-shell.php';

@@ -242,6 +242,39 @@ try {
     $schedule = @($bundle.comebacks) | Where-Object { [string]$_.id -eq [string]$temporaryScheduleId } | Select-Object -First 1
     if (-not $schedule) { throw 'SEO smoke test temporary schedule is unavailable from WordPress.' }
 
+    $articleUrl = "$baseUrl/news/$($article.slug)"
+    $crawlerBodies = @{}
+    foreach ($agent in @('OAI-SearchBot', 'GPTBot', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot')) {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $articleUrl -Headers @{ 'User-Agent' = $agent } -TimeoutSec 30
+        if ($response.StatusCode -ne 200) { throw "Article request failed for $agent." }
+        foreach ($pattern in @(
+            [regex]::Escape([string]$article.title),
+            '<article[^>]+data-kpopblog-fallback="article"',
+            '<meta[^>]+name="description"',
+            '<link[^>]+rel="canonical"[^>]+/news/',
+            'application/ld\+json',
+            '"@type":"NewsArticle"'
+        )) {
+            if ($response.Content -notmatch $pattern) { throw "Article HTML is missing $pattern for $agent." }
+        }
+        $crawlerBodies[$agent] = $response.Content
+    }
+    $referenceBody = $crawlerBodies['OAI-SearchBot']
+    foreach ($body in $crawlerBodies.Values) {
+        if ($body -ne $referenceBody) { throw 'Crawler user agents received different article HTML.' }
+    }
+
+    $comebacks = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/comebacks" -Headers @{ 'User-Agent' = 'Claude-SearchBot' } -TimeoutSec 30
+    if ($comebacks.Content -notmatch '<section[^>]+data-kpopblog-fallback="comebacks"' -or $comebacks.Content -notmatch '"@type":"Event"') {
+        throw 'Comeback calendar is missing semantic fallback content or Event JSON-LD.'
+    }
+
+    $missingSlug = 'automation-discovery-missing-' + [guid]::NewGuid().ToString('N')
+    $missing = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/news/$missingSlug" -SkipHttpErrorCheck -TimeoutSec 30
+    if ($missing.StatusCode -ne 404 -or $missing.Content -notmatch 'noindex, nofollow') {
+        throw 'Missing article did not return a non-indexable 404.'
+    }
+
     $articlePath = '/news/' + [string]$article.slug
     $articlePattern = [regex]::Escape($articlePath)
     $scheduleAnchorPattern = [regex]::Escape('/comebacks#event-' + [string]$temporaryScheduleId)

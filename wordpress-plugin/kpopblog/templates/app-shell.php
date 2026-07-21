@@ -33,7 +33,8 @@ function kpopblog_strip_foreign_markup( $html ) {
 		return strpos( $m[0], 'kpopblog-app-css' ) !== false ? $m[0] : '';
 	}, $html );
 	$html = preg_replace_callback( '/<script\b[^>]*>.*?<\/script>/is', function ( $m ) {
-		return strpos( $m[0], 'kpopblog-app' ) !== false ? $m[0] : '';
+		$allowed = strpos( $m[0], 'kpopblog-app' ) !== false || strpos( $m[0], 'kpopblog-discovery-jsonld' ) !== false;
+		return $allowed ? $m[0] : '';
 	}, $html );
 	return $html;
 }

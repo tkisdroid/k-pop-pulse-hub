@@ -83,8 +83,9 @@ function kpopblog_shortcode( $atts ) {
 	wp_enqueue_style( 'kpopblog-app' );
 	wp_enqueue_script( 'kpopblog-app' );
 	return sprintf(
-		'<div id="kpopblog-root" data-initial-route="%s"></div>',
-		esc_attr( $atts['route'] )
+		'<div id="kpopblog-root" data-initial-route="%s">%s</div>',
+		esc_attr( $atts['route'] ),
+		function_exists( 'kpopblog_render_public_fallback' ) ? kpopblog_render_public_fallback() : ''
 	);
 }
 add_shortcode( 'kpopblog', 'kpopblog_shortcode' );
