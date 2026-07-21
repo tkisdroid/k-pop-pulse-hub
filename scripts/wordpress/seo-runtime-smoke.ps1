@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$InjectPostCreationParseFailure
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -11,6 +13,7 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 $projectName = 'k-pop-pulse-hub'
 $baseUrl = 'http://localhost:8088'
 $temporaryScheduleId = 0
+$fixtureMarker = 'seo-runtime-smoke:' + [guid]::NewGuid().ToString('N')
 
 function Invoke-WpCli {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
@@ -32,17 +35,87 @@ function Convert-WpCliJson {
 }
 
 function Get-NotificationState {
-    $stateScript = @'
+    param([Parameter(Mandatory = $true)][string]$Marker)
+    $stateScriptTemplate = @'
 global $wpdb;
 $jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 $fixture_title = 'Comeback: KpopBlog SEO runtime temporary schedule';
+$fixture_marker = '__FIXTURE_MARKER__';
 echo wp_json_encode( array(
-    'job_count'      => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" ),
-    'temp_job_count' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) ),
-    'next_scheduled' => (int) ( wp_next_scheduled( 'kpopblog_process_notification_jobs' ) ?: 0 ),
+    'job_count'        => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" ),
+    'temp_job_count'   => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) ),
+    'next_scheduled'   => (int) ( wp_next_scheduled( 'kpopblog_process_notification_jobs' ) ?: 0 ),
+    'marker_post_count'=> (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_type = %s AND pm.meta_key = %s AND pm.meta_value = %s",
+        'kb_comeback',
+        'kb_source',
+        $fixture_marker
+    ) ),
 ) );
 '@
+    $stateScript = $stateScriptTemplate.Replace('__FIXTURE_MARKER__', $Marker)
     return Convert-WpCliJson (Invoke-WpCli 'eval' $stateScript)
+}
+
+function Remove-TemporarySchedule {
+    param(
+        [Parameter(Mandatory = $true)][string]$Marker,
+        [Parameter(Mandatory = $true)][int]$ExpectedId
+    )
+    $cleanupScriptTemplate = @'
+global $wpdb;
+$fixture_marker = '__FIXTURE_MARKER__';
+$expected_id = __EXPECTED_ID__;
+$ids = $wpdb->get_col( $wpdb->prepare(
+    "SELECT DISTINCT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_type = %s AND pm.meta_key = %s AND pm.meta_value = %s",
+    'kb_comeback',
+    'kb_source',
+    $fixture_marker
+) );
+if ( ! $ids ) {
+    echo wp_json_encode( array( 'deleted_id' => 0, 'outbound_requests' => 0 ) );
+    return;
+}
+if ( 1 !== count( $ids ) ) {
+    throw new Exception( 'SEO smoke marker matched multiple posts; refusing cleanup' );
+}
+$post_id = (int) $ids[0];
+$post = get_post( $post_id );
+if ( ! $post || 'kb_comeback' !== $post->post_type || 'KpopBlog SEO runtime temporary schedule' !== $post->post_title ) {
+    throw new Exception( 'SEO smoke marker post identity mismatch; refusing cleanup' );
+}
+if ( $fixture_marker !== get_post_meta( $post_id, 'kb_source', true ) ) {
+    throw new Exception( 'SEO smoke marker meta mismatch; refusing cleanup' );
+}
+if ( $expected_id > 0 && $expected_id !== $post_id ) {
+    throw new Exception( 'SEO smoke post ID mismatch; refusing cleanup' );
+}
+$outbound_requests = 0;
+$http_guard = function () use ( &$outbound_requests ) {
+    $outbound_requests++;
+    return new WP_Error( 'seo_smoke_blocked_http', 'SEO smoke cleanup attempted an outbound HTTP request.' );
+};
+add_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
+try {
+    if ( ! wp_delete_post( $post_id, true ) || get_post( $post_id ) ) {
+        throw new Exception( 'SEO smoke marker post cleanup failed' );
+    }
+} finally {
+    remove_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
+}
+if ( 0 !== $outbound_requests ) {
+    throw new Exception( 'SEO smoke marker cleanup attempted an outbound webhook' );
+}
+echo wp_json_encode( array( 'deleted_id' => $post_id, 'outbound_requests' => $outbound_requests ) );
+'@
+    $cleanupScript = $cleanupScriptTemplate.Replace('__FIXTURE_MARKER__', $Marker).Replace('__EXPECTED_ID__', [string]$ExpectedId)
+    $cleanupResult = Convert-WpCliJson (Invoke-WpCli 'eval' $cleanupScript)
+    if ([int]$cleanupResult.outbound_requests -ne 0) {
+        throw 'SEO smoke cleanup attempted an outbound webhook.'
+    }
+    if ($ExpectedId -gt 0 -and [int]$cleanupResult.deleted_id -ne $ExpectedId) {
+        throw "SEO smoke cleanup did not delete expected post $ExpectedId."
+    }
 }
 
 function Assert-NotificationStateUnchanged {
@@ -50,16 +123,19 @@ function Assert-NotificationStateUnchanged {
         [Parameter(Mandatory = $true)][object]$Before,
         [Parameter(Mandatory = $true)][object]$After
     )
-    foreach ($property in @('job_count', 'temp_job_count', 'next_scheduled')) {
+    foreach ($property in @('job_count', 'temp_job_count', 'next_scheduled', 'marker_post_count')) {
         if ([string]$Before.$property -ne [string]$After.$property) {
             throw "SEO smoke fixture changed notification state $property from $($Before.$property) to $($After.$property)."
         }
     }
 }
 
-$notificationStateBefore = Get-NotificationState
+$notificationStateBefore = Get-NotificationState -Marker $fixtureMarker
 if ([int]$notificationStateBefore.temp_job_count -ne 0) {
     throw 'SEO smoke test found a pre-existing temporary schedule notification job.'
+}
+if ([int]$notificationStateBefore.marker_post_count -ne 0) {
+    throw 'SEO smoke test generated a duplicate unique fixture marker.'
 }
 
 try {
@@ -67,10 +143,11 @@ try {
     $article = @($bundle.articles) | Select-Object -First 1
     if (-not $article) { throw 'SEO smoke test requires one published WordPress article.' }
 
-    $fixture = @'
+    $fixtureTemplate = @'
 global $wpdb;
 $jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 $fixture_title = 'Comeback: KpopBlog SEO runtime temporary schedule';
+$fixture_marker = '__FIXTURE_MARKER__';
 $job_count_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
 $temp_job_count_before = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) );
 $next_scheduled_before = (int) ( wp_next_scheduled( 'kpopblog_process_notification_jobs' ) ?: 0 );
@@ -97,7 +174,7 @@ try {
     }
     update_post_meta( $post_id, 'kb_release_at', '2030-01-15T12:00:00+09:00' );
     update_post_meta( $post_id, 'kb_type', 'album' );
-    update_post_meta( $post_id, 'kb_source', 'seo-runtime-smoke' );
+    update_post_meta( $post_id, 'kb_source', $fixture_marker );
     $updated = $wpdb->update(
         $wpdb->posts,
         array( 'post_status' => 'publish' ),
@@ -142,7 +219,17 @@ try {
     remove_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
 }
 '@
-    $fixtureResult = Convert-WpCliJson (Invoke-WpCli 'eval' $fixture)
+    $fixture = $fixtureTemplate.Replace('__FIXTURE_MARKER__', $fixtureMarker)
+    $fixtureOutput = Invoke-WpCli 'eval' $fixture
+    if ($InjectPostCreationParseFailure) {
+        $fixtureOutputText = [string](@($fixtureOutput) | Select-Object -Last 1)
+        if ($fixtureOutputText -notmatch '"outbound_requests":0') {
+            throw 'Fault injection fixture did not prove zero outbound requests before parsing.'
+        }
+        Write-Host 'Fault injection confirmed outbound_requests=0 before PowerShell parse failure.'
+        $fixtureOutput = @('{"fault_injection":')
+    }
+    $fixtureResult = Convert-WpCliJson $fixtureOutput
     $temporaryScheduleId = [int]$fixtureResult.id
     if ($temporaryScheduleId -le 0) {
         throw 'SEO smoke test could not determine the temporary schedule ID.'
@@ -223,10 +310,8 @@ try {
         throw 'WordPress llms endpoint is missing published article or schedule links.'
     }
 } finally {
-    if ($temporaryScheduleId -gt 0) {
-        Invoke-WpCli 'post' 'delete' ([string]$temporaryScheduleId) '--force' | Out-Null
-    }
-    $notificationStateAfter = Get-NotificationState
+    Remove-TemporarySchedule -Marker $fixtureMarker -ExpectedId $temporaryScheduleId
+    $notificationStateAfter = Get-NotificationState -Marker $fixtureMarker
     Assert-NotificationStateUnchanged -Before $notificationStateBefore -After $notificationStateAfter
 }
 
