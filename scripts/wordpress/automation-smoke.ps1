@@ -49,24 +49,79 @@ if ( 10 !== $sanitized['max_items'] || false !== strpos( $sanitized['artist_focu
     throw new Exception( 'automation settings sanitization failed' );
 }
 
-$old_settings = get_option( 'kpopblog_automation', null );
-update_option( 'kpopblog_automation', array(
-    'enabled'       => 1,
-    'auto_publish'  => 1,
-    'model'         => 'gpt-5.6-luna',
-    'frequency'     => 'twicedaily',
-    'max_items'     => 4,
-    'artist_focus'  => 'BTS, BLACKPINK',
-), false );
-
-putenv( 'OPENAI_API_KEY=automation-smoke-key-not-real' );
-$captured_request = array();
-$mock_http = function ( $preempt, $args, $url ) use ( &$captured_request ) {
-    if ( 'https://api.openai.com/v1/responses' !== $url ) {
-        return $preempt;
+$fixture_response_id = 'resp_automation_smoke';
+$fixture_webhook_url = 'https://automation-smoke.invalid/webhook';
+$fixture_job_titles = array(
+    'New article: BTS confirms a new group release schedule',
+    'Comeback: BLACKPINK Seoul concert',
+);
+$get_fixture_job_ids = function () use ( $wpdb, $fixture_job_titles ) {
+    $placeholders = implode( ',', array_fill( 0, count( $fixture_job_titles ), '%s' ) );
+    return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}kb_notification_jobs WHERE title IN ({$placeholders})",
+        $fixture_job_titles
+    ) ) );
+};
+$get_marker_post_ids = function () use ( $wpdb, $fixture_response_id ) {
+    return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+        "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'kb_ai_response_id' AND meta_value = %s",
+        $fixture_response_id
+    ) ) );
+};
+$capture_cron_hook = function ( $hook ) {
+    $events = array();
+    foreach ( (array) _get_cron_array() as $timestamp => $hooks ) {
+        if ( isset( $hooks[ $hook ] ) ) {
+            $events[ (string) $timestamp ] = $hooks[ $hook ];
+        }
     }
-    $captured_request = $args;
-    $payload = array(
+    return $events;
+};
+$restore_cron_hook = function ( $hook, array $before, array $test_events ) {
+    $crons = (array) _get_cron_array();
+    $original_crons = $crons;
+    foreach ( $test_events as $timestamp => $events ) {
+        foreach ( $events as $event_key => $event ) {
+            if ( isset( $crons[ $timestamp ][ $hook ][ $event_key ] ) && $crons[ $timestamp ][ $hook ][ $event_key ] === $event ) {
+                unset( $crons[ $timestamp ][ $hook ][ $event_key ] );
+            }
+        }
+        if ( isset( $crons[ $timestamp ][ $hook ] ) && ! $crons[ $timestamp ][ $hook ] ) { unset( $crons[ $timestamp ][ $hook ] ); }
+        if ( isset( $crons[ $timestamp ] ) && ! $crons[ $timestamp ] ) { unset( $crons[ $timestamp ] ); }
+    }
+    foreach ( $before as $timestamp => $events ) {
+        foreach ( $events as $event_key => $event ) {
+            $crons[ $timestamp ][ $hook ][ $event_key ] = $event;
+        }
+    }
+    if ( $crons === $original_crons ) { return; }
+    $result = _set_cron_array( $crons, true );
+    if ( is_wp_error( $result ) ) {
+        throw new Exception( 'could not restore pre-existing cron state for ' . $hook . ': ' . $result->get_error_message() );
+    }
+};
+
+$old_settings = get_option( 'kpopblog_automation', null );
+$old_webhook_settings = get_option( KPOPBLOG_WEBHOOK_OPTION, null );
+$notification_job_ids_before = $get_fixture_job_ids();
+$notification_cron_before = $capture_cron_hook( 'kpopblog_process_notification_jobs' );
+$automation_cron_before = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
+$notification_cron_test_events = array();
+$automation_cron_test_events = array();
+$notification_lock_name = 'kpopblog_notification_job_lock';
+$notification_lock_active_before = get_transient( $notification_lock_name );
+$notification_lock_value_before = get_option( '_transient_' . $notification_lock_name, null );
+$notification_lock_timeout_before = get_option( '_transient_timeout_' . $notification_lock_name, null );
+$notification_lock_token = 'automation-smoke-' . wp_generate_uuid4();
+$notification_lock_owned = false;
+$notification_guard_timestamp = 0;
+$captured_request = array();
+$internal_http_requests = array();
+$blocked_external_requests = array();
+$mock_http = function ( $preempt, $args, $url ) use ( &$captured_request, &$internal_http_requests, &$blocked_external_requests ) {
+    if ( 'https://api.openai.com/v1/responses' === $url ) {
+        $captured_request = $args;
+        $payload = array(
         'id'     => 'resp_automation_smoke',
         'status' => 'completed',
         'output' => array(
@@ -112,25 +167,93 @@ $mock_http = function ( $preempt, $args, $url ) use ( &$captured_request ) {
             ),
         ),
     );
-    return array(
-        'headers'  => array( 'content-type' => 'application/json' ),
-        'body'     => wp_json_encode( $payload ),
-        'response' => array( 'code' => 200, 'message' => 'OK' ),
-        'cookies'  => array(),
-        'filename' => null,
-    );
+        return array(
+            'headers'  => array( 'content-type' => 'application/json' ),
+            'body'     => wp_json_encode( $payload ),
+            'response' => array( 'code' => 200, 'message' => 'OK' ),
+            'cookies'  => array(),
+            'filename' => null,
+        );
+    }
+
+    $parts = wp_parse_url( $url );
+    if ( is_array( $parts ) && 'http' === ( $parts['scheme'] ?? '' ) && 'wordpress' === ( $parts['host'] ?? '' ) && empty( $parts['port'] ) && empty( $parts['user'] ) && empty( $parts['pass'] ) ) {
+        $internal_http_requests[] = $url;
+        return false;
+    }
+
+    $blocked_external_requests[] = $url;
+    return new WP_Error( 'automation_smoke_blocked_http', 'Automation smoke blocked an external HTTP request.' );
 };
-add_filter( 'pre_http_request', $mock_http, 10, 3 );
 
 $created_ids = array();
+$test_notification_job_ids = array();
 $draft_id = 0;
 try {
+    if ( false !== $notification_lock_active_before ) {
+        throw new Exception( 'notification processing was already active before the automation smoke test' );
+    }
+    set_transient( $notification_lock_name, $notification_lock_token, 15 * MINUTE_IN_SECONDS );
+    if ( $notification_lock_token !== get_transient( $notification_lock_name ) ) {
+        throw new Exception( 'notification processing lock could not be acquired' );
+    }
+    $notification_lock_owned = true;
+
+    wp_clear_scheduled_hook( 'kpopblog_process_notification_jobs' );
+    $notification_guard_timestamp = time() + DAY_IN_SECONDS;
+    if ( ! wp_schedule_single_event( $notification_guard_timestamp, 'kpopblog_process_notification_jobs' ) ) {
+        throw new Exception( 'notification processing guard cron could not be scheduled' );
+    }
+    $notification_cron_after_guard = $capture_cron_hook( 'kpopblog_process_notification_jobs' );
+    foreach ( $notification_cron_after_guard as $timestamp => $events ) {
+        foreach ( $events as $event_key => $event ) {
+            if ( ! isset( $notification_cron_before[ $timestamp ][ $event_key ] ) ) {
+                $notification_cron_test_events[ $timestamp ][ $event_key ] = $event;
+            }
+        }
+    }
+
+    update_option( KPOPBLOG_WEBHOOK_OPTION, array(
+        'url'     => $fixture_webhook_url,
+        'secret'  => 'automation-smoke-secret-not-real',
+        'enabled' => 1,
+    ), false );
+    update_option( 'kpopblog_automation', array(
+        'enabled'       => 1,
+        'auto_publish'  => 1,
+        'model'         => 'gpt-5.6-luna',
+        'frequency'     => 'twicedaily',
+        'max_items'     => 4,
+        'artist_focus'  => 'BTS, BLACKPINK',
+    ), false );
+    $automation_cron_after_settings = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
+    foreach ( $automation_cron_after_settings as $timestamp => $events ) {
+        foreach ( $events as $event_key => $event ) {
+            if ( ! isset( $automation_cron_before[ $timestamp ][ $event_key ] ) ) {
+                $automation_cron_test_events[ $timestamp ][ $event_key ] = $event;
+            }
+        }
+    }
+
+    putenv( 'OPENAI_API_KEY=automation-smoke-key-not-real' );
+    add_filter( 'pre_http_request', $mock_http, 10, 3 );
+
     $result = kpopblog_run_automation( 'smoke' );
     if ( is_wp_error( $result ) ) {
         throw new Exception( 'automation run failed: ' . $result->get_error_message() );
     }
+    $provenance_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+        "SELECT wp_post_id FROM {$wpdb->prefix}kb_automation_items WHERE response_id = %s",
+        $fixture_response_id
+    ) ) );
+    $created_ids = array_values( array_unique( array_merge( $provenance_ids, $get_marker_post_ids() ) ) );
+    $test_notification_job_ids = array_values( array_diff( $get_fixture_job_ids(), $notification_job_ids_before ) );
+
     if ( 2 !== $result['discovered'] || 2 !== $result['created'] ) {
         throw new Exception( 'automation did not persist both verified items: ' . wp_json_encode( $result ) );
+    }
+    if ( 2 !== count( $provenance_ids ) || 2 !== count( $created_ids ) ) {
+        throw new Exception( 'automation provenance rows missing' );
     }
 
     $body = isset( $captured_request['body'] ) ? json_decode( $captured_request['body'], true ) : null;
@@ -144,10 +267,21 @@ try {
     if ( 'Bearer automation-smoke-key-not-real' !== $authorization ) {
         throw new Exception( 'server-side API credential was not applied' );
     }
-
-    $created_ids = $wpdb->get_col( "SELECT wp_post_id FROM {$wpdb->prefix}kb_automation_items WHERE response_id = 'resp_automation_smoke'" );
-    if ( 2 !== count( $created_ids ) ) {
-        throw new Exception( 'automation provenance rows missing' );
+    if ( ! in_array( $fixture_webhook_url, $blocked_external_requests, true ) ) {
+        throw new Exception( 'notification webhook was not intercepted by the HTTP isolation guard' );
+    }
+    if ( 2 !== count( $blocked_external_requests ) ) {
+        throw new Exception( 'automation did not emit exactly two isolated notification webhooks' );
+    }
+    foreach ( $blocked_external_requests as $blocked_url ) {
+        if ( $fixture_webhook_url !== $blocked_url ) {
+            throw new Exception( 'unexpected external HTTP request was blocked: ' . $blocked_url );
+        }
+    }
+    foreach ( $internal_http_requests as $internal_url ) {
+        if ( 0 !== strpos( $internal_url, 'http://wordpress/' ) ) {
+            throw new Exception( 'external HTTP request escaped the isolation guard: ' . $internal_url );
+        }
     }
     foreach ( $created_ids as $post_id ) {
         if ( '1' !== get_post_meta( $post_id, 'kb_ai_generated', true ) || '' === get_post_meta( $post_id, 'kb_source_url', true ) ) {
@@ -188,7 +322,37 @@ try {
     $article_slug = get_post_field( 'post_name', $article_id );
     $article_path = '/news/' . $article_slug;
     $draft_slug = get_post_field( 'post_name', $draft_id );
+    $draft_title = get_the_title( $draft_id );
     $draft_content = get_post_field( 'post_content', $draft_id );
+    $draft_leaks = array( $draft_slug, $draft_title, $draft_content );
+    $internal_leaks = array(
+        'automation-smoke-key-not-real',
+        'automation-smoke-secret-not-real',
+        $fixture_webhook_url,
+        $fixture_response_id,
+        'gpt-5.6-luna',
+        'kb_ai_generated',
+        'kb_ai_model',
+        'kb_ai_response_id',
+        'kb_ai_confidence',
+        'kb_verified_at',
+        'kb_automation_key',
+        '0.96',
+        '0.98',
+        'data-confidence="0.96"',
+        'data-confidence="0.98"',
+        '"confidence":0.96',
+        '"confidence":0.98',
+        'confidence&quot;:0.96',
+        'confidence&quot;:0.98',
+    );
+    $assert_absent = function ( $surface, $content, array $needles ) {
+        foreach ( $needles as $needle ) {
+            if ( '' !== $needle && false !== strpos( $content, $needle ) ) {
+                throw new Exception( $surface . ' exposed private discovery data: ' . $needle );
+            }
+        }
+    };
     $reference_html = '';
     foreach ( array( 'OAI-SearchBot', 'GPTBot', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot' ) as $agent ) {
         $response = $fetch( $article_path, $agent );
@@ -199,9 +363,7 @@ try {
         foreach ( array( get_the_title( $article_id ), 'data-kpopblog-fallback="article"', 'NewsArticle', 'https://example.com/bts-release' ) as $needle ) {
             if ( false === strpos( $html, $needle ) ) { throw new Exception( 'crawler article response missing ' . $needle ); }
         }
-        if ( false !== strpos( $html, $draft_slug ) ) {
-            throw new Exception( 'crawler article response exposed the private draft slug' );
-        }
+        $assert_absent( 'crawler article response for ' . $agent, $html, array_merge( $draft_leaks, $internal_leaks ) );
         if ( '' === $reference_html ) { $reference_html = $html; }
         if ( $html !== $reference_html ) { throw new Exception( 'crawler-specific HTML detected' ); }
     }
@@ -216,9 +378,7 @@ try {
         if ( false === strpos( $machine_documents[ $path ], $article_path ) ) {
             throw new Exception( 'machine discovery response missing article path for ' . $path );
         }
-        if ( false !== strpos( $machine_documents[ $path ], $draft_slug ) ) {
-            throw new Exception( 'machine discovery response exposed the private draft slug for ' . $path );
-        }
+        $assert_absent( 'machine discovery response for ' . $path, $machine_documents[ $path ], array_merge( $draft_leaks, $internal_leaks ) );
     }
 
     $schedule_path = '/comebacks#event-' . $schedule_id;
@@ -236,9 +396,7 @@ try {
     if ( false === strpos( $comebacks_html, get_the_title( $schedule_id ) ) ) {
         throw new Exception( 'crawler comeback response missing automation schedule title' );
     }
-    if ( false !== strpos( $comebacks_html, $draft_slug ) ) {
-        throw new Exception( 'crawler comeback response exposed the private draft slug' );
-    }
+    $assert_absent( 'crawler comeback response', $comebacks_html, array_merge( $draft_leaks, $internal_leaks ) );
 
     $missing_slug = 'automation-discovery-missing-' . wp_generate_uuid4();
     foreach ( array( '/news/' . $draft_slug, '/news/' . $missing_slug ) as $path ) {
@@ -250,8 +408,16 @@ try {
         if ( false === strpos( $html, 'noindex, nofollow' ) ) {
             throw new Exception( 'private or missing article did not return noindex, nofollow for ' . $path );
         }
-        if ( false !== strpos( $html, $draft_content ) ) {
-            throw new Exception( 'private or missing article exposed draft body content for ' . $path );
+        $assert_absent(
+            'private or missing article response for ' . $path,
+            $html,
+            array_merge( $draft_leaks, $internal_leaks, array( 'NewsArticle', 'data-kpopblog-fallback="article"' ) )
+        );
+    }
+
+    foreach ( $internal_http_requests as $internal_url ) {
+        if ( 0 !== strpos( $internal_url, 'http://wordpress/' ) ) {
+            throw new Exception( 'external HTTP request escaped the isolation guard: ' . $internal_url );
         }
     }
 
@@ -274,26 +440,85 @@ try {
         throw new Exception( 'automation cron event missing' );
     }
 } finally {
-    remove_filter( 'pre_http_request', $mock_http, 10 );
-    putenv( 'OPENAI_API_KEY' );
-    wp_set_current_user( 0 );
-    wp_clear_scheduled_hook( 'kpopblog_run_scheduled_automation' );
-    if ( $draft_id ) { wp_delete_post( (int) $draft_id, true ); }
-    foreach ( $created_ids as $post_id ) { wp_delete_post( (int) $post_id, true ); }
-    $notification_job_ids = $wpdb->get_col(
-        "SELECT id FROM {$wpdb->prefix}kb_notification_jobs WHERE title IN ('New article: BTS confirms a new group release schedule','Comeback: BLACKPINK Seoul concert')"
-    );
-    foreach ( $notification_job_ids as $notification_job_id ) {
+    if ( $draft_id && ! is_wp_error( $draft_id ) ) { wp_delete_post( (int) $draft_id, true ); }
+    $cleanup_post_ids = array_values( array_unique( array_merge( array_map( 'intval', $created_ids ), $get_marker_post_ids() ) ) );
+    foreach ( $cleanup_post_ids as $post_id ) { wp_delete_post( (int) $post_id, true ); }
+
+    $test_notification_job_ids = array_values( array_unique( array_merge(
+        array_map( 'intval', $test_notification_job_ids ),
+        array_values( array_diff( $get_fixture_job_ids(), $notification_job_ids_before ) )
+    ) ) );
+    foreach ( $test_notification_job_ids as $notification_job_id ) {
         $wpdb->delete( $wpdb->prefix . 'kb_notifications', array( 'job_id' => (int) $notification_job_id ), array( '%d' ) );
         $wpdb->delete( $wpdb->prefix . 'kb_notification_jobs', array( 'id' => (int) $notification_job_id ), array( '%d' ) );
     }
-    $wpdb->query( "DELETE FROM {$wpdb->prefix}kb_automation_items WHERE response_id = 'resp_automation_smoke'" );
+    $wpdb->delete( $wpdb->prefix . 'kb_automation_items', array( 'response_id' => $fixture_response_id ), array( '%s' ) );
     $wpdb->query( "DELETE FROM {$wpdb->prefix}kb_automation_runs WHERE trigger_type = 'smoke'" );
+
+    remove_action( 'update_option_' . KPOPBLOG_AUTOMATION_OPTION, 'kpopblog_sync_automation_schedule', 10 );
     if ( null === $old_settings ) {
         delete_option( 'kpopblog_automation' );
     } else {
         update_option( 'kpopblog_automation', $old_settings, false );
     }
+    add_action( 'update_option_' . KPOPBLOG_AUTOMATION_OPTION, 'kpopblog_sync_automation_schedule', 10, 0 );
+    if ( null === $old_webhook_settings ) {
+        delete_option( KPOPBLOG_WEBHOOK_OPTION );
+    } else {
+        update_option( KPOPBLOG_WEBHOOK_OPTION, $old_webhook_settings, false );
+    }
+
+    $notification_lock_error = '';
+    try {
+        if ( $notification_guard_timestamp ) {
+            wp_unschedule_event( $notification_guard_timestamp, 'kpopblog_process_notification_jobs' );
+        }
+        $restore_cron_hook( 'kpopblog_process_notification_jobs', $notification_cron_before, $notification_cron_test_events );
+        $restore_cron_hook( 'kpopblog_run_scheduled_automation', $automation_cron_before, $automation_cron_test_events );
+    } finally {
+        if ( $notification_lock_owned ) {
+            if ( $notification_lock_token !== get_transient( $notification_lock_name ) ) {
+                $notification_lock_error = 'notification processing lock ownership was lost during cleanup';
+            } else {
+                delete_transient( $notification_lock_name );
+                if ( null !== $notification_lock_value_before ) {
+                    update_option( '_transient_' . $notification_lock_name, $notification_lock_value_before, false );
+                }
+                if ( null !== $notification_lock_timeout_before ) {
+                    update_option( '_transient_timeout_' . $notification_lock_name, $notification_lock_timeout_before, false );
+                }
+            }
+        }
+
+        remove_filter( 'pre_http_request', $mock_http, 10 );
+        putenv( 'OPENAI_API_KEY' );
+        wp_set_current_user( 0 );
+        if ( '' !== $notification_lock_error ) {
+            throw new Exception( $notification_lock_error );
+        }
+    }
+}
+
+if ( $get_marker_post_ids() ) {
+    throw new Exception( 'automation marker posts remained after cleanup' );
+}
+$fixture_job_ids_after = $get_fixture_job_ids();
+sort( $fixture_job_ids_after );
+sort( $notification_job_ids_before );
+if ( $fixture_job_ids_after !== $notification_job_ids_before ) {
+    throw new Exception( 'automation notification jobs were not restored to their pre-test state' );
+}
+if ( $capture_cron_hook( 'kpopblog_process_notification_jobs' ) !== $notification_cron_before ) {
+    throw new Exception( 'notification processing cron was not restored to its pre-test state' );
+}
+if ( $capture_cron_hook( 'kpopblog_run_scheduled_automation' ) !== $automation_cron_before ) {
+    throw new Exception( 'automation cron was not restored to its pre-test state' );
+}
+if ( get_option( 'kpopblog_automation', null ) !== $old_settings || get_option( KPOPBLOG_WEBHOOK_OPTION, null ) !== $old_webhook_settings ) {
+    throw new Exception( 'automation or webhook settings were not restored after cleanup' );
+}
+if ( get_option( '_transient_' . $notification_lock_name, null ) !== $notification_lock_value_before || get_option( '_transient_timeout_' . $notification_lock_name, null ) !== $notification_lock_timeout_before ) {
+    throw new Exception( 'notification processing lock was not restored to its pre-test state' );
 }
 '@
 
