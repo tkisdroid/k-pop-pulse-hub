@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$InjectAutomationFailure
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -12,6 +14,9 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 
 $assertions = @'
 global $wpdb, $submenu;
+
+$failure_path_requested = __INJECT_AUTOMATION_FAILURE__;
+$inject_next_openai_failure = $failure_path_requested;
 
 if ( ! function_exists( 'kpopblog_run_automation' ) ) {
     throw new Exception( 'automation runtime missing' );
@@ -68,11 +73,10 @@ $get_marker_post_ids = function () use ( $wpdb, $fixture_response_id ) {
         $fixture_response_id
     ) ) );
 };
-$get_fixture_run_ids = function () use ( $wpdb, $fixture_response_id ) {
-    return array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
-        "SELECT id FROM {$wpdb->prefix}kb_automation_runs WHERE trigger_type = 'smoke' AND response_id = %s",
-        $fixture_response_id
-    ) ) );
+$get_smoke_run_ids = function () use ( $wpdb ) {
+    return array_map( 'intval', $wpdb->get_col(
+        "SELECT id FROM {$wpdb->prefix}kb_automation_runs WHERE trigger_type = 'smoke'"
+    ) );
 };
 $capture_cron_hook = function ( $hook ) {
     $events = array();
@@ -124,7 +128,7 @@ $automation_last_success_exists_before = 1 === (int) $wpdb->get_var( $wpdb->prep
 ) );
 $automation_last_success_before = $automation_last_success_exists_before ? get_option( 'kpopblog_automation_last_success' ) : null;
 $notification_job_ids_before = $get_fixture_job_ids();
-$fixture_run_ids_before = $get_fixture_run_ids();
+$smoke_run_ids_before = $get_smoke_run_ids();
 $notification_cron_before = $capture_cron_hook( 'kpopblog_process_notification_jobs' );
 $automation_cron_before = $capture_cron_hook( 'kpopblog_run_scheduled_automation' );
 $notification_cron_test_events = array();
@@ -140,9 +144,19 @@ $automation_guard_timestamp = 0;
 $captured_request = array();
 $internal_http_requests = array();
 $blocked_external_requests = array();
-$mock_http = function ( $preempt, $args, $url ) use ( &$captured_request, &$internal_http_requests, &$blocked_external_requests ) {
+$mock_http = function ( $preempt, $args, $url ) use ( &$captured_request, &$internal_http_requests, &$blocked_external_requests, &$inject_next_openai_failure ) {
     if ( 'https://api.openai.com/v1/responses' === $url ) {
         $captured_request = $args;
+        if ( $inject_next_openai_failure ) {
+            $inject_next_openai_failure = false;
+            return array(
+                'headers'  => array( 'content-type' => 'application/json' ),
+                'body'     => wp_json_encode( array( 'error' => array( 'message' => 'Injected automation smoke failure.' ) ) ),
+                'response' => array( 'code' => 500, 'message' => 'Injected failure' ),
+                'cookies'  => array(),
+                'filename' => null,
+            );
+        }
         $payload = array(
         'id'     => 'resp_automation_smoke',
         'status' => 'completed',
@@ -212,6 +226,15 @@ $created_ids = array();
 $test_notification_job_ids = array();
 $test_run_ids = array();
 $draft_id = 0;
+$run_smoke_automation = function () use ( $get_smoke_run_ids, &$test_run_ids ) {
+    $run_ids_before = $get_smoke_run_ids();
+    try {
+        return kpopblog_run_automation( 'smoke' );
+    } finally {
+        $new_run_ids = array_values( array_diff( $get_smoke_run_ids(), $run_ids_before ) );
+        $test_run_ids = array_values( array_unique( array_merge( $test_run_ids, $new_run_ids ) ) );
+    }
+};
 try {
     if ( false !== $notification_lock_active_before ) {
         throw new Exception( 'notification processing was already active before the automation smoke test' );
@@ -254,11 +277,17 @@ try {
     putenv( 'OPENAI_API_KEY=automation-smoke-key-not-real' );
     add_filter( 'pre_http_request', $mock_http, 10, 3 );
 
-    $result = kpopblog_run_automation( 'smoke' );
+    if ( $failure_path_requested ) {
+        $failed_result = $run_smoke_automation();
+        if ( ! is_wp_error( $failed_result ) ) {
+            throw new Exception( 'injected automation failure did not return WP_Error' );
+        }
+    }
+
+    $result = $run_smoke_automation();
     if ( is_wp_error( $result ) ) {
         throw new Exception( 'automation run failed: ' . $result->get_error_message() );
     }
-    $test_run_ids = array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) );
     $provenance_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
         "SELECT wp_post_id FROM {$wpdb->prefix}kb_automation_items WHERE response_id = %s",
         $fixture_response_id
@@ -438,11 +467,7 @@ try {
         }
     }
 
-    $second = kpopblog_run_automation( 'smoke' );
-    $test_run_ids = array_values( array_unique( array_merge(
-        array_map( 'intval', $test_run_ids ),
-        array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) )
-    ) ) );
+    $second = $run_smoke_automation();
     if ( is_wp_error( $second ) || 0 !== $second['created'] || 2 !== $second['skipped'] ) {
         throw new Exception( 'automation deduplication failed' );
     }
@@ -485,15 +510,11 @@ try {
         $wpdb->delete( $wpdb->prefix . 'kb_notification_jobs', array( 'id' => (int) $notification_job_id ), array( '%d' ) );
     }
 
-    $test_run_ids = array_values( array_unique( array_merge(
-        array_map( 'intval', $test_run_ids ),
-        array_values( array_diff( $get_fixture_run_ids(), $fixture_run_ids_before ) )
-    ) ) );
     foreach ( $test_run_ids as $test_run_id ) {
         $wpdb->delete(
             $wpdb->prefix . 'kb_audit_log',
-            array( 'action' => 'automation_completed', 'object_type' => 'automation_run', 'object_id' => (int) $test_run_id ),
-            array( '%s', '%s', '%d' )
+            array( 'object_type' => 'automation_run', 'object_id' => (int) $test_run_id ),
+            array( '%s', '%d' )
         );
     }
     $wpdb->delete( $wpdb->prefix . 'kb_automation_items', array( 'response_id' => $fixture_response_id ), array( '%s' ) );
@@ -565,15 +586,15 @@ sort( $notification_job_ids_before );
 if ( $fixture_job_ids_after !== $notification_job_ids_before ) {
     throw new Exception( 'automation notification jobs were not restored to their pre-test state' );
 }
-$fixture_run_ids_after = $get_fixture_run_ids();
-sort( $fixture_run_ids_after );
-sort( $fixture_run_ids_before );
-if ( $fixture_run_ids_after !== $fixture_run_ids_before ) {
+$smoke_run_ids_after = $get_smoke_run_ids();
+sort( $smoke_run_ids_after );
+sort( $smoke_run_ids_before );
+if ( $smoke_run_ids_after !== $smoke_run_ids_before ) {
     throw new Exception( 'automation smoke runs were not restored to their pre-test state' );
 }
 foreach ( $test_run_ids as $test_run_id ) {
     $test_audit_count = (int) $wpdb->get_var( $wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->prefix}kb_audit_log WHERE action = 'automation_completed' AND object_type = 'automation_run' AND object_id = %d",
+        "SELECT COUNT(*) FROM {$wpdb->prefix}kb_audit_log WHERE object_type = 'automation_run' AND object_id = %d",
         $test_run_id
     ) );
     if ( 0 !== $test_audit_count ) {
@@ -603,6 +624,9 @@ if ( get_option( '_transient_' . $notification_lock_name, null ) !== $notificati
     throw new Exception( 'notification processing lock was not restored to its pre-test state' );
 }
 '@
+
+$injectFailureLiteral = if ($InjectAutomationFailure) { 'true' } else { 'false' }
+$assertions = $assertions.Replace('__INJECT_AUTOMATION_FAILURE__', $injectFailureLiteral)
 
 docker compose --env-file $envFile -f $compose run --rm --no-deps cli eval $assertions
 if ($LASTEXITCODE -ne 0) {
