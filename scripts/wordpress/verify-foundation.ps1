@@ -65,6 +65,7 @@ try {
             'kpopblog/includes/ads.php',
             'kpopblog/includes/automation.php',
             'kpopblog/includes/automation-admin.php',
+            'kpopblog/includes/discoverability.php',
             'kpopblog/assets/manifest.json'
         )
         foreach ($entry in $requiredEntries) {

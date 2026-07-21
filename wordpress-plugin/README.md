@@ -109,6 +109,12 @@ does not remove posts, users, settings, subscriptions, or the audit table. No
 repository script removes the named Docker volumes, so local WordPress and
 MariaDB data remain available across ordinary bootstrap and verification runs.
 
+### AI and search discoverability
+
+Published WordPress articles are present in the initial `/news/{slug}` HTML with canonical metadata and `NewsArticle` JSON-LD before the React application starts. The `/comebacks` response includes a semantic schedule fallback and `Event` structured data. React replaces this fallback in JavaScript-capable browsers; crawlers and no-script clients receive the same published WordPress content.
+
+The plugin serves `/robots.txt`, `/sitemap.xml`, `/rss.xml`, and `/llms.txt` from published WordPress records. Search, user-directed AI retrieval, and model-training crawlers are allowed. Drafts, password-protected content, administrator routes, authentication routes, and private notification APIs are excluded.
+
 ### Design/menu parity with the Lovable build
 
 The "full page" template (`includes/template.php` +

@@ -39,6 +39,19 @@ The release verification keeps the initial WordPress application entry below
 200 KiB gzip and the shared stylesheet below 25 KiB gzip. Route-level screens
 remain lazy-loaded from separate chunks.
 
+== AI and search discoverability ==
+
+Published articles are present in the initial /news/{slug} HTML with canonical
+metadata and NewsArticle JSON-LD. /comebacks includes a semantic schedule
+fallback and Event structured data. React replaces the fallback in browsers;
+crawlers and no-script clients receive the same published WordPress content.
+
+The plugin serves /robots.txt, /sitemap.xml, /rss.xml, and /llms.txt from
+published WordPress records. Search, user-directed AI retrieval, and
+model-training crawlers are allowed. Drafts, password-protected content,
+administrator and authentication routes, and private notification APIs are
+excluded.
+
 == Installation ==
 
 1. Build the React app and copy the bundle into /assets:
