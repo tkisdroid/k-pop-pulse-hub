@@ -75,6 +75,13 @@ function kpopblog_field_schema( $post_type ) {
 				array( 'key' => 'kb_week_start_date', 'label' => 'Week start date', 'type' => 'date' ),
 				array( 'key' => 'kb_entries', 'label' => 'Entries', 'type' => 'chart_entries' ),
 			);
+		case 'kb_video':
+			return array(
+				array( 'key' => 'kb_youtube_id', 'label' => 'YouTube video ID', 'type' => 'text', 'placeholder' => 'dQw4w9WgXcQ' ),
+				array( 'key' => 'kb_artist_slug', 'label' => 'Artist', 'type' => 'artist_select' ),
+				array( 'key' => 'kb_video_category', 'label' => 'Category', 'type' => 'select', 'options' => array( 'MV' => 'Music video', 'Performance' => 'Performance', 'Interview' => 'Interview', 'Other' => 'Other' ) ),
+				array( 'key' => 'kb_duration', 'label' => 'Duration', 'type' => 'text', 'placeholder' => '3:45' ),
+			);
 		case 'kb_thread':
 			return array(
 				array( 'key' => 'kb_category_slug', 'label' => 'Category slug', 'type' => 'text', 'placeholder' => 'general' ),
@@ -89,6 +96,13 @@ function kpopblog_field_schema( $post_type ) {
 				array( 'key' => 'kb_artist_slug', 'label' => 'Artist', 'type' => 'artist_select', 'allow_empty' => true ),
 				array( 'key' => 'kb_options', 'label' => 'Options', 'type' => 'poll_options' ),
 			);
+		case 'kb_submission':
+			return array(
+				array( 'key' => 'kb_submission_type', 'label' => 'Submission type', 'type' => 'select', 'options' => array(
+					'news-tip' => 'News tip', 'article-draft' => 'Article draft', 'artist-correction' => 'Artist correction',
+					'comeback-event' => 'Comeback event', 'translation-request' => 'Translation request',
+				) ),
+			);
 	}
 	return array();
 }
@@ -96,7 +110,7 @@ function kpopblog_field_schema( $post_type ) {
 /* ---------- meta box registration ---------- */
 
 function kpopblog_add_meta_boxes() {
-	foreach ( array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_thread', 'kb_poll' ) as $post_type ) {
+	foreach ( array( 'post', 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_video', 'kb_thread', 'kb_poll', 'kb_submission' ) as $post_type ) {
 		add_meta_box( 'kpopblog_details', 'KpopBlog Details', 'kpopblog_render_meta_box', $post_type, 'normal', 'high' );
 	}
 }

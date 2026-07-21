@@ -1,12 +1,12 @@
 <?php
 /**
  * Plugin Name:       KpopBlog
- * Plugin URI:        https://kpopblog.com
- * Description:       Premium K-pop community blog. Manage articles, artists, members, comebacks, charts, forum threads and polls from the WordPress admin, then render the full React front-end with the [kpopblog] shortcode or the "KpopBlog App" Gutenberg block.
- * Version:           1.2.0
+ * Plugin URI:        https://thekpopblog.com
+ * Description:       K-pop publishing and community platform with articles, artists, videos, comebacks, forums, polls, submissions, subscriptions, notifications, advertising, and source-grounded content automation managed from WordPress.
+ * Version:           1.3.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
- * Author:            kpopblog.com
+ * Author:            thekpopblog.com
  * License:           GPL-2.0-or-later
  * Text Domain:       kpopblog
  *
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.2.0' );
+define( 'KPOPBLOG_VERSION', '1.3.0' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );

@@ -1,6 +1,6 @@
 <?php
 /**
- * Custom Post Types — every content surface visible on kpopblog.com is editable
+ * Custom Post Types — every content surface visible on thekpopblog.com is editable
  * from the WordPress admin. Articles re-use the built-in "post" type so editors
  * keep the standard authoring UX (Gutenberg, categories, tags, featured image).
  */
@@ -29,6 +29,11 @@ function kpopblog_register_cpts() {
 			'icon' => 'dashicons-chart-bar', 'slug' => 'charts',
 			'supports' => array( 'title', 'editor' ),
 		),
+		'kb_video' => array(
+			'singular' => 'Video', 'plural' => 'Videos',
+			'icon' => 'dashicons-video-alt3', 'slug' => 'videos',
+			'supports' => array( 'title', 'editor', 'thumbnail', 'author', 'comments' ),
+		),
 		'kb_thread' => array(
 			'singular' => 'Forum thread', 'plural' => 'Forum threads',
 			'icon' => 'dashicons-format-chat', 'slug' => 'threads',
@@ -38,6 +43,12 @@ function kpopblog_register_cpts() {
 			'singular' => 'Community post', 'plural' => 'Community posts',
 			'icon' => 'dashicons-format-status', 'slug' => 'community',
 			'supports' => array( 'editor', 'author', 'comments', 'custom-fields' ),
+			'public' => false, 'has_archive' => false, 'rewrite' => false,
+		),
+		'kb_submission' => array(
+			'singular' => 'Submission', 'plural' => 'Submissions',
+			'icon' => 'dashicons-email-alt', 'slug' => 'submissions',
+			'supports' => array( 'title', 'editor', 'author' ),
 			'public' => false, 'has_archive' => false, 'rewrite' => false,
 		),
 		'kb_poll' => array(
@@ -70,7 +81,7 @@ function kpopblog_register_cpts() {
 	}
 
 	// Taxonomies shared with native posts (articles).
-	register_taxonomy( 'kb_artist_tag', array( 'post', 'kb_thread', 'kb_comeback', 'kb_poll' ), array(
+	register_taxonomy( 'kb_artist_tag', array( 'post', 'kb_thread', 'kb_comeback', 'kb_video', 'kb_poll' ), array(
 		'label'        => 'Related artists',
 		'public'       => true,
 		'show_in_rest' => true,

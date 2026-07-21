@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { demoData } from "@/data/demo";
 
-// TODO: replace with your project URL once a project name or custom domain is set.
-const BASE_URL = "";
+const BASE_URL = "https://thekpopblog.com";
 
 interface Entry { path: string; lastmod?: string; changefreq?: string; priority?: string }
 

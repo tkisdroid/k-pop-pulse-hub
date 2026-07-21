@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { useRuntimeData } from "@/services/cms/runtimeData";
+import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
 
 export const Route = createFileRoute("/member/$slug")({
   head: ({ params }) => buildHead({ title: "Member", canonical: `/member/${params.slug}` }),
@@ -35,7 +36,7 @@ function MemberPage() {
         </div>
         <h2 className="font-display text-xl font-bold mt-6 mb-2">Facts</h2>
         <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">{m.facts.map((f: string, i: number) => <li key={i}>{f}</li>)}</ul>
-        <div className="mt-6 flex gap-2"><Button>Follow</Button><Button variant="outline">Suggest correction</Button></div>
+        <div className="mt-6 flex gap-2">{group && <FollowArtistButton artist={group} />}<Button variant="outline" asChild><Link to="/submit">Suggest correction</Link></Button></div>
       </div>
     </div>
   );

@@ -51,15 +51,17 @@ function Login() {
       ) : (
         <button onClick={() => setNotice("Magic link activates once Supabase is connected.")} className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground">Send magic link instead</button>
       )}
-      <div className="my-4 text-xs text-muted-foreground text-center">or continue with</div>
-      <div className="grid grid-cols-2 gap-2">
-        {SOCIAL.map(([l, k]) => <Button key={k} variant="outline" onClick={async () => { const r = await signInWithProvider(k as any); setNotice(r.message); }}>{l}</Button>)}
-      </div>
       {!isWordpress && (
-        <div className="mt-6 p-3 rounded-md bg-muted text-xs space-y-2">
-          <div className="font-medium">Demo login</div>
-          <div className="flex flex-wrap gap-1">{(["member", "moderator", "editor", "admin"] as const).map((r) => <Button key={r} size="sm" variant="secondary" onClick={async () => { await signInDemo(r); nav({ to: "/" }); }}>{r}</Button>)}</div>
-        </div>
+        <>
+          <div className="my-4 text-xs text-muted-foreground text-center">or continue with</div>
+          <div className="grid grid-cols-2 gap-2">
+            {SOCIAL.map(([l, k]) => <Button key={k} variant="outline" onClick={async () => { const r = await signInWithProvider(k as any); setNotice(r.message); }}>{l}</Button>)}
+          </div>
+          <div className="mt-6 p-3 rounded-md bg-muted text-xs space-y-2">
+            <div className="font-medium">Demo login</div>
+            <div className="flex flex-wrap gap-1">{(["member", "moderator", "editor", "admin"] as const).map((r) => <Button key={r} size="sm" variant="secondary" onClick={async () => { await signInDemo(r); nav({ to: "/" }); }}>{r}</Button>)}</div>
+          </div>
+        </>
       )}
       {notice && <p className="mt-3 text-xs text-muted-foreground bg-accent/40 rounded p-2">{notice}</p>}
       <p className="mt-6 text-sm text-center">No account? <Link to="/signup" className="text-primary">Sign up</Link></p>

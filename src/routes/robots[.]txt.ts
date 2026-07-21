@@ -12,7 +12,7 @@ export const Route = createFileRoute("/robots.txt")({
           "Disallow: /moderation",
           "Disallow: /onboarding",
           "",
-          "Sitemap: /sitemap.xml",
+          "Sitemap: https://thekpopblog.com/sitemap.xml",
           "",
         ].join("\n");
         return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" } });

@@ -21,6 +21,9 @@ export const demoCommunityProvider: CommunityProvider = {
     };
     return { item, status: "publish" };
   },
+  async createSubmission() {
+    return { id: `demo-${Date.now()}`, status: "pending" };
+  },
   async listCategories() {
     return demoData.categories;
   },

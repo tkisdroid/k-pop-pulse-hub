@@ -151,6 +151,20 @@ export interface ComebackEvent {
   threadId?: string;
 }
 
+export interface Video {
+  id: string;
+  slug?: string;
+  title: string;
+  artistId: string;
+  artistSlug: string;
+  category: string;
+  youtubeId: string;
+  thumbnail: string;
+  duration: string;
+  description?: string;
+  commentCount?: number;
+}
+
 export interface Poll {
   id: string;
   slug: string;
@@ -178,10 +192,12 @@ export interface Comment {
   id: string;
   articleId: string;
   authorId: string;
+  author?: PublicAuthor;
   body: string;
   parentId?: string;
   reactions: number;
   createdAt: string;
+  status?: "published" | "pending";
 }
 
 export interface Notification {

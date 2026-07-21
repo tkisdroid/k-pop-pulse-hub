@@ -24,16 +24,19 @@ try {
     Invoke-Checked 'npm.cmd' @('exec', 'eslint', '--', 'eslint.config.js')
     Invoke-Checked 'npm.cmd' @('run', 'build')
     Invoke-Checked 'npm.cmd' @('run', 'build:wordpress')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/asset-budget-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/bootstrap.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/runtime-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/plugin-foundation-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/admin-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/identity-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/community-smoke.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/content-interactions-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/subscription-notification-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/ads-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/automation-smoke.ps1')
     Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/runtime-content-smoke.ps1')
+    Invoke-Checked 'pwsh' @('-File', 'scripts/wordpress/seo-runtime-smoke.ps1')
 
     if (-not (Test-Path -LiteralPath $gitBash)) {
         throw 'Git Bash is required to run wordpress-plugin/build-plugin.sh.'

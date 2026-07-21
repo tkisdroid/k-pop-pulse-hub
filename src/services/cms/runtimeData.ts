@@ -10,6 +10,7 @@ import type {
   ForumThread,
   Member,
   Poll,
+  Video,
 } from "@/types";
 
 interface WordPressChartEntry {
@@ -36,6 +37,7 @@ interface WordPressRuntimeBundle {
   charts: WordPressChart[];
   threads: ForumThread[];
   polls: Poll[];
+  videos: Video[];
   community: CommunityPost[];
   categories: ForumCategory[];
 }
@@ -80,6 +82,7 @@ function buildRuntimeData(bundle: WordPressRuntimeBundle): DemoData {
     charts,
     threads: bundle.threads,
     polls: bundle.polls,
+    videos: bundle.videos,
     community: bundle.community,
     categories: bundle.categories,
     comments: [],

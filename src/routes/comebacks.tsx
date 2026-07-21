@@ -4,8 +4,8 @@ import { useRuntimeData } from "@/services/cms/runtimeData";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
-import { Button } from "@/components/ui/button";
 import { NotifyButton } from "@/components/notifications/NotifyButton";
+import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
 
 
 export const Route = createFileRoute("/comebacks")({
@@ -61,7 +61,7 @@ function Comebacks() {
                         leadMinutes: 15,
                       }}
                     />
-                    <Button size="sm" variant="secondary">Follow</Button>
+                    {a && <FollowArtistButton artist={a} size="sm" variant="secondary" />}
                   </div>
                 </div>
 

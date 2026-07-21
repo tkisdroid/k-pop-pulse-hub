@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildHead } from "@/components/layout/seo";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { useState } from "react";
 import { NotifyButton } from "@/components/notifications/NotifyButton";
 import { cmsProvider } from "@/services/cms";
 import { useRuntimeData } from "@/services/cms/runtimeData";
+import { ShareButtons } from "@/components/articles/ShareButtons";
 
 
 export const Route = createFileRoute("/polls/$slug")({
@@ -67,7 +67,7 @@ function PollPage() {
       {voteError && <div role="alert" className="mt-3 text-sm text-destructive">{voteError}</div>}
       <div className="mt-4 text-xs text-muted-foreground">{p.totalVotes.toLocaleString()} total votes</div>
       <div className="mt-6 flex flex-wrap gap-2">
-        <Button variant="outline">Share poll</Button>
+        <ShareButtons title={p.title} url={typeof window !== "undefined" ? window.location.href : `/polls/${p.slug}`} />
         {p.endsAt && +new Date(p.endsAt) > Date.now() && (
           <NotifyButton
             label="Notify before close"

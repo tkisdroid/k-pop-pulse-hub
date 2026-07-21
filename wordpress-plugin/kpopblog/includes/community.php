@@ -175,6 +175,35 @@ function kpopblog_get_forum_categories_data() {
 }
 
 function kpopblog_register_community_routes() {
+	register_rest_route( KPOPBLOG_REST_NS, '/submissions', array(
+		'methods'             => 'POST',
+		'permission_callback' => 'kpopblog_require_login',
+		'callback'            => function ( WP_REST_Request $request ) {
+			$limit = kpopblog_community_rate_limit( 'submission', 5 );
+			if ( is_wp_error( $limit ) ) { return $limit; }
+			$type = sanitize_key( (string) $request->get_param( 'type' ) );
+			$allowed_types = array( 'news-tip', 'article-draft', 'artist-correction', 'comeback-event', 'translation-request' );
+			if ( ! in_array( $type, $allowed_types, true ) ) {
+				return new WP_Error( 'invalid_submission_type', 'Choose a valid submission type.', array( 'status' => 400 ) );
+			}
+			$subject = kpopblog_validate_body( $request->get_param( 'subject' ), 3, 160, 'Subject' );
+			$details = kpopblog_validate_body( $request->get_param( 'details' ), 10, 10000, 'Details' );
+			if ( is_wp_error( $subject ) ) { return $subject; }
+			if ( is_wp_error( $details ) ) { return $details; }
+			$post_id = wp_insert_post( array(
+				'post_type'    => 'kb_submission',
+				'post_status'  => 'pending',
+				'post_title'   => $subject,
+				'post_content' => $details,
+				'post_author'  => get_current_user_id(),
+			), true );
+			if ( is_wp_error( $post_id ) ) { return new WP_Error( 'submission_create_failed', 'Submission could not be saved.', array( 'status' => 500 ) ); }
+			update_post_meta( $post_id, 'kb_submission_type', $type );
+			kpopblog_audit( 'submission_created', 'submission', $post_id, array( 'type' => $type ) );
+			return kpopblog_created_response( array( 'id' => (string) $post_id, 'status' => 'pending' ) );
+		},
+	) );
+
 	register_rest_route( KPOPBLOG_REST_NS, '/community', array(
 		array(
 			'methods'             => 'GET',
@@ -342,6 +371,21 @@ function kpopblog_register_community_routes() {
 		'callback'            => function ( WP_REST_Request $request ) {
 			$post_id = kpopblog_post_id_by_slug( 'post', $request->get_param( 'slug' ) );
 			if ( ! $post_id ) { return new WP_Error( 'article_not_found', 'Article not found.', array( 'status' => 404 ) ); }
+			$per_page = (int) $request->get_param( 'per_page' );
+			$page = (int) $request->get_param( 'page' );
+			$total = (int) get_comments( array( 'post_id' => $post_id, 'status' => 'approve', 'type' => 'comment', 'count' => true ) );
+			$comments = get_comments( array( 'post_id' => $post_id, 'status' => 'approve', 'type' => 'comment', 'number' => $per_page, 'offset' => ( $page - 1 ) * $per_page ) );
+			return kpopblog_collection_response( array_map( 'kpopblog_map_community_comment', $comments ), $total, $per_page ? (int) ceil( $total / $per_page ) : 0 );
+		},
+	) );
+
+	register_rest_route( KPOPBLOG_REST_NS, '/videos/(?P<slug>[a-zA-Z0-9_-]+)/comments', array(
+		'methods'             => 'GET',
+		'permission_callback' => '__return_true',
+		'args'                => kpopblog_collection_args(),
+		'callback'            => function ( WP_REST_Request $request ) {
+			$post_id = kpopblog_post_id_by_slug( 'kb_video', $request->get_param( 'slug' ) );
+			if ( ! $post_id ) { return new WP_Error( 'video_not_found', 'Video not found.', array( 'status' => 404 ) ); }
 			$per_page = (int) $request->get_param( 'per_page' );
 			$page = (int) $request->get_param( 'page' );
 			$total = (int) get_comments( array( 'post_id' => $post_id, 'status' => 'approve', 'type' => 'comment', 'count' => true ) );

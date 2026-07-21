@@ -4,12 +4,12 @@ Tags: kpop, blog, community, music, react
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 Premium K-pop community blog as a WordPress plugin. Manage every content
-surface (articles, artists, members, comebacks, charts, forum threads,
-polls) from the WordPress admin and render the React front-end via the
+surface (articles, artists, members, comebacks, charts, videos, forum threads,
+polls, and member submissions) from the WordPress admin and render the React front-end via the
 [kpopblog] shortcode or the "KpopBlog App" Gutenberg block.
 
 Administrators also receive a K-pop Pulse Hub operations dashboard with
@@ -35,13 +35,17 @@ placeholders or load the advertising script before advertising consent. Configur
 a Google-certified consent management platform in AdSense Privacy & messaging
 before serving ads in every region where Google requires one.
 
+The release verification keeps the initial WordPress application entry below
+200 KiB gzip and the shared stylesheet below 25 KiB gzip. Route-level screens
+remain lazy-loaded from separate chunks.
+
 == Installation ==
 
 1. Build the React app and copy the bundle into /assets:
      bash wordpress-plugin/build-plugin.sh
 2. Zip the `kpopblog` folder and upload via Plugins → Add New → Upload.
 3. Activate. A new admin menu appears with: KpopBlog Artists, Members,
-   Comebacks, Charts, Community Posts, Forum threads, Polls, and Community
+   Comebacks, Charts, Videos, Community Posts, Submissions, Forum threads, Polls, and Community
    Moderation. Articles use the built-in WordPress Posts type so editors keep
    the standard authoring UX.
 4. Create a page, paste `[kpopblog]`, publish. The full SPA mounts inside
@@ -55,13 +59,16 @@ Unified namespace: /wp-json/kpopblog/v1
   GET /members,  /members/{slug}
   GET /comebacks, /comebacks/{slug}
   GET /charts,    /charts/{slug}
+  GET /videos,    /videos/{slug}
   GET /threads,   /threads/{slug}
   GET /polls,     /polls/{slug}
   GET, POST /community
   GET /forum/categories
   POST /threads
   GET, POST /threads/{slug}/replies
-  GET /articles/{slug}/comments
+  GET, POST /articles/{slug}/comments
+  GET, POST /videos/{slug}/comments
+  POST /submissions
   POST /reports
   GET /moderation/reports
   POST /moderation/reports/{id}

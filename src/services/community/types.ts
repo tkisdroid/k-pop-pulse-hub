@@ -25,6 +25,11 @@ export interface CommunityProvider {
     body: string;
     language?: string;
   }): Promise<{ item: CommunityPost; status: string }>;
+  createSubmission(input: {
+    type: string;
+    subject: string;
+    details: string;
+  }): Promise<{ id: string; status: string }>;
   listCategories(): Promise<ForumCategory[]>;
   listThreads(input?: {
     category?: string;

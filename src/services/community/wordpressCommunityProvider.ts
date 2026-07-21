@@ -67,6 +67,12 @@ export const wordpressCommunityProvider: CommunityProvider = {
       })
     ).data;
   },
+  async createSubmission(input) {
+    return (await request<{ id: string; status: string }>("/submissions", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })).data;
+  },
   async listCategories() {
     return (await request<ForumCategory[]>("/forum/categories")).data;
   },

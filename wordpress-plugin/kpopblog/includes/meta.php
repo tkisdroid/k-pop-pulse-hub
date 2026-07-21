@@ -65,6 +65,11 @@ function kpopblog_register_meta() {
 		) ),
 	) );
 
+	// Videos.
+	foreach ( array( 'kb_youtube_id', 'kb_duration', 'kb_artist_slug', 'kb_video_category' ) as $key ) {
+		register_post_meta( 'kb_video', $key, $str );
+	}
+
 	// Forum threads.
 	foreach ( array( 'kb_category_slug','kb_flair','kb_language' ) as $k ) {
 		register_post_meta( 'kb_thread', $k, $str );
@@ -77,6 +82,7 @@ function kpopblog_register_meta() {
 
 	register_post_meta( 'kb_community', 'kb_language', $str );
 	register_post_meta( 'kb_community', 'kb_artist_slug', $str );
+	register_post_meta( 'kb_submission', 'kb_submission_type', $str );
 
 	// Polls.
 	register_post_meta( 'kb_poll', 'kb_ends_at',    $str );

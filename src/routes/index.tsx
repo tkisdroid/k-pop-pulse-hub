@@ -5,10 +5,12 @@ import { ForYouSection } from "@/components/articles/ForYouSection";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
-import { Flame, Calendar, Vote, MessageSquare, Bell, ArrowRight } from "lucide-react";
+import { Flame, Calendar, Vote, MessageSquare, ArrowRight } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
 import { DailyQuizWidget } from "@/components/quiz/DailyQuizWidget";
+import { NotifyButton } from "@/components/notifications/NotifyButton";
+import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => {
@@ -22,6 +24,7 @@ const LABELS = ["BREAKING", "COMEBACK", "TOUR", "AWARD", "OFFICIAL", "RUMOR"];
 
 function Index() {
   const { data, isLoading, error } = useRuntimeData();
+  const [latestCategory, setLatestCategory] = useState("All");
   if (isLoading) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">Loading current K-pop coverage…</p>;
   if (error) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-destructive" role="alert">{error}</p>;
   if (data.articles.length === 0) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">No published articles yet.</p>;
@@ -29,7 +32,8 @@ function Index() {
   const featured = data.articles[0];
   const secondary = data.articles.slice(1, 4);
   const trending = data.articles.slice(0, 5);
-  const latest = data.articles.slice(0, 8);
+  const categories = ["All", ...Array.from(new Set(data.articles.map((article) => article.category).filter(Boolean)))];
+  const latest = data.articles.filter((article) => latestCategory === "All" || article.category === latestCategory).slice(0, 8);
   const upcoming = data.comebacks.slice(0, 5);
   const spotlightArtists = data.artists.slice(0, 3);
   const hotThreads = data.threads.slice(0, 5);
@@ -99,8 +103,8 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Latest News" title="Fresh off the wire" />
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-3 mb-4">
-          {["All", "Music", "Comeback", "Tour", "Awards", "Drama", "Variety", "Fashion", "Business", "Rumors", "Official Statements"].map((c) => (
-            <button key={c} className="shrink-0 px-3 py-1.5 rounded-full text-sm bg-accent hover:bg-primary hover:text-primary-foreground transition-colors">{c}</button>
+          {categories.map((c) => (
+            <button key={c} type="button" onClick={() => setLatestCategory(c)} aria-pressed={latestCategory === c} className={`shrink-0 px-3 py-1.5 rounded-full text-sm transition-colors ${latestCategory === c ? "bg-primary text-primary-foreground" : "bg-accent hover:bg-primary hover:text-primary-foreground"}`}>{c}</button>
           ))}
         </div>
         <div data-reveal-children className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -127,7 +131,7 @@ function Index() {
                   </div>
                   <div className="text-right">
                     <div className="font-display text-2xl text-gradient font-bold">{days}d</div>
-                    <Button size="sm" variant="outline">Remind me</Button>
+                    <NotifyButton label="Remind me" reminder={{ id: `home-comeback:${c.id}`, kind: "comeback", title: c.title, body: `${artist?.name ?? c.artistId} ${c.type} starts soon`, url: "/comebacks", icon: c.image, fireAt: c.releaseAt, leadMinutes: 15 }} />
                   </div>
                 </div>
               );
@@ -222,10 +226,9 @@ function Index() {
                   <div className="text-xs"><div className="font-medium">{c.author?.displayName ?? user?.displayName ?? "Community member"}</div><div className="text-muted-foreground">{c.language.toUpperCase()}</div></div>
                 </div>
                 <p className="text-sm">{c.body}</p>
-                <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                  <button className="hover:text-primary">♥ {c.reactions}</button>
-                  <button className="hover:text-primary">Translate</button>
-                  <button className="hover:text-destructive ml-auto">Report</button>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>♥ {c.reactions}</span>
+                  <Link to="/community" className="hover:text-primary">Join discussion →</Link>
                 </div>
               </div>
             );
@@ -233,18 +236,6 @@ function Index() {
         </div>
       </section>
 
-      {/* Newsletter */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="rounded-3xl gradient-neon p-8 md:p-12 text-white text-center">
-          <Bell className="size-8 mx-auto mb-3 opacity-90" />
-          <h2 className="font-display text-3xl md:text-4xl font-bold">Never miss a comeback</h2>
-          <p className="mt-2 opacity-90 max-w-xl mx-auto">Get breaking K-pop news, comeback alerts and weekly fan picks straight to your inbox.</p>
-          <form className="mt-5 max-w-md mx-auto flex gap-2" onSubmit={(e) => e.preventDefault()}>
-            <input type="email" placeholder="you@email.com" className="flex-1 h-11 px-4 rounded-md text-foreground bg-background/95" />
-            <Button type="submit" variant="secondary">Subscribe</Button>
-          </form>
-        </div>
-      </section>
     </div>
   );
 }

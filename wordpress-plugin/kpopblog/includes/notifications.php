@@ -445,7 +445,13 @@ add_action( 'comment_post', function ( $comment_id, $approved ) {
 	if ( ! $comment ) { return; }
 	$post = get_post( $comment->comment_post_ID );
 	if ( ! $post || (int) $post->post_author === (int) $comment->user_id ) { return; }
-	$href = 'kb_thread' === $post->post_type ? '/thread/' . $post->post_name : '/news/' . $post->post_name;
+	$href_prefixes = array(
+		'post'      => '/news/',
+		'kb_thread' => '/thread/',
+		'kb_video'  => '/watch/',
+	);
+	if ( ! isset( $href_prefixes[ $post->post_type ] ) ) { return; }
+	$href = $href_prefixes[ $post->post_type ] . $post->post_name;
 	$notification_id = kpopblog_create_notification( (int) $post->post_author, 'reply', array(
 		'title' => sprintf( '%s replied to "%s"', $comment->comment_author, get_the_title( $post ) ),
 		'body'  => wp_trim_words( wp_strip_all_tags( $comment->comment_content ), 24 ),

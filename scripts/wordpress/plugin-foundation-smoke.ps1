@@ -15,6 +15,11 @@ global $wpdb;
 if ( ! defined( 'KPOPBLOG_SCHEMA_VERSION' ) ) {
     throw new Exception( 'schema version constant missing' );
 }
+foreach ( array( 'kb_artist', 'kb_member', 'kb_comeback', 'kb_chart', 'kb_video', 'kb_thread', 'kb_community', 'kb_submission', 'kb_poll' ) as $post_type ) {
+    if ( ! post_type_exists( $post_type ) ) {
+        throw new Exception( 'plugin post type missing: ' . $post_type );
+    }
+}
 if ( get_option( 'kpopblog_schema_version' ) !== KPOPBLOG_SCHEMA_VERSION ) {
     throw new Exception( 'schema version mismatch' );
 }

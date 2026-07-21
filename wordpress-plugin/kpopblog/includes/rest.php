@@ -168,6 +168,23 @@ function kpopblog_collection_args() {
 	);
 }
 
+function kpopblog_map_video( WP_Post $p ) {
+	$youtube_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) kpopblog_meta( $p->ID, 'kb_youtube_id' ) );
+	return array(
+		'id'          => (string) $p->ID,
+		'slug'        => $p->post_name,
+		'title'       => get_the_title( $p ),
+		'artistId'    => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
+		'artistSlug'  => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
+		'category'    => (string) kpopblog_meta( $p->ID, 'kb_video_category', 'Other' ),
+		'youtubeId'   => $youtube_id,
+		'thumbnail'   => $youtube_id ? 'https://i.ytimg.com/vi/' . rawurlencode( $youtube_id ) . '/hqdefault.jpg' : kpopblog_thumb_url( $p->ID ),
+		'duration'    => (string) kpopblog_meta( $p->ID, 'kb_duration' ),
+		'description' => wp_strip_all_tags( $p->post_content ),
+		'commentCount'=> (int) $p->comment_count,
+	);
+}
+
 function kpopblog_query( $post_type, WP_REST_Request $r ) {
 	$args = array(
 		'post_type'      => $post_type,
@@ -193,6 +210,7 @@ function kpopblog_register_routes() {
 		'members'   => array( 'kb_member',   'kpopblog_map_member'   ),
 		'comebacks' => array( 'kb_comeback', 'kpopblog_map_comeback' ),
 		'charts'    => array( 'kb_chart',    'kpopblog_map_chart'    ),
+		'videos'    => array( 'kb_video',    'kpopblog_map_video'    ),
 		'threads'   => array( 'kb_thread',   'kpopblog_map_thread'   ),
 		'polls'     => array( 'kb_poll',     'kpopblog_map_poll'     ),
 	);
@@ -243,6 +261,7 @@ function kpopblog_register_routes() {
 				'members'   => $pick( 'kb_member',   'kpopblog_map_member',   60 ),
 				'comebacks' => $pick( 'kb_comeback', 'kpopblog_map_comeback', 30 ),
 				'charts'    => $pick( 'kb_chart',    'kpopblog_map_chart',    5  ),
+				'videos'    => $pick( 'kb_video',    'kpopblog_map_video',    40 ),
 				'threads'   => $pick( 'kb_thread',   'kpopblog_map_thread',   20 ),
 				'polls'     => $pick( 'kb_poll',     'kpopblog_map_poll',     10 ),
 				'community' => function_exists( 'kpopblog_map_community_post' ) ? $pick( 'kb_community', 'kpopblog_map_community_post', 20 ) : array(),

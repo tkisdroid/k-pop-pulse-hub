@@ -7,7 +7,7 @@
  * The PHP plugin already maps responses to the React app's TypeScript types,
  * so this provider does no transformation beyond fetch + JSON parse.
  */
-import type { Article } from "@/types";
+import type { Article, Comment } from "@/types";
 import type { CmsProvider } from "./types";
 
 declare global {
@@ -98,12 +98,26 @@ export const wordpressCmsProvider: CmsProvider = {
       .slice(0, limit);
   },
 
-  async postComment(slug, body) {
+  async postComment(slug, body, parentId) {
     try {
-      const r = await wpPost<{ id: string; pending: boolean }>(`/articles/${encodeURIComponent(slug)}/comments`, { body });
-      return { ok: true, id: r.id, pending: r.pending };
+      const r = await wpPost<{ id: string; item?: Comment; pending: boolean }>(`/articles/${encodeURIComponent(slug)}/comments`, { body, parentId });
+      return { ok: true, id: r.id, item: r.item, pending: r.pending };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
+    }
+  },
+  async listArticleComments(slug) {
+    return wpFetch<Comment[]>(`/articles/${encodeURIComponent(slug)}/comments`, { per_page: 100 });
+  },
+  async listVideoComments(slug) {
+    return wpFetch<Comment[]>(`/videos/${encodeURIComponent(slug)}/comments`, { per_page: 100 });
+  },
+  async postVideoComment(slug, body) {
+    try {
+      const response = await wpPost<{ item: Comment; pending: boolean }>(`/videos/${encodeURIComponent(slug)}/comments`, { body });
+      return { ok: true, item: response.item, pending: response.pending };
+    } catch (error) {
+      return { ok: false, error: (error as Error).message };
     }
   },
   async votePoll(slug, optionId) {
