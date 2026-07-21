@@ -156,6 +156,24 @@ function kpopblog_report_target_exists( $target_type, $target_id ) {
 	return $post && isset( $type_map[ $target_type ] ) && $type_map[ $target_type ] === $post->post_type;
 }
 
+function kpopblog_get_forum_categories_data() {
+	$terms = get_terms( array( 'taxonomy' => 'kb_forum_category', 'hide_empty' => false, 'orderby' => 'name' ) );
+	if ( is_wp_error( $terms ) ) { return $terms; }
+	$items = array();
+	foreach ( $terms as $term ) {
+		$items[] = array(
+			'id'          => (string) $term->term_id,
+			'slug'        => $term->slug,
+			'name'        => $term->name,
+			'description' => $term->description,
+			'icon'        => '💬',
+			'threadCount' => (int) $term->count,
+			'postCount'   => 0,
+		);
+	}
+	return $items;
+}
+
 function kpopblog_register_community_routes() {
 	register_rest_route( KPOPBLOG_REST_NS, '/community', array(
 		array(
@@ -208,21 +226,7 @@ function kpopblog_register_community_routes() {
 		'methods'             => 'GET',
 		'permission_callback' => '__return_true',
 		'callback'            => function () {
-			$terms = get_terms( array( 'taxonomy' => 'kb_forum_category', 'hide_empty' => false, 'orderby' => 'name' ) );
-			if ( is_wp_error( $terms ) ) { return $terms; }
-			$items = array();
-			foreach ( $terms as $term ) {
-				$items[] = array(
-					'id'          => (string) $term->term_id,
-					'slug'        => $term->slug,
-					'name'        => $term->name,
-					'description' => $term->description,
-					'icon'        => '💬',
-					'threadCount' => (int) $term->count,
-					'postCount'   => 0,
-				);
-			}
-			return rest_ensure_response( $items );
+			return rest_ensure_response( kpopblog_get_forum_categories_data() );
 		},
 	) );
 

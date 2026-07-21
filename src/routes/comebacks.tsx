@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
@@ -16,9 +16,12 @@ export const Route = createFileRoute("/comebacks")({
 const TABS = ["Upcoming", "Trending", "New Releases", "All"] as const;
 
 function Comebacks() {
+  const { data, isLoading, error } = useRuntimeData();
   const [tab, setTab] = useState<typeof TABS[number]>("Upcoming");
   const [view, setView] = useState<"list" | "calendar">("list");
-  const events = [...demoData.comebacks].sort((a, b) => +new Date(a.releaseAt) - +new Date(b.releaseAt));
+  if (isLoading) return <p className="py-20 text-center text-muted-foreground">Loading schedules…</p>;
+  if (error) return <p className="py-20 text-center text-destructive" role="alert">{error}</p>;
+  const events = [...data.comebacks].sort((a, b) => +new Date(a.releaseAt) - +new Date(b.releaseAt));
   const filtered = tab === "All" ? events : tab === "Upcoming" ? events.filter((e) => +new Date(e.releaseAt) > Date.now()) : events;
 
   return (
@@ -31,8 +34,9 @@ function Comebacks() {
       </div>
       {view === "list" ? (
         <div className="grid gap-3">
+          {filtered.length === 0 && <p className="py-16 text-center text-muted-foreground">No matching schedules yet.</p>}
           {filtered.map((c) => {
-            const a = demoData.artists.find((x) => x.id === c.artistId)!;
+            const a = data.artists.find((x) => x.id === c.artistId || x.slug === c.artistId);
             const days = Math.ceil((+new Date(c.releaseAt) - Date.now()) / 86400000);
             return (
               <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
@@ -40,7 +44,7 @@ function Comebacks() {
                 <div className="flex-1">
                   <div className="text-xs uppercase text-primary">{c.type}</div>
                   <div className="font-semibold">{c.title}</div>
-                  <div className="text-xs text-muted-foreground">{a.name} · {new Date(c.releaseAt).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">{a?.name ?? c.artistId} · {new Date(c.releaseAt).toLocaleString()}</div>
                 </div>
                 <div className="text-right space-y-1">
                   <div className="font-display text-2xl text-gradient font-bold">{days > 0 ? `${days}d` : "LIVE"}</div>
@@ -50,7 +54,7 @@ function Comebacks() {
                         id: `comeback:${c.id}`,
                         kind: "comeback",
                         title: `🎵 ${c.title}`,
-                        body: `${a.name} ${c.type} drops in 15 minutes`,
+                        body: `${a?.name ?? c.artistId} ${c.type} drops in 15 minutes`,
                         url: "/comebacks",
                         icon: c.image,
                         fireAt: c.releaseAt,

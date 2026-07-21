@@ -7,7 +7,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-const KPOPBLOG_SCHEMA_VERSION = '1.2.0';
+const KPOPBLOG_SCHEMA_VERSION = '1.3.0';
 
 /**
  * Create or update plugin-owned tables and capabilities.
@@ -21,6 +21,8 @@ function kpopblog_install_or_upgrade() {
 	$reports_table   = $wpdb->prefix . 'kb_reports';
 	$notifications_table = $wpdb->prefix . 'kb_notifications';
 	$notification_jobs_table = $wpdb->prefix . 'kb_notification_jobs';
+	$automation_runs_table = $wpdb->prefix . 'kb_automation_runs';
+	$automation_items_table = $wpdb->prefix . 'kb_automation_items';
 	$charset_collate = $wpdb->get_charset_collate();
 	$audit_sql       = "CREATE TABLE {$audit_table} (
 		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -90,11 +92,47 @@ function kpopblog_install_or_upgrade() {
 		KEY status_created (status,created_at),
 		KEY creator_created (created_by,created_at)
 	) {$charset_collate};";
+	$automation_runs_sql = "CREATE TABLE {$automation_runs_table} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		trigger_type varchar(16) NOT NULL DEFAULT 'scheduled',
+		status varchar(16) NOT NULL DEFAULT 'running',
+		model varchar(64) NOT NULL DEFAULT '',
+		response_id varchar(128) NOT NULL DEFAULT '',
+		discovered int(10) unsigned NOT NULL DEFAULT 0,
+		created int(10) unsigned NOT NULL DEFAULT 0,
+		updated int(10) unsigned NOT NULL DEFAULT 0,
+		skipped int(10) unsigned NOT NULL DEFAULT 0,
+		error_code varchar(64) NOT NULL DEFAULT '',
+		error_text text NULL,
+		started_at datetime NOT NULL,
+		finished_at datetime NULL,
+		PRIMARY KEY  (id),
+		KEY status_started (status,started_at),
+		KEY trigger_started (trigger_type,started_at)
+	) {$charset_collate};";
+	$automation_items_sql = "CREATE TABLE {$automation_items_table} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		dedupe_key char(64) NOT NULL,
+		content_hash char(64) NOT NULL,
+		kind varchar(16) NOT NULL,
+		wp_post_id bigint(20) unsigned NOT NULL DEFAULT 0,
+		primary_source_url text NOT NULL,
+		sources_json longtext NULL,
+		response_id varchar(128) NOT NULL DEFAULT '',
+		first_seen_at datetime NOT NULL,
+		last_seen_at datetime NOT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY dedupe_key (dedupe_key),
+		KEY post_lookup (wp_post_id),
+		KEY kind_seen (kind,last_seen_at)
+	) {$charset_collate};";
 
 	dbDelta( $audit_sql );
 	dbDelta( $reports_sql );
 	dbDelta( $notifications_sql );
 	dbDelta( $notification_jobs_sql );
+	dbDelta( $automation_runs_sql );
+	dbDelta( $automation_items_sql );
 	if ( function_exists( 'kpopblog_migrate_legacy_newsletter_tokens' ) ) {
 		kpopblog_migrate_legacy_newsletter_tokens();
 	}

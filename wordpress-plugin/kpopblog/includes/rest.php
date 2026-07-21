@@ -245,6 +245,8 @@ function kpopblog_register_routes() {
 				'charts'    => $pick( 'kb_chart',    'kpopblog_map_chart',    5  ),
 				'threads'   => $pick( 'kb_thread',   'kpopblog_map_thread',   20 ),
 				'polls'     => $pick( 'kb_poll',     'kpopblog_map_poll',     10 ),
+				'community' => function_exists( 'kpopblog_map_community_post' ) ? $pick( 'kb_community', 'kpopblog_map_community_post', 20 ) : array(),
+				'categories'=> function_exists( 'kpopblog_get_forum_categories_data' ) ? kpopblog_get_forum_categories_data() : array(),
 			) );
 		},
 	) );

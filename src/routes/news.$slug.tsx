@@ -1,5 +1,4 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
 import { buildHead, breadcrumbLd } from "@/components/layout/seo";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSummary } from "@/components/articles/ArticleSummary";
@@ -22,10 +21,11 @@ import { ReadingProgress } from "@/components/articles/ReadingProgress";
 import { ArticleToc, extractHeadings } from "@/components/articles/ArticleToc";
 import { useProseLightbox } from "@/components/articles/Lightbox";
 import { ShareButtons } from "@/components/articles/ShareButtons";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 
 export const Route = createFileRoute("/news/$slug")({
-  loader: ({ params }) => {
-    const article = demoData.articles.find((a) => a.slug === params.slug);
+  loader: async ({ params }) => {
+    const article = await cmsProvider.getArticleBySlug(params.slug);
     if (!article) throw notFound();
     return article;
   },
@@ -70,6 +70,7 @@ export const Route = createFileRoute("/news/$slug")({
 
 function ArticlePage() {
   const article = Route.useLoaderData();
+  const { data } = useRuntimeData();
   const { user } = useAuth();
   const { show } = useAuthModal();
   const { lang } = useI18n();
@@ -84,9 +85,9 @@ function ArticlePage() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [replies, setReplies] = useState<Record<string, { id: string; body: string; at: string }[]>>({});
-  const artists = demoData.artists.filter((a) => article.relatedArtistIds.includes(a.id));
-  const related = demoData.articles.filter((a) => a.id !== article.id).slice(0, 4);
-  const comments = demoData.comments.filter((c) => c.articleId === article.id);
+  const artists = data.artists.filter((a) => article.relatedArtistIds.includes(a.id) || article.relatedArtistIds.includes(a.slug));
+  const related = data.articles.filter((a) => a.id !== article.id).slice(0, 4);
+  const comments = data.comments.filter((c) => c.articleId === article.id);
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { html: contentHtml, headings } = useMemo(() => extractHeadings(article.content), [article.content]);
@@ -270,15 +271,15 @@ function ArticlePage() {
         )}
         <div className="space-y-4">
           {comments.map((c) => {
-            const u = demoData.users.find((x) => x.id === c.authorId)!;
+            const u = data.users.find((x) => x.id === c.authorId);
             const liked = likedComments.has(c.id);
             const likeDelta = commentLikes[c.id] ?? 0;
             const childReplies = replies[c.id] ?? [];
             return (
               <div key={c.id} className="flex gap-3">
-                <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" />
+                {u?.avatar ? <img src={u.avatar} alt="" loading="lazy" decoding="async" width={36} height={36} className="size-9 rounded-full" /> : <div className="size-9 rounded-full bg-muted" aria-hidden="true" />}
                 <div className="flex-1">
-                  <div className="text-sm"><span className="font-semibold">{u.displayName}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
+                  <div className="text-sm"><span className="font-semibold">{u?.displayName ?? "Community member"}</span> <span className="text-xs text-muted-foreground">· {new Date(c.createdAt).toLocaleTimeString()}</span></div>
                   <p className="text-sm">{c.body}</p>
                   <div className="text-xs text-muted-foreground mt-1 flex gap-3 items-center">
                     <button
@@ -316,7 +317,7 @@ function ArticlePage() {
                         autoFocus
                         value={replyDraft}
                         onChange={(e) => setReplyDraft(e.target.value)}
-                        placeholder={`Reply to ${u.displayName}...`}
+                        placeholder={`Reply to ${u?.displayName ?? "community member"}...`}
                         maxLength={1000}
                         className="w-full p-2 text-sm rounded-md bg-background border border-input min-h-16"
                       />

@@ -18,7 +18,7 @@ if ( ! defined( 'KPOPBLOG_SCHEMA_VERSION' ) ) {
 if ( get_option( 'kpopblog_schema_version' ) !== KPOPBLOG_SCHEMA_VERSION ) {
     throw new Exception( 'schema version mismatch' );
 }
-foreach ( array( 'kb_audit_log', 'kb_reports', 'kb_notifications', 'kb_notification_jobs' ) as $suffix ) {
+foreach ( array( 'kb_audit_log', 'kb_reports', 'kb_notifications', 'kb_notification_jobs', 'kb_automation_runs', 'kb_automation_items' ) as $suffix ) {
     $table = $wpdb->prefix . $suffix;
     if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
         throw new Exception( 'plugin table missing: ' . $suffix );

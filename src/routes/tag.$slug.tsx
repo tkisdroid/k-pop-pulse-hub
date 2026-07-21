@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
@@ -11,7 +11,8 @@ export const Route = createFileRoute("/tag/$slug")({
 
 function TagPage() {
   const { slug } = Route.useParams();
-  const articles = demoData.articles.filter((a) => a.tags.includes(slug));
+  const { data } = useRuntimeData();
+  const articles = data.articles.filter((a) => a.tags.includes(slug));
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <SectionHeader eyebrow="Tag" title={`#${slug}`} />

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { localeMeta } from "@/i18n";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { Button } from "@/components/ui/button";
 import { buildHead } from "@/components/layout/seo";
 
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/onboarding")({
 const STEPS = ["Language", "Region", "Artists", "Rules", "Notifications"] as const;
 
 function Onboarding() {
+  const { data } = useRuntimeData();
   const nav = useNavigate();
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("en");
@@ -34,7 +35,7 @@ function Onboarding() {
         {step === 1 && <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country / region" className="w-full h-10 px-3 rounded-md bg-background border border-input" />}
         {step === 2 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {demoData.artists.map((a) => {
+            {data.artists.map((a) => {
               const on = followed.includes(a.id);
               return <button key={a.id} onClick={() => setFollowed(on ? followed.filter((x) => x !== a.id) : [...followed, a.id])} className={`p-2 rounded-md text-sm ${on ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{a.name}</button>;
             })}

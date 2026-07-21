@@ -51,7 +51,7 @@ export interface Article {
   tags: string[];
   relatedArtistIds: string[];
   language: string;
-  source: "editorial" | "wordpress" | "wire" | "user";
+  source: "editorial" | "wordpress" | "wire" | "user" | "ai-grounded";
   status: "draft" | "published" | "archived";
   viewCount: number;
   commentCount: number;

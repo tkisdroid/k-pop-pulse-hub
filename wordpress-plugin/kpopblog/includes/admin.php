@@ -99,6 +99,10 @@ function kpopblog_get_health_checks() {
 		admin_url( 'plugins.php' )
 	);
 
+	if ( function_exists( 'kpopblog_get_automation_health_check' ) ) {
+		$checks[] = kpopblog_get_automation_health_check();
+	}
+
 	$ads_settings = function_exists( 'kpopblog_get_ads_settings' ) ? kpopblog_get_ads_settings() : array();
 	$ads_ready = ! empty( $ads_settings['enabled'] ) && ! empty( $ads_settings['publisher_id'] ) && ! empty( $ads_settings['slots'] );
 	$checks[] = kpopblog_health_check(
@@ -203,6 +207,7 @@ function kpopblog_render_admin_dashboard() {
 		'Comments'    => admin_url( 'edit-comments.php' ),
 		'Subscribers' => admin_url( 'edit.php?post_type=kb_subscriber' ),
 		'Notifications' => admin_url( 'admin.php?page=kpopblog-notifications' ),
+		'AI Automation' => admin_url( 'admin.php?page=kpopblog-automation' ),
 	);
 	?>
 	<div class="wrap kpopblog-admin">
@@ -223,6 +228,8 @@ function kpopblog_render_admin_dashboard() {
 					$value = $counts['pendingComments'];
 				} elseif ( $label === 'Notifications' ) {
 					$value = $counts['pendingNotificationJobs'];
+				} elseif ( $label === 'AI Automation' ) {
+					$value = get_option( 'kpopblog_automation_last_success', '' ) ? 1 : 0;
 				} else {
 					$value = $counts['confirmedSubscribers'];
 				}

@@ -1,58 +1,33 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
-import { buildHead, breadcrumbLd } from "@/components/layout/seo";
+import { buildHead } from "@/components/layout/seo";
 import { Button } from "@/components/ui/button";
 import { ArticleCard } from "@/components/articles/ArticleCard";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 
 export const Route = createFileRoute("/artist/$slug")({
-  loader: ({ params }) => {
-    const a = demoData.artists.find((x) => x.slug === params.slug);
-    if (!a) throw notFound();
-    return a;
-  },
-  head: ({ loaderData }) => {
-    if (!loaderData) return buildHead({ title: "Artist" });
-    const a = loaderData;
-    const canonical = `/artist/${a.slug}`;
-    const groupLd = {
-      "@context": "https://schema.org",
-      "@type": "MusicGroup",
-      name: a.name,
-      alternateName: a.koreanName,
-      foundingDate: a.debutDate,
-      genre: "K-pop",
-      image: a.image,
-      url: canonical,
-      description: a.bio,
-    };
-    const crumbs = breadcrumbLd([
-      { name: "Home", path: "/" },
-      { name: "Artists", path: "/artists" },
-      { name: a.name, path: canonical },
-    ]);
-    return buildHead({
-      title: a.name,
-      description: a.bio,
-      canonical,
-      ogImage: a.image,
-      ogType: "profile",
-      jsonLd: [groupLd, crumbs],
-    });
-  },
+  head: ({ params }) => buildHead({ title: "Artist", canonical: `/artist/${params.slug}` }),
   component: ArtistPage,
 });
 
 const TABS = ["Overview", "News", "Videos", "Members", "Discography", "Comebacks", "Photos", "Forum", "Polls", "Facts"] as const;
 
 function ArtistPage() {
-  const artist = Route.useLoaderData();
+  const { slug } = Route.useParams();
+  const { data, isLoading, error } = useRuntimeData();
   const [tab, setTab] = useState<typeof TABS[number]>("Overview");
-  const members = demoData.members.filter((m) => m.groupId === artist.id);
-  const news = demoData.articles.filter((a) => a.relatedArtistIds.includes(artist.id));
-  const videos = demoData.videos.filter((v) => v.artistId === artist.id);
-  const comebacks = demoData.comebacks.filter((c) => c.artistId === artist.id);
-  const threads = demoData.threads.filter((t) => true).slice(0, 4);
+  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading artist…</div>;
+  if (error) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{error}</div>;
+
+  const artist = data.artists.find((item) => item.slug === slug);
+  if (!artist) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Artist not found.</div>;
+
+  const artistKeys = new Set([artist.id, artist.slug]);
+  const members = data.members.filter((m) => artistKeys.has(m.groupId));
+  const news = data.articles.filter((a) => a.relatedArtistIds.some((id) => artistKeys.has(id)));
+  const videos = data.videos.filter((v) => artistKeys.has(v.artistId));
+  const comebacks = data.comebacks.filter((c) => artistKeys.has(c.artistId));
+  const threads = data.threads.slice(0, 4);
 
   return (
     <div>
@@ -144,7 +119,7 @@ function ArtistPage() {
               {threads.map((t) => <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="p-3 rounded-xl bg-card border border-border">{t.title}</Link>)}
             </div>
           )}
-          {tab === "Polls" && <div className="grid gap-3 sm:grid-cols-2">{demoData.polls.slice(0, 2).map((p) => <Link key={p.id} to="/polls/$slug" params={{ slug: p.slug }} className="p-4 rounded-xl bg-card border border-border"><div className="font-semibold">{p.title}</div></Link>)}</div>}
+          {tab === "Polls" && <div className="grid gap-3 sm:grid-cols-2">{data.polls.slice(0, 2).map((p) => <Link key={p.id} to="/polls/$slug" params={{ slug: p.slug }} className="p-4 rounded-xl bg-card border border-border"><div className="font-semibold">{p.title}</div></Link>)}</div>}
           {tab === "Facts" && (
             <ul className="space-y-2">
               {["Debuted in " + new Date(artist.debutDate).getFullYear(), "Fandom: " + artist.fandomName, "Agency: " + artist.agency, "Nationality: " + artist.nationality].map((f, i) => (

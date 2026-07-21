@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { demoData } from "@/data/demo";
+import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { buildHead } from "@/components/layout/seo";
@@ -15,11 +15,14 @@ const CATS = ["All", "Music", "Comeback", "Tour", "Awards", "Drama", "Variety", 
 const SORTS = ["Newest", "Trending", "Most commented", "Most viewed"] as const;
 
 function Latest() {
+  const { data, isLoading, error } = useRuntimeData();
   const [cat, setCat] = useState("All");
   const [sort, setSort] = useState<typeof SORTS[number]>("Newest");
   const [q, setQ] = useState("");
 
-  let articles = [...demoData.articles];
+  if (isLoading) return <p className="py-20 text-center text-muted-foreground">Loading articles…</p>;
+  if (error) return <p className="py-20 text-center text-destructive" role="alert">{error}</p>;
+  let articles = [...data.articles];
   if (cat !== "All") articles = articles.filter((a) => a.category.toLowerCase() === cat.toLowerCase());
   if (q) articles = articles.filter((a) => a.title.toLowerCase().includes(q.toLowerCase()));
   articles.sort((a, b) => {

@@ -19,7 +19,8 @@ $user_two_id = 0;
 $broadcast_job_id = 0;
 $notifications_table = $wpdb->prefix . 'kb_notifications';
 $jobs_table = $wpdb->prefix . 'kb_notification_jobs';
-$email = 'subscription-smoke@example.test';
+$run_token = str_replace( '-', '', wp_generate_uuid4() );
+$email = 'subscription-smoke+' . $run_token . '@example.test';
 $original_settings = get_option( 'kpopblog_newsletter', null );
 $captured_mail = array();
 
@@ -54,7 +55,7 @@ try {
     $settings = kpopblog_newsletter_defaults();
     $settings['double_opt_in'] = true;
     update_option( 'kpopblog_newsletter', $settings, false );
-    $_SERVER['REMOTE_ADDR'] = '198.51.100.81';
+    $_SERVER['REMOTE_ADDR'] = 'smoke-' . $run_token;
 
     $subscribe_request = new WP_REST_Request( 'POST', '/kpopblog/v1/newsletter/subscribe' );
     $subscribe_request->set_body_params( array(
@@ -186,7 +187,21 @@ try {
         throw new Exception( 'administrator broadcast was not queued' );
     }
     $broadcast_job_id = (int) $broadcast_response->get_data()['jobId'];
-    kpopblog_process_notification_jobs();
+    $broadcast_status = 'pending';
+    for ( $attempt = 0; $attempt < 10; $attempt++ ) {
+        kpopblog_process_notification_jobs();
+        $broadcast_status = (string) $wpdb->get_var( $wpdb->prepare(
+            "SELECT status FROM {$jobs_table} WHERE id = %d",
+            $broadcast_job_id
+        ) );
+        if ( 'completed' === $broadcast_status ) {
+            break;
+        }
+        usleep( 100000 );
+    }
+    if ( 'completed' !== $broadcast_status ) {
+        throw new Exception( 'administrator broadcast was not processed' );
+    }
 
     wp_set_current_user( $user_one_id );
     $user_one_list = rest_do_request( $list_request )->get_data();
@@ -201,7 +216,10 @@ try {
 
     wp_set_current_user( $user_two_id );
     $user_two_list = rest_do_request( $list_request )->get_data();
-    if ( 1 !== count( $user_two_list['items'] ) || 'Runtime smoke broadcast' !== $user_two_list['items'][0]['title'] ) {
+    $user_two_broadcasts = array_filter( $user_two_list['items'], function ( $item ) {
+        return isset( $item['title'] ) && 'Runtime smoke broadcast' === $item['title'];
+    } );
+    if ( 1 !== count( $user_two_broadcasts ) ) {
         throw new Exception( 'broadcast was not delivered to user two' );
     }
 } finally {
