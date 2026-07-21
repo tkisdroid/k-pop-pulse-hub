@@ -17,6 +17,7 @@ $temporaryScheduleId = 0
 $temporaryArticleId = 0
 $secondaryScheduleId = 0
 $malformedScheduleId = 0
+$revisionPostId = 0
 $fixtureMarker = 'seo-runtime-smoke:' + [guid]::NewGuid().ToString('N')
 
 function Invoke-WpCli {
@@ -74,7 +75,7 @@ if ( ! $ids ) {
     echo wp_json_encode( array( 'deleted_ids' => array(), 'outbound_requests' => 0 ) );
     return;
 }
-if ( count( $ids ) > 56 ) {
+if ( count( $ids ) > 57 ) {
     throw new Exception( 'SEO smoke marker matched too many posts; refusing cleanup' );
 }
 $expected = array(
@@ -82,6 +83,7 @@ $expected = array(
     $fixture_marker . ':article'   => array( 'post', 'KpopBlog SEO [review](unsafe) </script><script id="review-injected">injected</script> article' ),
     $fixture_marker . ':secondary' => array( 'kb_comeback', 'KpopBlog SEO runtime secondary schedule' ),
     $fixture_marker . ':malformed' => array( 'kb_comeback', 'KpopBlog SEO runtime malformed schedule' ),
+    $fixture_marker . ':revision'  => array( 'kb_artist', 'KpopBlog SEO same-second revision fixture' ),
     $fixture_marker . ':image'     => array( 'attachment', 'KpopBlog SEO featured image' ),
 );
 $outbound_requests = 0;
@@ -332,6 +334,17 @@ try {
         );
         if ( 0 === $index ) { $bulk_sentinel_id = $bulk_id; }
     }
+    $revision_slug = 'kpopblog-seo-revision-' . substr( md5( $fixture_marker ), 0, 12 );
+    $revision_id = wp_insert_post( array(
+        'post_type'    => 'kb_artist',
+        'post_title'   => 'KpopBlog SEO same-second revision fixture',
+        'post_content' => 'Temporary same-second cache revalidation fixture.',
+        'post_status'  => 'draft',
+        'post_name'    => $revision_slug,
+    ), true );
+    if ( is_wp_error( $revision_id ) ) { throw new Exception( 'failed to create same-second revision fixture' ); }
+    $created_ids[] = (int) $revision_id;
+    update_post_meta( $revision_id, 'kb_source', $fixture_marker . ':revision' );
 
     $job_count_after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
     $temp_job_count_after = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) );
@@ -353,6 +366,8 @@ try {
         'secondary_id'      => $secondary_id,
         'malformed_id'      => $malformed_id,
         'bulk_sentinel_id'  => $bulk_sentinel_id,
+        'revision_id'       => $revision_id,
+        'revision_slug'     => $revision_slug,
         'published_utc'     => '2030-02-03T12:34:56+00:00',
         'modified_utc'      => '2030-03-04T05:06:07+00:00',
         'featured_image'    => $featured_image,
@@ -388,11 +403,42 @@ try {
     $secondaryScheduleId = [int]$fixtureResult.secondary_id
     $malformedScheduleId = [int]$fixtureResult.malformed_id
     $bulkSentinelId = [int]$fixtureResult.bulk_sentinel_id
-    if ($temporaryScheduleId -le 0 -or $temporaryArticleId -le 0 -or $secondaryScheduleId -le 0 -or $malformedScheduleId -le 0 -or $bulkSentinelId -le 0) {
+    $revisionPostId = [int]$fixtureResult.revision_id
+    if ($temporaryScheduleId -le 0 -or $temporaryArticleId -le 0 -or $secondaryScheduleId -le 0 -or $malformedScheduleId -le 0 -or $bulkSentinelId -le 0 -or $revisionPostId -le 0) {
         throw 'SEO smoke test could not determine all temporary fixture IDs.'
     }
     if ([int]$fixtureResult.outbound_requests -ne 0) {
         throw 'SEO smoke test fixture attempted an outbound webhook.'
+    }
+
+    $metaRevisionScript = @'
+$article_id = __ARTICLE_ID__;
+$schedule_id = __SCHEDULE_ID__;
+$revision_before = (int) get_option( 'kpopblog_discovery_revision', 0 );
+update_post_meta( $article_id, 'kb_view_count', 17 );
+update_post_meta( $article_id, 'kb_reaction_count', 9 );
+$revision_after_counters = (int) get_option( 'kpopblog_discovery_revision', 0 );
+$source_before = get_post_meta( $article_id, 'kb_source_url', true );
+update_post_meta( $article_id, 'kb_source_url', 'https://example.com/kpopblog-revision-check' );
+$revision_after_source = (int) get_option( 'kpopblog_discovery_revision', 0 );
+$release_before = get_post_meta( $schedule_id, 'kb_release_at', true );
+update_post_meta( $schedule_id, 'kb_release_at', '2030-01-16T12:00:00+09:00' );
+$revision_after_release = (int) get_option( 'kpopblog_discovery_revision', 0 );
+update_post_meta( $article_id, 'kb_source_url', $source_before );
+update_post_meta( $schedule_id, 'kb_release_at', $release_before );
+echo wp_json_encode( array(
+    'before'         => $revision_before,
+    'after_counters' => $revision_after_counters,
+    'after_source'   => $revision_after_source,
+    'after_release'  => $revision_after_release,
+) );
+'@.Replace('__ARTICLE_ID__', [string]$temporaryArticleId).Replace('__SCHEDULE_ID__', [string]$temporaryScheduleId)
+    $metaRevision = Convert-WpCliJson (Invoke-WpCli 'eval' $metaRevisionScript)
+    if ([long]$metaRevision.after_counters -ne [long]$metaRevision.before) {
+        throw 'View or reaction metadata incorrectly advanced the discovery revision.'
+    }
+    if ([long]$metaRevision.after_source -le [long]$metaRevision.after_counters -or [long]$metaRevision.after_release -le [long]$metaRevision.after_source) {
+        throw 'Rendered source or release metadata did not advance the discovery revision.'
     }
 
     $bundle = Invoke-RestMethod -Uri "$baseUrl/wp-json/kpopblog/v1/bundle" -TimeoutSec 30
@@ -670,6 +716,68 @@ if ( is_wp_error( $updated ) || 'private' !== get_post_status( $post_id ) ) { th
     $afterLastModified = [DateTimeOffset]::Parse([string]$afterPrivate.Headers['Last-Modified']).ToUniversalTime()
     if ($afterPrivate.StatusCode -ne 200 -or $afterPrivate.Headers['Content-Type'] -notmatch 'application/xml' -or $afterPrivate.Headers['Cache-Control'] -notmatch 'public' -or $afterPrivate.Content -match $fixtureArticlePattern -or [string]$afterPrivate.Headers['ETag'] -eq [string]$sitemap.Headers['ETag'] -or $afterLastModified -le $beforeLastModified) {
         throw 'Discovery cache revalidation exposed a formerly public article after it became private.'
+    }
+
+    $sameSecondScript = @'
+global $wpdb;
+$post_id = __POST_ID__;
+$slug = '__POST_SLUG__';
+delete_option( 'kpopblog_discovery_revision' );
+wp_cache_delete( 'kpopblog_discovery_revision', 'options' );
+$option_absent_before = 0 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s", 'kpopblog_discovery_revision' ) );
+$fixed_gmt = '2051-04-05 06:07:08';
+$fixed_local = get_date_from_gmt( $fixed_gmt );
+$force_modified = function ( $data, $postarr ) use ( $post_id, $fixed_gmt, $fixed_local ) {
+    if ( isset( $postarr['ID'] ) && (int) $postarr['ID'] === $post_id ) {
+        $data['post_modified'] = $fixed_local;
+        $data['post_modified_gmt'] = $fixed_gmt;
+    }
+    return $data;
+};
+add_filter( 'wp_insert_post_data', $force_modified, PHP_INT_MAX, 2 );
+try {
+    $published = wp_update_post( array( 'ID' => $post_id, 'post_status' => 'publish' ), true );
+    if ( is_wp_error( $published ) || 'publish' !== get_post_status( $post_id ) ) { throw new Exception( 'could not publish same-second revision fixture' ); }
+    $published_post = get_post( $post_id );
+    $published_revision = (int) get_option( 'kpopblog_discovery_revision', 0 );
+    $published_last_modified = kpopblog_discovery_last_modified();
+    $published_sitemap = kpopblog_render_sitemap();
+    $privatized = wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ), true );
+    if ( is_wp_error( $privatized ) || 'private' !== get_post_status( $post_id ) ) { throw new Exception( 'could not privatize same-second revision fixture' ); }
+    $private_post = get_post( $post_id );
+    $private_revision = (int) get_option( 'kpopblog_discovery_revision', 0 );
+    $private_last_modified = kpopblog_discovery_last_modified();
+    $private_sitemap = kpopblog_render_sitemap();
+} finally {
+    remove_filter( 'wp_insert_post_data', $force_modified, PHP_INT_MAX );
+}
+echo wp_json_encode( array(
+    'option_absent_before'     => $option_absent_before,
+    'published_revision'      => $published_revision,
+    'private_revision'        => $private_revision,
+    'expected_first_revision' => strtotime( $fixed_gmt . ' UTC' ) + 1,
+    'published_last_modified' => $published_last_modified,
+    'private_last_modified'   => $private_last_modified,
+    'published_modified_gmt'  => $published_post ? $published_post->post_modified_gmt : '',
+    'private_modified_gmt'    => $private_post ? $private_post->post_modified_gmt : '',
+    'published_contains_path' => false !== strpos( $published_sitemap, '/artist/' . $slug ),
+    'private_contains_path'   => false !== strpos( $private_sitemap, '/artist/' . $slug ),
+) );
+'@.Replace('__POST_ID__', [string]$revisionPostId).Replace('__POST_SLUG__', [string]$fixtureResult.revision_slug)
+    $sameSecond = Convert-WpCliJson (Invoke-WpCli 'eval' $sameSecondScript)
+    if (-not [bool]$sameSecond.option_absent_before -or [long]$sameSecond.published_revision -ne [long]$sameSecond.expected_first_revision -or [long]$sameSecond.private_revision -ne ([long]$sameSecond.published_revision + 1)) {
+        throw 'Option-absent same-second publish-to-private transition did not advance the discovery revision monotonically.'
+    }
+    if ([string]$sameSecond.published_modified_gmt -ne [string]$sameSecond.private_modified_gmt -or [string]$sameSecond.published_modified_gmt -ne '2051-04-05 06:07:08') {
+        throw 'Same-second transition fixture did not retain the deterministic modified timestamp.'
+    }
+    if (-not [bool]$sameSecond.published_contains_path -or [bool]$sameSecond.private_contains_path) {
+        throw 'Same-second transition fixture did not enter and leave the sitemap.'
+    }
+    $publishedIms = ([DateTimeOffset]::ParseExact([string]$sameSecond.published_last_modified + ' +00:00', 'yyyy-MM-dd HH:mm:ss zzz', [Globalization.CultureInfo]::InvariantCulture)).ToString('R')
+    $sameSecondRevalidation = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-Modified-Since' = $publishedIms } -SkipHttpErrorCheck -TimeoutSec 30
+    if ($sameSecondRevalidation.StatusCode -ne 200 -or $sameSecondRevalidation.Content -match [regex]::Escape('/artist/' + [string]$fixtureResult.revision_slug)) {
+        throw 'IMS-only revalidation returned stale output after a same-second publish-to-private transition.'
     }
 } finally {
     Remove-TemporaryFixtures -Marker $fixtureMarker
