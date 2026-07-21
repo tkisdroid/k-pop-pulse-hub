@@ -37,7 +37,12 @@ function kpopblog_render_robots() {
 		'Disallow: /admin',
 		'Disallow: /moderation',
 		'Disallow: /onboarding',
+		'Disallow: /wp-json/kpopblog/v1/admin',
+		'Disallow: /wp-json/kpopblog/v1/auth',
+		'Disallow: /wp-json/kpopblog/v1/subscriptions',
 		'Disallow: /wp-json/kpopblog/v1/notifications',
+		'Disallow: /wp-json/kpopblog/v1/events',
+		'Disallow: /wp-json/kpopblog/v1/moderation',
 	);
 	$lines = array( 'User-agent: *', 'Allow: /' );
 	$lines = array_merge( $lines, $private_paths, array( '' ) );
