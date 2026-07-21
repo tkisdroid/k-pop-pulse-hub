@@ -74,7 +74,7 @@ if ( ! $ids ) {
     echo wp_json_encode( array( 'deleted_ids' => array(), 'outbound_requests' => 0 ) );
     return;
 }
-if ( count( $ids ) > 5 ) {
+if ( count( $ids ) > 56 ) {
     throw new Exception( 'SEO smoke marker matched too many posts; refusing cleanup' );
 }
 $expected = array(
@@ -96,7 +96,10 @@ try {
         $post_id = (int) $id;
         $post = get_post( $post_id );
         $marker = (string) get_post_meta( $post_id, 'kb_source', true );
-        if ( ! $post || ! isset( $expected[ $marker ] ) || $expected[ $marker ][0] !== $post->post_type || $expected[ $marker ][1] !== $post->post_title ) {
+        $bulk_identity = $post && 0 === strpos( $marker, $fixture_marker . ':bulk:' )
+            && 'kb_comeback' === $post->post_type
+            && 1 === preg_match( '/^KpopBlog SEO bulk schedule \d{2}$/', $post->post_title );
+        if ( ! $post || ( ! $bulk_identity && ( ! isset( $expected[ $marker ] ) || $expected[ $marker ][0] !== $post->post_type || $expected[ $marker ][1] !== $post->post_title ) ) ) {
             throw new Exception( 'SEO smoke marker post identity mismatch; refusing cleanup' );
         }
         $deleted = 'attachment' === $post->post_type ? wp_delete_attachment( $post_id, true ) : wp_delete_post( $post_id, true );
@@ -132,7 +135,29 @@ function Assert-NotificationStateUnchanged {
     }
 }
 
+function Get-DiscoveryRevisionState {
+    $script = @'
+global $wpdb;
+$exists = 1 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s", 'kpopblog_discovery_revision' ) );
+echo wp_json_encode( array( 'exists' => $exists, 'value' => $exists ? get_option( 'kpopblog_discovery_revision' ) : null ) );
+'@
+    return Convert-WpCliJson (Invoke-WpCli 'eval' $script)
+}
+
+function Restore-DiscoveryRevisionState {
+    param([Parameter(Mandatory = $true)][object]$State)
+    $exists = if ([bool]$State.exists) { 'true' } else { 'false' }
+    $value = if ([bool]$State.exists) { [string][long]$State.value } else { '0' }
+    $script = @'
+$existed = __EXISTED__;
+$value = __VALUE__;
+if ( $existed ) { update_option( 'kpopblog_discovery_revision', $value, false ); } else { delete_option( 'kpopblog_discovery_revision' ); }
+'@.Replace('__EXISTED__', $exists).Replace('__VALUE__', $value)
+    Invoke-WpCli 'eval' $script | Out-Null
+}
+
 $notificationStateBefore = Get-NotificationState -Marker $fixtureMarker
+$discoveryRevisionBefore = Get-DiscoveryRevisionState
 if ([int]$notificationStateBefore.temp_job_count -ne 0) {
     throw 'SEO smoke test found a pre-existing temporary schedule notification job.'
 }
@@ -199,10 +224,10 @@ try {
         '',
         array(
             'post_content'      => 'Primary temporary schedule created and removed by seo-runtime-smoke.ps1.',
-            'post_date'         => '2030-01-01 03:00:00',
-            'post_date_gmt'     => '2030-01-01 03:00:00',
-            'post_modified'     => '2030-01-01 03:00:00',
-            'post_modified_gmt' => '2030-01-01 03:00:00',
+            'post_date'         => '2050-01-01 03:00:00',
+            'post_date_gmt'     => '2050-01-01 03:00:00',
+            'post_modified'     => '2050-01-01 03:00:00',
+            'post_modified_gmt' => '2050-01-01 03:00:00',
         ),
         array(
             'kb_release_at'   => '2030-01-15T12:00:00+09:00',
@@ -284,6 +309,29 @@ try {
             'kb_source'     => $fixture_marker . ':malformed',
         )
     );
+    $bulk_sentinel_id = 0;
+    for ( $index = 0; $index < 51; $index++ ) {
+        $release_at = 0 === $index ? '2045-12-31T23:59:00Z' : gmdate( 'Y-m-d', strtotime( '2020-01-01 +' . $index . ' days' ) );
+        $post_date = 0 === $index ? '2000-01-01 00:00:00' : gmdate( 'Y-m-d H:i:s', strtotime( '2040-01-01 +' . $index . ' days' ) );
+        $bulk_id = $create_fixture(
+            'kb_comeback',
+            sprintf( 'KpopBlog SEO bulk schedule %02d', $index ),
+            '',
+            array(
+                'post_content'      => 'Bulk RSS candidate ordering fixture.',
+                'post_date'         => $post_date,
+                'post_date_gmt'     => $post_date,
+                'post_modified'     => '2020-01-01 00:00:00',
+                'post_modified_gmt' => '2020-01-01 00:00:00',
+            ),
+            array(
+                'kb_release_at' => $release_at,
+                'kb_type'       => 'event',
+                'kb_source'     => $fixture_marker . ':bulk:' . $index,
+            )
+        );
+        if ( 0 === $index ) { $bulk_sentinel_id = $bulk_id; }
+    }
 
     $job_count_after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
     $temp_job_count_after = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) );
@@ -304,6 +352,7 @@ try {
         'article_title'     => $malicious_title,
         'secondary_id'      => $secondary_id,
         'malformed_id'      => $malformed_id,
+        'bulk_sentinel_id'  => $bulk_sentinel_id,
         'published_utc'     => '2030-02-03T12:34:56+00:00',
         'modified_utc'      => '2030-03-04T05:06:07+00:00',
         'featured_image'    => $featured_image,
@@ -338,7 +387,8 @@ try {
     $temporaryArticleId = [int]$fixtureResult.article_id
     $secondaryScheduleId = [int]$fixtureResult.secondary_id
     $malformedScheduleId = [int]$fixtureResult.malformed_id
-    if ($temporaryScheduleId -le 0 -or $temporaryArticleId -le 0 -or $secondaryScheduleId -le 0 -or $malformedScheduleId -le 0) {
+    $bulkSentinelId = [int]$fixtureResult.bulk_sentinel_id
+    if ($temporaryScheduleId -le 0 -or $temporaryArticleId -le 0 -or $secondaryScheduleId -le 0 -or $malformedScheduleId -le 0 -or $bulkSentinelId -le 0) {
         throw 'SEO smoke test could not determine all temporary fixture IDs.'
     }
     if ([int]$fixtureResult.outbound_requests -ne 0) {
@@ -507,6 +557,9 @@ echo wp_json_encode( array( 'output' => $output ) );
         throw 'WordPress RSS exposed an unvalidated source URL.'
     }
     if ($rssItems.Count -gt 50) { throw 'WordPress RSS exceeded its global item bound.' }
+    if ([string]$rssItems[0].link -ne "$baseUrl/comebacks#event-$bulkSentinelId") {
+        throw 'WordPress RSS pre-truncated schedules by post date instead of selecting the newest release timestamp.'
+    }
     foreach ($rssItem in $rssItems) {
         if (([string]$rssItem.description).Length -gt 700) { throw 'WordPress RSS emitted an overlong final description.' }
     }
@@ -532,6 +585,8 @@ echo wp_json_encode( array( 'output' => $output ) );
     if ($notModified.StatusCode -ne 304 -or $notModified.Headers['Cache-Control'] -notmatch 'public') { throw 'WordPress sitemap did not honor its ETag with public cache headers.' }
     $weakList = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = '"unrelated", W/' + [string]$sitemap.Headers['ETag'] } -SkipHttpErrorCheck -TimeoutSec 30
     if ($weakList.StatusCode -ne 304) { throw 'WordPress sitemap did not honor weak or list-form If-None-Match validators.' }
+    $imsOnly = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-Modified-Since' = [string]$sitemap.Headers['Last-Modified'] } -SkipHttpErrorCheck -TimeoutSec 30
+    if ($imsOnly.StatusCode -ne 304 -or $imsOnly.Headers['Cache-Control'] -notmatch 'public') { throw 'WordPress sitemap did not honor a current IMS-only validator.' }
     $mismatched = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = '"not-current"'; 'If-Modified-Since' = [string]$sitemap.Headers['Last-Modified'] } -SkipHttpErrorCheck -TimeoutSec 30
     if ($mismatched.StatusCode -ne 200 -or $mismatched.Headers['Content-Type'] -notmatch 'application/xml' -or $mismatched.Headers['Cache-Control'] -notmatch 'public') { throw 'If-None-Match did not take precedence with complete public response headers.' }
 
@@ -552,6 +607,8 @@ echo wp_json_encode( array( 'output' => $output ) );
         '/signup',
         '/forgot-password',
         '/submit',
+        '/bookmarks',
+        '/cookie-settings',
         '/wp-json/kpopblog/v1/admin',
         '/wp-json/kpopblog/v1/auth',
         '/wp-json/kpopblog/v1/profile/me',
@@ -604,19 +661,25 @@ echo wp_json_encode( array( 'output' => $output ) );
     $privateTransition = @'
 $post_id = __POST_ID__;
 global $wpdb;
-$updated = $wpdb->update( $wpdb->posts, array( 'post_status' => 'private' ), array( 'ID' => $post_id ) );
-clean_post_cache( $post_id );
-if ( 1 !== $updated || 'private' !== get_post_status( $post_id ) ) { throw new Exception( 'could not make cache fixture private' ); }
+$updated = wp_update_post( array( 'ID' => $post_id, 'post_status' => 'private' ), true );
+if ( is_wp_error( $updated ) || 'private' !== get_post_status( $post_id ) ) { throw new Exception( 'could not make cache fixture private' ); }
 '@.Replace('__POST_ID__', [string]$temporaryArticleId)
     Invoke-WpCli 'eval' $privateTransition | Out-Null
     $afterPrivate = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -Headers @{ 'If-None-Match' = [string]$sitemap.Headers['ETag']; 'If-Modified-Since' = [string]$sitemap.Headers['Last-Modified'] } -SkipHttpErrorCheck -TimeoutSec 30
-    if ($afterPrivate.StatusCode -ne 200 -or $afterPrivate.Content -match $fixtureArticlePattern -or [string]$afterPrivate.Headers['ETag'] -eq [string]$sitemap.Headers['ETag']) {
+    $beforeLastModified = [DateTimeOffset]::Parse([string]$sitemap.Headers['Last-Modified']).ToUniversalTime()
+    $afterLastModified = [DateTimeOffset]::Parse([string]$afterPrivate.Headers['Last-Modified']).ToUniversalTime()
+    if ($afterPrivate.StatusCode -ne 200 -or $afterPrivate.Headers['Content-Type'] -notmatch 'application/xml' -or $afterPrivate.Headers['Cache-Control'] -notmatch 'public' -or $afterPrivate.Content -match $fixtureArticlePattern -or [string]$afterPrivate.Headers['ETag'] -eq [string]$sitemap.Headers['ETag'] -or $afterLastModified -le $beforeLastModified) {
         throw 'Discovery cache revalidation exposed a formerly public article after it became private.'
     }
 } finally {
     Remove-TemporaryFixtures -Marker $fixtureMarker
+    Restore-DiscoveryRevisionState -State $discoveryRevisionBefore
     $notificationStateAfter = Get-NotificationState -Marker $fixtureMarker
     Assert-NotificationStateUnchanged -Before $notificationStateBefore -After $notificationStateAfter
+    $discoveryRevisionAfter = Get-DiscoveryRevisionState
+    if ([bool]$discoveryRevisionAfter.exists -ne [bool]$discoveryRevisionBefore.exists -or [string]$discoveryRevisionAfter.value -ne [string]$discoveryRevisionBefore.value) {
+        throw 'SEO smoke test did not restore the discovery revision option.'
+    }
 }
 
 Write-Host 'WordPress SEO runtime smoke test passed.'

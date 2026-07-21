@@ -122,6 +122,11 @@ $restore_cron_hook = function ( $hook, array $before, array $test_events ) {
 
 $old_settings = get_option( 'kpopblog_automation', null );
 $old_webhook_settings = get_option( KPOPBLOG_WEBHOOK_OPTION, null );
+$discovery_revision_exists_before = 1 === (int) $wpdb->get_var( $wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+    'kpopblog_discovery_revision'
+) );
+$discovery_revision_before = $discovery_revision_exists_before ? get_option( 'kpopblog_discovery_revision' ) : null;
 $automation_last_success_exists_before = 1 === (int) $wpdb->get_var( $wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
     'kpopblog_automation_last_success'
@@ -522,6 +527,12 @@ try {
         $wpdb->delete( $wpdb->prefix . 'kb_automation_runs', array( 'id' => (int) $test_run_id ), array( '%d' ) );
     }
 
+    if ( $discovery_revision_exists_before ) {
+        update_option( 'kpopblog_discovery_revision', $discovery_revision_before, false );
+    } else {
+        delete_option( 'kpopblog_discovery_revision' );
+    }
+
     if ( $automation_last_success_exists_before ) {
         update_option( 'kpopblog_automation_last_success', $automation_last_success_before, false );
     } else {
@@ -644,6 +655,13 @@ if ( get_option( 'kpopblog_automation', null ) !== $old_settings || get_option( 
 }
 if ( get_option( '_transient_' . $notification_lock_name, null ) !== $notification_lock_value_before || get_option( '_transient_timeout_' . $notification_lock_name, null ) !== $notification_lock_timeout_before ) {
     throw new Exception( 'notification processing lock was not restored to its pre-test state' );
+}
+$discovery_revision_exists_after = 1 === (int) $wpdb->get_var( $wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+    'kpopblog_discovery_revision'
+) );
+if ( $discovery_revision_exists_after !== $discovery_revision_exists_before || ( $discovery_revision_exists_before && get_option( 'kpopblog_discovery_revision' ) !== $discovery_revision_before ) ) {
+    throw new Exception( 'discovery revision option was not restored after cleanup' );
 }
 '@
 

@@ -29,3 +29,11 @@
 - `git diff --check`: exit 0.
 
 Apache omits the entity `Content-Type` header from the wire representation of a standards-compliant 304 response even though the PHP handler sets the same endpoint content type after selecting status 304. The test therefore requires exact endpoint content type on every 200 response and requires Cache-Control, ETag, and Last-Modified on 304 responses.
+
+## Fresh re-review follow-up
+
+- Added a monotonic `kpopblog_discovery_revision` validator timestamp. Public post publication, update, unpublication, deletion, public metadata changes, and site identity URL changes advance it beyond both its previous value and the newest public content timestamp. Renderer file modification time is also part of Last-Modified. `If-Modified-Since` can now return 304 only when `If-None-Match` is absent; an INM mismatch always takes precedence and returns the current 200 representation. SEO fixtures snapshot and restore this option exactly.
+- Replaced the RSS schedule `post_date` pre-limit with a paged 500-row scan that validates and parses `kb_release_at`, retains only the newest 50 candidates in memory, then globally sorts them with article candidates and applies the final 50-item bound.
+- The SEO regression creates 51 schedules whose creation-date order conflicts with release order. It proves the newest release is the first RSS item even though that schedule has the oldest `post_date`, and removes all 51 records through marker- and title-checked cleanup.
+- Added `/bookmarks` and `/cookie-settings` to the one shared robots exclusion list and to the independent per-crawler test inventory.
+- Re-ran PHP lint, PowerShell parsing, focused SEO, automation with exact revision-option restoration, and the complete foundation gate after these follow-up changes. The final full run again ended with `WordPress operations foundation verified.`

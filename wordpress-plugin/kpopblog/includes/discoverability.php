@@ -20,6 +20,70 @@ function kpopblog_public_posts( $post_type, $limit, $orderby = 'modified', array
 	return get_posts( array_merge( $args, $extra_args ) );
 }
 
+function kpopblog_discovery_post_types() {
+	return array( 'post', 'kb_artist', 'kb_member', 'kb_video', 'kb_poll', 'kb_thread', 'kb_comeback' );
+}
+
+function kpopblog_discovery_content_timestamp() {
+	static $latest_timestamp = null;
+	if ( null !== $latest_timestamp ) { return $latest_timestamp; }
+	$latest_timestamp = 0;
+	foreach ( kpopblog_discovery_post_types() as $post_type ) {
+		$posts = kpopblog_public_posts( $post_type, 1 );
+		if ( ! $posts || '' === (string) $posts[0]->post_modified_gmt ) { continue; }
+		$timestamp = strtotime( (string) $posts[0]->post_modified_gmt . ' UTC' );
+		if ( false !== $timestamp ) { $latest_timestamp = max( $latest_timestamp, $timestamp ); }
+	}
+	return $latest_timestamp;
+}
+
+function kpopblog_touch_discovery_revision( $minimum_timestamp = 0 ) {
+	$previous = (int) get_option( 'kpopblog_discovery_revision', 0 );
+	$revision = max( time(), $previous + 1, (int) $minimum_timestamp, kpopblog_discovery_content_timestamp() + 1 );
+	update_option( 'kpopblog_discovery_revision', $revision, false );
+}
+
+function kpopblog_touch_discovery_status_revision( $new_status, $old_status, $post ) {
+	if ( $new_status !== $old_status && $post instanceof WP_Post && in_array( $post->post_type, kpopblog_discovery_post_types(), true ) && ( 'publish' === $new_status || 'publish' === $old_status ) ) {
+		kpopblog_touch_discovery_revision();
+	}
+}
+add_action( 'transition_post_status', 'kpopblog_touch_discovery_status_revision', 10, 3 );
+
+function kpopblog_touch_discovery_post_revision( $post_id, $post_after, $post_before ) {
+	if ( $post_after instanceof WP_Post && 'publish' === $post_after->post_status && in_array( $post_after->post_type, kpopblog_discovery_post_types(), true ) && $post_after->to_array() !== $post_before->to_array() ) {
+		$before_timestamp = strtotime( (string) $post_before->post_modified_gmt . ' UTC' );
+		$after_timestamp = strtotime( (string) $post_after->post_modified_gmt . ' UTC' );
+		kpopblog_touch_discovery_revision( max( (int) $before_timestamp, (int) $after_timestamp ) + 1 );
+	}
+}
+add_action( 'post_updated', 'kpopblog_touch_discovery_post_revision', 10, 3 );
+
+function kpopblog_touch_discovery_delete_revision( $post_id, $post ) {
+	if ( $post instanceof WP_Post && 'publish' === $post->post_status && in_array( $post->post_type, kpopblog_discovery_post_types(), true ) ) {
+		$modified_timestamp = strtotime( (string) $post->post_modified_gmt . ' UTC' );
+		kpopblog_touch_discovery_revision( (int) $modified_timestamp + 1 );
+	}
+}
+add_action( 'before_delete_post', 'kpopblog_touch_discovery_delete_revision', 10, 2 );
+
+function kpopblog_touch_discovery_meta_revision( $meta_id, $post_id ) {
+	$post = get_post( $post_id );
+	if ( $post instanceof WP_Post && 'publish' === $post->post_status && in_array( $post->post_type, kpopblog_discovery_post_types(), true ) ) {
+		kpopblog_touch_discovery_revision();
+	}
+}
+add_action( 'added_post_meta', 'kpopblog_touch_discovery_meta_revision', 10, 2 );
+add_action( 'updated_post_meta', 'kpopblog_touch_discovery_meta_revision', 10, 2 );
+add_action( 'deleted_post_meta', 'kpopblog_touch_discovery_meta_revision', 10, 2 );
+
+function kpopblog_touch_discovery_option_revision( $option ) {
+	if ( in_array( $option, array( 'blogname', 'blogdescription', 'home', 'siteurl' ), true ) ) {
+		kpopblog_touch_discovery_revision();
+	}
+}
+add_action( 'updated_option', 'kpopblog_touch_discovery_option_revision', 10, 1 );
+
 function kpopblog_request_path() {
 	$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/';
 	$path = wp_parse_url( $request_uri, PHP_URL_PATH );
@@ -296,6 +360,8 @@ function kpopblog_private_robots_paths() {
 		'Disallow: /signup',
 		'Disallow: /forgot-password',
 		'Disallow: /submit',
+		'Disallow: /bookmarks',
+		'Disallow: /cookie-settings',
 		'Disallow: /wp-json/kpopblog/v1/admin',
 		'Disallow: /wp-json/kpopblog/v1/auth',
 		'Disallow: /wp-json/kpopblog/v1/profile/me',
@@ -399,9 +465,43 @@ function kpopblog_discovery_description_with_sources( $description, array $sourc
 	return kpopblog_bounded_discovery_description( $body . $suffix, $limit );
 }
 
+function kpopblog_public_schedule_candidates( $limit = 50 ) {
+	$limit = max( 1, (int) $limit );
+	$candidates = array();
+	$page = 1;
+	do {
+		$query = new WP_Query( array(
+			'post_type'              => 'kb_comeback',
+			'post_status'            => 'publish',
+			'has_password'           => false,
+			'posts_per_page'         => 500,
+			'paged'                  => $page,
+			'orderby'                => 'ID',
+			'order'                  => 'ASC',
+			'no_found_rows'          => false,
+			'update_post_meta_cache' => true,
+			'update_post_term_cache' => false,
+		) );
+		foreach ( $query->posts as $post ) {
+			$release_at = (string) kpopblog_meta( $post->ID, 'kb_release_at' );
+			if ( ! kpopblog_is_strict_iso8601_date( $release_at ) ) { continue; }
+			$timestamp = strtotime( $release_at );
+			if ( false === $timestamp ) { continue; }
+			$candidates[] = array( 'post' => $post, 'timestamp' => $timestamp );
+		}
+		usort( $candidates, function ( $left, $right ) {
+			if ( $right['timestamp'] === $left['timestamp'] ) { return $right['post']->ID <=> $left['post']->ID; }
+			return $right['timestamp'] <=> $left['timestamp'];
+		} );
+		$candidates = array_slice( $candidates, 0, $limit );
+		$page++;
+	} while ( $page <= (int) $query->max_num_pages );
+	return $candidates;
+}
+
 function kpopblog_render_rss() {
 	$articles = kpopblog_public_posts( 'post', 50, 'date' );
-	$schedules = kpopblog_public_posts( 'kb_comeback', 50, 'date' );
+	$schedules = kpopblog_public_schedule_candidates( 50 );
 	$items = array();
 	$output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 	$output .= '<rss version="2.0"><channel>' . "\n";
@@ -422,11 +522,9 @@ function kpopblog_render_rss() {
 		$items[] = array( 'timestamp' => false === $timestamp ? 0 : $timestamp, 'title' => get_the_title( $post ), 'link' => home_url( '/news/' . $post->post_name ), 'guid' => 'post-' . $post->ID, 'description' => $description, 'category' => $category );
 	}
 
-	foreach ( $schedules as $post ) {
+	foreach ( $schedules as $schedule ) {
+		$post = $schedule['post'];
 		$release_at = (string) kpopblog_meta( $post->ID, 'kb_release_at' );
-		if ( ! kpopblog_is_strict_iso8601_date( $release_at ) ) {
-			continue;
-		}
 		$type = (string) kpopblog_meta( $post->ID, 'kb_type', 'album' );
 		$description = 'Release: ' . $release_at . '; Type: ' . $type;
 		$content = wp_trim_words( wp_strip_all_tags( $post->post_content ), 40 );
@@ -435,8 +533,7 @@ function kpopblog_render_rss() {
 		}
 		$source_urls = kpopblog_public_source_urls( $post->ID );
 		$description = kpopblog_discovery_description_with_sources( $description, $source_urls );
-		$timestamp = strtotime( $release_at );
-		$items[] = array( 'timestamp' => false === $timestamp ? 0 : $timestamp, 'title' => get_the_title( $post ), 'link' => home_url( '/comebacks#event-' . $post->ID ), 'guid' => 'comeback-' . $post->ID, 'description' => $description, 'category' => $type );
+		$items[] = array( 'timestamp' => $schedule['timestamp'], 'title' => get_the_title( $post ), 'link' => home_url( '/comebacks#event-' . $post->ID ), 'guid' => 'comeback-' . $post->ID, 'description' => $description, 'category' => $type );
 	}
 	usort( $items, function ( $left, $right ) { return $right['timestamp'] <=> $left['timestamp']; } );
 	foreach ( array_slice( $items, 0, 50 ) as $item ) {
@@ -495,7 +592,7 @@ function kpopblog_render_llms() {
 function kpopblog_discovery_last_modified() {
 	$latest = '';
 	$latest_timestamp = false;
-	foreach ( array( 'post', 'kb_artist', 'kb_member', 'kb_video', 'kb_poll', 'kb_thread', 'kb_comeback' ) as $post_type ) {
+	foreach ( kpopblog_discovery_post_types() as $post_type ) {
 		$posts = kpopblog_public_posts( $post_type, 1 );
 		if ( ! $posts || '' === (string) $posts[0]->post_modified_gmt ) {
 			continue;
@@ -507,7 +604,11 @@ function kpopblog_discovery_last_modified() {
 			$latest_timestamp = $timestamp;
 		}
 	}
-	return '' !== $latest ? $latest : gmdate( 'Y-m-d H:i:s' );
+	$revision_timestamp = max( (int) get_option( 'kpopblog_discovery_revision', 0 ), (int) filemtime( __FILE__ ) );
+	if ( false === $latest_timestamp || $revision_timestamp > $latest_timestamp ) {
+		$latest_timestamp = $revision_timestamp;
+	}
+	return gmdate( 'Y-m-d H:i:s', $latest_timestamp ?: time() );
 }
 
 function kpopblog_serve_machine_endpoint() {
@@ -528,6 +629,7 @@ function kpopblog_serve_machine_endpoint() {
 	header( 'ETag: ' . $etag );
 	header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', $last_timestamp ) . ' GMT' );
 	$if_none_match = isset( $_SERVER['HTTP_IF_NONE_MATCH'] ) ? trim( wp_unslash( $_SERVER['HTTP_IF_NONE_MATCH'] ) ) : '';
+	$if_modified_since = isset( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ? strtotime( wp_unslash( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) : false;
 	$etag_matches = false;
 	foreach ( explode( ',', $if_none_match ) as $candidate ) {
 		$candidate = trim( $candidate );
@@ -536,6 +638,12 @@ function kpopblog_serve_machine_endpoint() {
 		if ( '*' === $candidate || $etag === $candidate ) { $etag_matches = true; break; }
 	}
 	if ( '' !== $if_none_match && $etag_matches ) {
+		status_header( 304 );
+		header( 'Content-Type: ' . $renderers[ $path ][0] );
+		header( 'Cache-Control: public, max-age=0, must-revalidate' );
+		exit;
+	}
+	if ( '' === $if_none_match && false !== $if_modified_since && $if_modified_since >= $last_timestamp ) {
 		status_header( 304 );
 		header( 'Content-Type: ' . $renderers[ $path ][0] );
 		header( 'Cache-Control: public, max-age=0, must-revalidate' );
