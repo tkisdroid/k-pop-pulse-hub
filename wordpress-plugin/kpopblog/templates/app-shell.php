@@ -33,7 +33,8 @@ function kpopblog_strip_foreign_markup( $html ) {
 		return strpos( $m[0], 'kpopblog-app-css' ) !== false ? $m[0] : '';
 	}, $html );
 	$html = preg_replace_callback( '/<script\b[^>]*>.*?<\/script>/is', function ( $m ) {
-		$allowed = strpos( $m[0], 'kpopblog-app' ) !== false || strpos( $m[0], 'kpopblog-discovery-jsonld' ) !== false;
+		$has_json_ld_id = 1 === preg_match( '/^<script\b[^>]*\bid\s*=\s*(["\'])kpopblog-discovery-jsonld\1(?:\s|>)/i', $m[0] );
+		$allowed = strpos( $m[0], 'kpopblog-app' ) !== false || $has_json_ld_id;
 		return $allowed ? $m[0] : '';
 	}, $html );
 	return $html;

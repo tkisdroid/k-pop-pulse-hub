@@ -13,6 +13,9 @@ if (-not (Test-Path -LiteralPath $envFile)) {
 $projectName = 'k-pop-pulse-hub'
 $baseUrl = 'http://localhost:8088'
 $temporaryScheduleId = 0
+$temporaryArticleId = 0
+$secondaryScheduleId = 0
+$malformedScheduleId = 0
 $fixtureMarker = 'seo-runtime-smoke:' + [guid]::NewGuid().ToString('N')
 
 function Invoke-WpCli {
@@ -28,7 +31,7 @@ function Convert-WpCliJson {
     param([Parameter(Mandatory = $true)][object[]]$Output)
     $json = [string](@($Output) | Select-Object -Last 1)
     try {
-        return $json | ConvertFrom-Json -ErrorAction Stop
+        return $json | ConvertFrom-Json -DateKind String -ErrorAction Stop
     } catch {
         throw "WP-CLI did not return valid JSON: $json"
     }
@@ -46,10 +49,9 @@ echo wp_json_encode( array(
     'temp_job_count'   => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) ),
     'next_scheduled'   => (int) ( wp_next_scheduled( 'kpopblog_process_notification_jobs' ) ?: 0 ),
     'marker_post_count'=> (int) $wpdb->get_var( $wpdb->prepare(
-        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_type = %s AND pm.meta_key = %s AND pm.meta_value = %s",
-        'kb_comeback',
+        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value LIKE %s",
         'kb_source',
-        $fixture_marker
+        $wpdb->esc_like( $fixture_marker ) . '%'
     ) ),
 ) );
 '@
@@ -57,48 +59,48 @@ echo wp_json_encode( array(
     return Convert-WpCliJson (Invoke-WpCli 'eval' $stateScript)
 }
 
-function Remove-TemporarySchedule {
-    param(
-        [Parameter(Mandatory = $true)][string]$Marker,
-        [Parameter(Mandatory = $true)][int]$ExpectedId
-    )
+function Remove-TemporaryFixtures {
+    param([Parameter(Mandatory = $true)][string]$Marker)
     $cleanupScriptTemplate = @'
 global $wpdb;
 $fixture_marker = '__FIXTURE_MARKER__';
-$expected_id = __EXPECTED_ID__;
 $ids = $wpdb->get_col( $wpdb->prepare(
-    "SELECT DISTINCT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE p.post_type = %s AND pm.meta_key = %s AND pm.meta_value = %s",
-    'kb_comeback',
+    "SELECT DISTINCT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value LIKE %s",
     'kb_source',
-    $fixture_marker
+    $wpdb->esc_like( $fixture_marker ) . '%'
 ) );
 if ( ! $ids ) {
-    echo wp_json_encode( array( 'deleted_id' => 0, 'outbound_requests' => 0 ) );
+    echo wp_json_encode( array( 'deleted_ids' => array(), 'outbound_requests' => 0 ) );
     return;
 }
-if ( 1 !== count( $ids ) ) {
-    throw new Exception( 'SEO smoke marker matched multiple posts; refusing cleanup' );
+if ( count( $ids ) > 4 ) {
+    throw new Exception( 'SEO smoke marker matched too many posts; refusing cleanup' );
 }
-$post_id = (int) $ids[0];
-$post = get_post( $post_id );
-if ( ! $post || 'kb_comeback' !== $post->post_type || 'KpopBlog SEO runtime temporary schedule' !== $post->post_title ) {
-    throw new Exception( 'SEO smoke marker post identity mismatch; refusing cleanup' );
-}
-if ( $fixture_marker !== get_post_meta( $post_id, 'kb_source', true ) ) {
-    throw new Exception( 'SEO smoke marker meta mismatch; refusing cleanup' );
-}
-if ( $expected_id > 0 && $expected_id !== $post_id ) {
-    throw new Exception( 'SEO smoke post ID mismatch; refusing cleanup' );
-}
+$expected = array(
+    $fixture_marker                => array( 'kb_comeback', 'KpopBlog SEO runtime temporary schedule' ),
+    $fixture_marker . ':article'   => array( 'post', 'KpopBlog SEO malicious </script><script id="review-injected">injected</script> article' ),
+    $fixture_marker . ':secondary' => array( 'kb_comeback', 'KpopBlog SEO runtime secondary schedule' ),
+    $fixture_marker . ':malformed' => array( 'kb_comeback', 'KpopBlog SEO runtime malformed schedule' ),
+);
 $outbound_requests = 0;
+$deleted_ids = array();
 $http_guard = function () use ( &$outbound_requests ) {
     $outbound_requests++;
     return new WP_Error( 'seo_smoke_blocked_http', 'SEO smoke cleanup attempted an outbound HTTP request.' );
 };
 add_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
 try {
-    if ( ! wp_delete_post( $post_id, true ) || get_post( $post_id ) ) {
-        throw new Exception( 'SEO smoke marker post cleanup failed' );
+    foreach ( $ids as $id ) {
+        $post_id = (int) $id;
+        $post = get_post( $post_id );
+        $marker = (string) get_post_meta( $post_id, 'kb_source', true );
+        if ( ! $post || ! isset( $expected[ $marker ] ) || $expected[ $marker ][0] !== $post->post_type || $expected[ $marker ][1] !== $post->post_title ) {
+            throw new Exception( 'SEO smoke marker post identity mismatch; refusing cleanup' );
+        }
+        if ( ! wp_delete_post( $post_id, true ) || get_post( $post_id ) ) {
+            throw new Exception( 'SEO smoke marker post cleanup failed' );
+        }
+        $deleted_ids[] = $post_id;
     }
 } finally {
     remove_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
@@ -106,15 +108,12 @@ try {
 if ( 0 !== $outbound_requests ) {
     throw new Exception( 'SEO smoke marker cleanup attempted an outbound webhook' );
 }
-echo wp_json_encode( array( 'deleted_id' => $post_id, 'outbound_requests' => $outbound_requests ) );
+echo wp_json_encode( array( 'deleted_ids' => $deleted_ids, 'outbound_requests' => $outbound_requests ) );
 '@
-    $cleanupScript = $cleanupScriptTemplate.Replace('__FIXTURE_MARKER__', $Marker).Replace('__EXPECTED_ID__', [string]$ExpectedId)
+    $cleanupScript = $cleanupScriptTemplate.Replace('__FIXTURE_MARKER__', $Marker)
     $cleanupResult = Convert-WpCliJson (Invoke-WpCli 'eval' $cleanupScript)
     if ([int]$cleanupResult.outbound_requests -ne 0) {
         throw 'SEO smoke cleanup attempted an outbound webhook.'
-    }
-    if ($ExpectedId -gt 0 -and [int]$cleanupResult.deleted_id -ne $ExpectedId) {
-        throw "SEO smoke cleanup did not delete expected post $ExpectedId."
     }
 }
 
@@ -148,48 +147,126 @@ global $wpdb;
 $jobs_table = $wpdb->prefix . 'kb_notification_jobs';
 $fixture_title = 'Comeback: KpopBlog SEO runtime temporary schedule';
 $fixture_marker = '__FIXTURE_MARKER__';
+$malicious_title = 'KpopBlog SEO malicious </script><script id="review-injected">injected</script> article';
+$malicious_description = 'Review description </script><script id="review-injected-description">injected</script> text.';
+$primary_source = 'https://example.com/kpopblog-primary?ref=seo&item=1';
+$secondary_source = 'https://example.org/kpopblog-secondary';
 $job_count_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
 $temp_job_count_before = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) );
 $next_scheduled_before = (int) ( wp_next_scheduled( 'kpopblog_process_notification_jobs' ) ?: 0 );
 $outbound_requests = 0;
-$post_id = 0;
+$created_ids = array();
 $http_guard = function () use ( &$outbound_requests ) {
     $outbound_requests++;
     return new WP_Error( 'seo_smoke_blocked_http', 'SEO smoke fixture attempted an outbound HTTP request.' );
 };
 add_filter( 'pre_http_request', $http_guard, PHP_INT_MAX );
 try {
-    $post_id = wp_insert_post( array(
-        'post_type'         => 'kb_comeback',
-        'post_title'        => 'KpopBlog SEO runtime temporary schedule',
-        'post_content'      => 'Temporary schedule created and removed by seo-runtime-smoke.ps1.',
-        'post_status'       => 'draft',
-        'post_date'         => '2030-01-01 03:00:00',
-        'post_date_gmt'     => '2030-01-01 03:00:00',
-        'post_modified'     => '2030-01-01 03:00:00',
-        'post_modified_gmt' => '2030-01-01 03:00:00',
-    ), true );
-    if ( is_wp_error( $post_id ) ) {
-        throw new Exception( 'failed to create temporary SEO schedule: ' . $post_id->get_error_message() );
-    }
-    update_post_meta( $post_id, 'kb_release_at', '2030-01-15T12:00:00+09:00' );
-    update_post_meta( $post_id, 'kb_type', 'album' );
-    update_post_meta( $post_id, 'kb_source', $fixture_marker );
-    $updated = $wpdb->update(
-        $wpdb->posts,
-        array( 'post_status' => 'publish' ),
-        array( 'ID' => $post_id ),
-        array( '%s' ),
-        array( '%d' )
+    $create_fixture = function ( $post_type, $title, $slug, array $columns, array $meta ) use ( &$created_ids, $wpdb ) {
+        $post_id = wp_insert_post( array(
+            'post_type'    => $post_type,
+            'post_title'   => 'KpopBlog SEO runtime fixture pending publication',
+            'post_content' => 'Temporary content created and removed by seo-runtime-smoke.ps1.',
+            'post_status'  => 'draft',
+            'post_name'    => $slug,
+        ), true );
+        if ( is_wp_error( $post_id ) ) {
+            throw new Exception( 'failed to create temporary SEO fixture: ' . $post_id->get_error_message() );
+        }
+        $created_ids[] = (int) $post_id;
+        foreach ( $meta as $key => $value ) {
+            update_post_meta( $post_id, $key, $value );
+        }
+        $columns = array_merge( array( 'post_status' => 'publish', 'post_title' => $title ), $columns );
+        $updated = $wpdb->update( $wpdb->posts, $columns, array( 'ID' => $post_id ) );
+        if ( 1 !== $updated ) {
+            throw new Exception( 'failed to publish temporary SEO fixture without hooks' );
+        }
+        clean_post_cache( $post_id );
+        $published = get_post( $post_id );
+        if ( ! $published || 'publish' !== $published->post_status || $title !== $published->post_title ) {
+            throw new Exception( 'temporary SEO fixture is not query-visible as published' );
+        }
+        return (int) $post_id;
+    };
+
+    $post_id = $create_fixture(
+        'kb_comeback',
+        'KpopBlog SEO runtime temporary schedule',
+        '',
+        array(
+            'post_content'      => 'Primary temporary schedule created and removed by seo-runtime-smoke.ps1.',
+            'post_date'         => '2030-01-01 03:00:00',
+            'post_date_gmt'     => '2030-01-01 03:00:00',
+            'post_modified'     => '2030-01-01 03:00:00',
+            'post_modified_gmt' => '2030-01-01 03:00:00',
+        ),
+        array(
+            'kb_release_at'   => '2030-01-15T12:00:00+09:00',
+            'kb_type'         => 'album',
+            'kb_source'       => $fixture_marker,
+            'kb_source_url'   => $primary_source,
+            'kb_source_urls'  => array( $primary_source ),
+            'kb_source_title' => 'Primary schedule source',
+        )
     );
-    if ( 1 !== $updated ) {
-        throw new Exception( 'failed to publish temporary SEO schedule without hooks' );
-    }
-    clean_post_cache( $post_id );
-    $published = get_post( $post_id );
-    if ( ! $published || 'publish' !== $published->post_status ) {
-        throw new Exception( 'temporary SEO schedule is not query-visible as published' );
-    }
+    $article_slug = 'kpopblog-seo-malicious-' . substr( md5( $fixture_marker ), 0, 12 );
+    $article_id = $create_fixture(
+        'post',
+        $malicious_title,
+        $article_slug,
+        array(
+            'post_content'      => '<p>Malicious stored content fixture.</p>',
+            'post_excerpt'      => $malicious_description,
+            'post_date'         => '2099-02-03 04:05:06',
+            'post_date_gmt'     => '2099-02-03 12:34:56',
+            'post_modified'     => '2099-03-04 01:02:03',
+            'post_modified_gmt' => '2099-03-04 05:06:07',
+        ),
+        array(
+            'kb_source'       => $fixture_marker . ':article',
+            'kb_source_url'   => $primary_source,
+            'kb_source_urls'  => array( $primary_source, 'http://example.net/not-https', $secondary_source, $primary_source ),
+            'kb_source_title' => 'Review primary source',
+        )
+    );
+    $secondary_id = $create_fixture(
+        'kb_comeback',
+        'KpopBlog SEO runtime secondary schedule',
+        '',
+        array(
+            'post_content'      => 'Secondary valid date-only schedule.',
+            'post_date'         => '2030-02-01 03:00:00',
+            'post_date_gmt'     => '2030-02-01 03:00:00',
+            'post_modified'     => '2030-02-01 03:00:00',
+            'post_modified_gmt' => '2030-02-01 03:00:00',
+        ),
+        array(
+            'kb_release_at'   => '2030-02-20',
+            'kb_type'         => 'single',
+            'kb_source'       => $fixture_marker . ':secondary',
+            'kb_source_url'   => $secondary_source,
+            'kb_source_urls'  => array( $secondary_source ),
+            'kb_source_title' => 'Secondary schedule source',
+        )
+    );
+    $malformed_id = $create_fixture(
+        'kb_comeback',
+        'KpopBlog SEO runtime malformed schedule',
+        '',
+        array(
+            'post_content'      => 'Malformed relative date schedule.',
+            'post_date'         => '2030-03-01 03:00:00',
+            'post_date_gmt'     => '2030-03-01 03:00:00',
+            'post_modified'     => '2030-03-01 03:00:00',
+            'post_modified_gmt' => '2030-03-01 03:00:00',
+        ),
+        array(
+            'kb_release_at' => 'next Friday at noon',
+            'kb_type'       => 'album',
+            'kb_source'     => $fixture_marker . ':malformed',
+        )
+    );
 
     $job_count_after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$jobs_table}" );
     $temp_job_count_after = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$jobs_table} WHERE title = %s", $fixture_title ) );
@@ -204,15 +281,24 @@ try {
         throw new Exception( 'temporary SEO schedule attempted an outbound webhook' );
     }
     echo wp_json_encode( array(
-        'id'                => (int) $post_id,
+        'id'                => $post_id,
+        'article_id'        => $article_id,
+        'article_slug'      => $article_slug,
+        'article_title'     => $malicious_title,
+        'secondary_id'      => $secondary_id,
+        'malformed_id'      => $malformed_id,
+        'published_utc'     => '2099-02-03T12:34:56+00:00',
+        'modified_utc'      => '2099-03-04T05:06:07+00:00',
+        'primary_source'    => $primary_source,
+        'secondary_source'  => $secondary_source,
         'job_count'         => $job_count_after,
         'temp_job_count'    => $temp_job_count_after,
         'next_scheduled'    => $next_scheduled_after,
         'outbound_requests' => $outbound_requests,
     ) );
 } catch ( Throwable $error ) {
-    if ( $post_id ) {
-        wp_delete_post( $post_id, true );
+    foreach ( $created_ids as $created_id ) {
+        wp_delete_post( $created_id, true );
     }
     throw $error;
 } finally {
@@ -231,8 +317,11 @@ try {
     }
     $fixtureResult = Convert-WpCliJson $fixtureOutput
     $temporaryScheduleId = [int]$fixtureResult.id
-    if ($temporaryScheduleId -le 0) {
-        throw 'SEO smoke test could not determine the temporary schedule ID.'
+    $temporaryArticleId = [int]$fixtureResult.article_id
+    $secondaryScheduleId = [int]$fixtureResult.secondary_id
+    $malformedScheduleId = [int]$fixtureResult.malformed_id
+    if ($temporaryScheduleId -le 0 -or $temporaryArticleId -le 0 -or $secondaryScheduleId -le 0 -or $malformedScheduleId -le 0) {
+        throw 'SEO smoke test could not determine all temporary fixture IDs.'
     }
     if ([int]$fixtureResult.outbound_requests -ne 0) {
         throw 'SEO smoke test fixture attempted an outbound webhook.'
@@ -242,20 +331,39 @@ try {
     $schedule = @($bundle.comebacks) | Where-Object { [string]$_.id -eq [string]$temporaryScheduleId } | Select-Object -First 1
     if (-not $schedule) { throw 'SEO smoke test temporary schedule is unavailable from WordPress.' }
 
-    $articleUrl = "$baseUrl/news/$($article.slug)"
+    $articleUrl = "$baseUrl/news/$($fixtureResult.article_slug)"
     $crawlerBodies = @{}
-    foreach ($agent in @('OAI-SearchBot', 'GPTBot', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot')) {
+    $jsonLdPattern = '(?is)<script\b(?=[^>]*\bid\s*=\s*(["''])(?:kpopblog-discovery-jsonld)\1)(?=[^>]*\btype\s*=\s*(["''])application/ld\+json\2)[^>]*>(.*?)</script>'
+    $browserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36'
+    foreach ($agent in @('OAI-SearchBot', 'GPTBot', 'Claude-SearchBot', 'PerplexityBot', 'Googlebot', $browserAgent)) {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $articleUrl -Headers @{ 'User-Agent' = $agent } -TimeoutSec 30
         if ($response.StatusCode -ne 200) { throw "Article request failed for $agent." }
-        foreach ($pattern in @(
-            [regex]::Escape([string]$article.title),
-            '<article[^>]+data-kpopblog-fallback="article"',
-            '<meta[^>]+name="description"',
-            '<link[^>]+rel="canonical"[^>]+/news/',
-            'application/ld\+json',
-            '"@type":"NewsArticle"'
-        )) {
-            if ($response.Content -notmatch $pattern) { throw "Article HTML is missing $pattern for $agent." }
+        $countPatterns = @{
+            title = '(?is)<title\b[^>]*>.*?</title>'
+            description = '(?i)<meta\b[^>]*\bname\s*=\s*["'']description["''][^>]*>'
+            canonical = '(?i)<link\b[^>]*\brel\s*=\s*["'']canonical["''][^>]*>'
+            json_ld = $jsonLdPattern
+        }
+        foreach ($entry in $countPatterns.GetEnumerator()) {
+            $count = [regex]::Matches($response.Content, $entry.Value).Count
+            if ($count -ne 1) { throw "Article HTML has $count $($entry.Key) elements for $agent; expected exactly one." }
+        }
+        if ($response.Content -notmatch '<article[^>]+data-kpopblog-fallback="article"') { throw "Article HTML is missing semantic fallback for $agent." }
+        if ($response.Content -match '(?i)<script\b[^>]*\bid\s*=\s*["'']review-injected') { throw "Stored article data injected a script element for $agent." }
+        $jsonLdMatch = [regex]::Match($response.Content, $jsonLdPattern)
+        try { $jsonLd = $jsonLdMatch.Groups[3].Value | ConvertFrom-Json -DateKind String -ErrorAction Stop } catch { throw "Article JSON-LD is not valid JSON for $agent." }
+        if ([string]$jsonLd.'@type' -ne 'NewsArticle' -or [string]$jsonLd.headline -ne [string]$fixtureResult.article_title) {
+            throw "Article JSON-LD identity is incorrect for $agent."
+        }
+        if ([string]$jsonLd.datePublished -ne [string]$fixtureResult.published_utc -or [string]$jsonLd.dateModified -ne [string]$fixtureResult.modified_utc) {
+            throw "Article JSON-LD timestamps are not the exact stored UTC instants for $agent."
+        }
+        $citations = @($jsonLd.citation)
+        if ($citations.Count -ne 2 -or $citations[0] -ne [string]$fixtureResult.primary_source -or $citations[1] -ne [string]$fixtureResult.secondary_source) {
+            throw "Article JSON-LD citations are not the validated, ordered source list for $agent."
+        }
+        foreach ($timestamp in @([string]$fixtureResult.published_utc, [string]$fixtureResult.modified_utc)) {
+            if ($response.Content -notmatch [regex]::Escape('datetime="' + $timestamp + '"')) { throw "Article fallback is missing UTC time $timestamp for $agent." }
         }
         $crawlerBodies[$agent] = $response.Content
     }
@@ -264,9 +372,64 @@ try {
         if ($body -ne $referenceBody) { throw 'Crawler user agents received different article HTML.' }
     }
 
+    $filterScript = @'
+$_SERVER['SERVER_NAME'] = 'localhost';
+$_SERVER['HTTP_HOST'] = 'localhost:8088';
+$_SERVER['REQUEST_URI'] = '/';
+ob_start();
+require KPOPBLOG_PATH . 'templates/app-shell.php';
+ob_end_clean();
+$input = '<script data-note="kpopblog-discovery-jsonld">foreignAttribute()</script>'
+    . '<script>window.note = "kpopblog-discovery-jsonld";</script>'
+    . '<script id="kpopblog-discovery-jsonld" type="application/ld+json">{"safe":true}</script>';
+$filtered = kpopblog_strip_foreign_markup( $input );
+echo wp_json_encode( array(
+    'foreign_attribute_removed' => false === strpos( $filtered, 'foreignAttribute' ),
+    'foreign_body_removed'      => false === strpos( $filtered, 'window.note' ),
+    'exact_marker_count'        => substr_count( $filtered, 'id="kpopblog-discovery-jsonld"' ),
+) );
+'@
+    $filterResult = Convert-WpCliJson (Invoke-WpCli 'eval' $filterScript)
+    if (-not [bool]$filterResult.foreign_attribute_removed -or -not [bool]$filterResult.foreign_body_removed -or [int]$filterResult.exact_marker_count -ne 1) {
+        throw 'App shell script filtering did not require the exact JSON-LD id attribute.'
+    }
+
+$encodingFailureScript = @'
+$recursive = array();
+$recursive['self'] =& $recursive;
+$output = function_exists( 'kpopblog_render_public_json_ld' ) ? kpopblog_render_public_json_ld( $recursive ) : '__missing__';
+echo wp_json_encode( array( 'output' => $output ) );
+'@
+    $encodingFailureResult = Convert-WpCliJson (Invoke-WpCli 'eval' $encodingFailureScript)
+    if ([string]$encodingFailureResult.output -ne '') {
+        throw 'Failed JSON encoding emitted a malformed JSON-LD script.'
+    }
+
     $comebacks = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/comebacks" -Headers @{ 'User-Agent' = 'Claude-SearchBot' } -TimeoutSec 30
-    if ($comebacks.Content -notmatch '<section[^>]+data-kpopblog-fallback="comebacks"' -or $comebacks.Content -notmatch '"@type":"Event"') {
+    if ($comebacks.Content -notmatch '<section[^>]+data-kpopblog-fallback="comebacks"') {
         throw 'Comeback calendar is missing semantic fallback content or Event JSON-LD.'
+    }
+    $comebackJsonMatches = [regex]::Matches($comebacks.Content, $jsonLdPattern)
+    if ($comebackJsonMatches.Count -ne 1) { throw 'Comeback calendar must have exactly one JSON-LD script.' }
+    try { $comebackJson = $comebackJsonMatches[0].Groups[3].Value | ConvertFrom-Json -DateKind String -ErrorAction Stop } catch { throw 'Comeback JSON-LD is not valid JSON.' }
+    $eventItems = @($comebackJson.mainEntity.itemListElement)
+    $eventUrls = @($eventItems | ForEach-Object { [string]$_.item.url })
+    foreach ($scheduleId in @($temporaryScheduleId, $secondaryScheduleId)) {
+        if ($eventUrls -notcontains "$baseUrl/comebacks#event-$scheduleId") { throw "Comeback JSON-LD is missing valid schedule $scheduleId." }
+    }
+    if ($eventUrls -contains "$baseUrl/comebacks#event-$malformedScheduleId" -or $comebacks.Content -match [regex]::Escape('id="event-' + $malformedScheduleId + '"')) {
+        throw 'Malformed relative-date schedule was emitted as semantic comeback content.'
+    }
+    $sourceHeadingMatches = [regex]::Matches($comebacks.Content, 'id="(kpopblog-source-heading-\d+)"')
+    $sourceHeadingIds = @($sourceHeadingMatches | ForEach-Object { $_.Groups[1].Value })
+    if ($sourceHeadingIds.Count -lt 2 -or @($sourceHeadingIds | Select-Object -Unique).Count -ne $sourceHeadingIds.Count) {
+        throw 'Comeback source heading IDs are missing or duplicated.'
+    }
+    foreach ($scheduleId in @($temporaryScheduleId, $secondaryScheduleId)) {
+        $headingId = "kpopblog-source-heading-$scheduleId"
+        if ($sourceHeadingIds -notcontains $headingId -or $comebacks.Content -notmatch [regex]::Escape('aria-labelledby="' + $headingId + '"')) {
+            throw "Comeback source heading $headingId does not match its aria-labelledby reference."
+        }
     }
 
     $missingSlug = 'automation-discovery-missing-' + [guid]::NewGuid().ToString('N')
@@ -274,18 +437,41 @@ try {
     if ($missing.StatusCode -ne 404 -or $missing.Content -notmatch 'noindex, nofollow') {
         throw 'Missing article did not return a non-indexable 404.'
     }
+    if ([regex]::Matches($missing.Content, '(?i)<link\b[^>]*\brel\s*=\s*["'']canonical["''][^>]*>').Count -ne 0 -or [regex]::Matches($missing.Content, $jsonLdPattern).Count -ne 0) {
+        throw 'Missing article emitted a canonical link or JSON-LD.'
+    }
 
     $articlePath = '/news/' + [string]$article.slug
     $articlePattern = [regex]::Escape($articlePath)
+    $fixtureArticlePath = '/news/' + [string]$fixtureResult.article_slug
+    $fixtureArticlePattern = [regex]::Escape($fixtureArticlePath)
     $scheduleAnchorPattern = [regex]::Escape('/comebacks#event-' + [string]$temporaryScheduleId)
+    $secondaryScheduleAnchorPattern = [regex]::Escape('/comebacks#event-' + [string]$secondaryScheduleId)
+    $malformedScheduleAnchorPattern = [regex]::Escape('/comebacks#event-' + [string]$malformedScheduleId)
 
     $rss = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/rss.xml" -TimeoutSec 30
     if ($rss.StatusCode -ne 200 -or $rss.Headers['Content-Type'] -notmatch 'application/rss\+xml') {
         throw 'WordPress RSS endpoint did not return RSS XML.'
     }
     try { [xml]$rssXml = $rss.Content } catch { throw 'WordPress RSS endpoint returned malformed XML.' }
-    if ($rss.Content -notmatch $articlePattern -or $rss.Content -notmatch $scheduleAnchorPattern) {
+    if ($rss.Content -notmatch $articlePattern -or $rss.Content -notmatch $fixtureArticlePattern -or $rss.Content -notmatch $scheduleAnchorPattern -or $rss.Content -notmatch $secondaryScheduleAnchorPattern) {
         throw 'WordPress RSS endpoint is missing published article or schedule content.'
+    }
+    if ($rss.Content -match $malformedScheduleAnchorPattern -or $rss.Content -match [regex]::Escape('KpopBlog SEO runtime malformed schedule')) {
+        throw 'WordPress RSS emitted a schedule with a malformed release date.'
+    }
+    $rssItems = @($rssXml.rss.channel.item)
+    $rssFixtureArticle = @($rssItems | Where-Object { [string]$_.link -eq "$baseUrl$fixtureArticlePath" }) | Select-Object -First 1
+    $rssPrimarySchedule = @($rssItems | Where-Object { [string]$_.link -eq "$baseUrl/comebacks#event-$temporaryScheduleId" }) | Select-Object -First 1
+    $rssSecondarySchedule = @($rssItems | Where-Object { [string]$_.link -eq "$baseUrl/comebacks#event-$secondaryScheduleId" }) | Select-Object -First 1
+    if (-not $rssFixtureArticle -or [string]$rssFixtureArticle.description -notlike "*$($fixtureResult.primary_source)*" -or [string]$rssFixtureArticle.description -notlike "*$($fixtureResult.secondary_source)*") {
+        throw 'WordPress RSS article description is missing validated citations.'
+    }
+    if (-not $rssPrimarySchedule -or [string]$rssPrimarySchedule.description -notlike "*$($fixtureResult.primary_source)*" -or -not $rssSecondarySchedule -or [string]$rssSecondarySchedule.description -notlike "*$($fixtureResult.secondary_source)*") {
+        throw 'WordPress RSS schedule descriptions are missing validated citations.'
+    }
+    if ($rss.Content -match [regex]::Escape('http://example.net/not-https')) {
+        throw 'WordPress RSS exposed an unvalidated source URL.'
     }
 
     $sitemap = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/sitemap.xml" -TimeoutSec 30
@@ -339,11 +525,17 @@ try {
     if ($llms.StatusCode -ne 200 -or $llms.Headers['Content-Type'] -notmatch 'text/plain') {
         throw 'WordPress llms endpoint did not return plain text.'
     }
-    if ($llms.Content -notmatch $articlePattern -or $llms.Content -notmatch $scheduleAnchorPattern) {
+    if ($llms.Content -notmatch $articlePattern -or $llms.Content -notmatch $fixtureArticlePattern -or $llms.Content -notmatch $scheduleAnchorPattern -or $llms.Content -notmatch $secondaryScheduleAnchorPattern) {
         throw 'WordPress llms endpoint is missing published article or schedule links.'
     }
+    foreach ($validatedSource in @([string]$fixtureResult.primary_source, [string]$fixtureResult.secondary_source)) {
+        if ($llms.Content -notmatch [regex]::Escape($validatedSource)) { throw "WordPress llms output is missing validated citation $validatedSource." }
+    }
+    if ($llms.Content -match $malformedScheduleAnchorPattern -or $llms.Content -match [regex]::Escape('http://example.net/not-https')) {
+        throw 'WordPress llms output exposed a malformed schedule or unvalidated source URL.'
+    }
 } finally {
-    Remove-TemporarySchedule -Marker $fixtureMarker -ExpectedId $temporaryScheduleId
+    Remove-TemporaryFixtures -Marker $fixtureMarker
     $notificationStateAfter = Get-NotificationState -Marker $fixtureMarker
     Assert-NotificationStateUnchanged -Before $notificationStateBefore -After $notificationStateAfter
 }

@@ -78,6 +78,17 @@ function kpopblog_public_description( WP_Post $post ) {
 	return wp_html_excerpt( preg_replace( '/\s+/', ' ', trim( $text ) ), 300, '…' );
 }
 
+function kpopblog_public_iso8601_date( $value ) {
+	$value = (string) $value;
+	$date_pattern = '/^\d{4}-\d{2}-\d{2}\z/';
+	$datetime_pattern = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})\z/';
+	if ( ! preg_match( $date_pattern, $value ) && ! preg_match( $datetime_pattern, $value ) ) {
+		return false;
+	}
+	$parsed = date_parse( $value );
+	return 0 === $parsed['error_count'] && 0 === $parsed['warning_count'];
+}
+
 function kpopblog_public_source_urls( $post_id ) {
 	$raw_urls = get_post_meta( $post_id, 'kb_source_urls', true );
 	$raw_urls = is_array( $raw_urls ) ? $raw_urls : array();
@@ -105,7 +116,8 @@ function kpopblog_render_public_sources( $post_id ) {
 		return '';
 	}
 	$primary_title = sanitize_text_field( (string) get_post_meta( $post_id, 'kb_source_title', true ) );
-	$html = '<section aria-labelledby="kpopblog-source-heading"><h2 id="kpopblog-source-heading">Sources</h2><ul>';
+	$heading_id = 'kpopblog-source-heading-' . (int) $post_id;
+	$html = '<section aria-labelledby="' . esc_attr( $heading_id ) . '"><h2 id="' . esc_attr( $heading_id ) . '">Sources</h2><ul>';
 	foreach ( $urls as $index => $url ) {
 		$host = (string) wp_parse_url( $url, PHP_URL_HOST );
 		$label = 0 === $index && '' !== $primary_title ? $primary_title : $host;
@@ -124,8 +136,8 @@ function kpopblog_build_public_json_ld( array $context ) {
 			'@type'            => 'NewsArticle',
 			'headline'         => get_the_title( $post ),
 			'description'      => kpopblog_public_description( $post ),
-			'datePublished'    => mysql2date( 'c', $post->post_date_gmt, false ),
-			'dateModified'     => mysql2date( 'c', $post->post_modified_gmt, false ),
+			'datePublished'    => get_post_time( 'c', true, $post ),
+			'dateModified'     => get_post_modified_time( 'c', true, $post ),
 			'mainEntityOfPage' => array( '@type' => 'WebPage', '@id' => $canonical ),
 			'author'           => array( '@type' => 'Person', 'name' => $author ? $author->display_name : get_bloginfo( 'name' ) ),
 			'publisher'        => array( '@type' => 'Organization', 'name' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ),
@@ -143,7 +155,7 @@ function kpopblog_build_public_json_ld( array $context ) {
 	$items = array();
 	foreach ( $context['posts'] ?? array() as $post ) {
 		$release = (string) get_post_meta( $post->ID, 'kb_release_at', true );
-		if ( '' === $release || false === strtotime( $release ) ) {
+		if ( ! kpopblog_public_iso8601_date( $release ) ) {
 			continue;
 		}
 		$items[] = array(
@@ -193,6 +205,14 @@ function kpopblog_filter_public_robots( $robots ) {
 }
 add_filter( 'wp_robots', 'kpopblog_filter_public_robots' );
 
+function kpopblog_render_public_json_ld( array $json_ld ) {
+	$encoded = wp_json_encode( $json_ld, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+	if ( false === $encoded ) {
+		return '';
+	}
+	return '<script id="kpopblog-discovery-jsonld" type="application/ld+json">' . $encoded . '</script>' . "\n";
+}
+
 function kpopblog_render_public_head() {
 	$context = kpopblog_get_public_context();
 	$kind = $context['kind'] ?? 'none';
@@ -221,7 +241,7 @@ function kpopblog_render_public_head() {
 	echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />' . "\n";
 	echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
 	echo '<meta property="og:type" content="' . esc_attr( $open_graph_type ) . '" />' . "\n";
-	echo '<script id="kpopblog-discovery-jsonld" type="application/ld+json">' . wp_json_encode( $json_ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
+	echo kpopblog_render_public_json_ld( $json_ld );
 }
 add_action( 'wp_head', 'kpopblog_render_public_head' );
 
@@ -229,8 +249,8 @@ function kpopblog_render_public_fallback() {
 	$context = kpopblog_get_public_context();
 	if ( 'article' === ( $context['kind'] ?? '' ) ) {
 		$post = $context['post'];
-		$published = mysql2date( 'c', $post->post_date_gmt, false );
-		$modified = mysql2date( 'c', $post->post_modified_gmt, false );
+		$published = get_post_time( 'c', true, $post );
+		$modified = get_post_modified_time( 'c', true, $post );
 		$html = '<article data-kpopblog-fallback="article">';
 		$html .= '<h1>' . esc_html( get_the_title( $post ) ) . '</h1>';
 		$html .= '<p><time datetime="' . esc_attr( $published ) . '">' . esc_html( $published ) . '</time>';
@@ -245,6 +265,9 @@ function kpopblog_render_public_fallback() {
 		$html = '<section data-kpopblog-fallback="comebacks"><h1>Comeback Schedule</h1>';
 		foreach ( $context['posts'] as $post ) {
 			$release = (string) get_post_meta( $post->ID, 'kb_release_at', true );
+			if ( ! kpopblog_public_iso8601_date( $release ) ) {
+				continue;
+			}
 			$html .= '<article id="event-' . (int) $post->ID . '"><h2>' . esc_html( get_the_title( $post ) ) . '</h2>';
 			$html .= '<p>' . esc_html( (string) get_post_meta( $post->ID, 'kb_type', true ) ) . ' · <time datetime="' . esc_attr( $release ) . '">' . esc_html( $release ) . '</time></p>';
 			$html .= '<div>' . wp_kses_post( apply_filters( 'the_content', $post->post_content ) ) . '</div>';
@@ -347,17 +370,22 @@ function kpopblog_render_rss() {
 			continue;
 		}
 		$category = (string) kpopblog_meta( $post->ID, 'kb_category_slug', 'news' );
+		$description = has_excerpt( $post ) ? get_the_excerpt( $post ) : wp_trim_words( wp_strip_all_tags( $post->post_content ), 40 );
+		$source_urls = kpopblog_public_source_urls( $post->ID );
+		if ( ! empty( $source_urls ) ) {
+			$description .= ' Sources: ' . implode( ', ', $source_urls ) . '.';
+		}
 		$output .= '<item><title>' . kpopblog_xml_escape( get_the_title( $post ) ) . '</title>';
 		$output .= '<link>' . kpopblog_xml_escape( home_url( '/news/' . $post->post_name ) ) . '</link>';
 		$output .= '<guid isPermaLink="false">' . kpopblog_xml_escape( 'post-' . $post->ID ) . '</guid>';
 		$output .= '<pubDate>' . kpopblog_xml_escape( mysql2date( DATE_RSS, $post->post_date_gmt, false ) ) . '</pubDate>';
-		$output .= '<description>' . kpopblog_xml_escape( has_excerpt( $post ) ? get_the_excerpt( $post ) : wp_trim_words( wp_strip_all_tags( $post->post_content ), 40 ) ) . '</description>';
+		$output .= '<description>' . kpopblog_xml_escape( $description ) . '</description>';
 		$output .= '<category>' . kpopblog_xml_escape( $category ) . '</category></item>' . "\n";
 	}
 
 	foreach ( $schedules as $post ) {
 		$release_at = (string) kpopblog_meta( $post->ID, 'kb_release_at' );
-		if ( '' === $release_at || false === strtotime( $release_at ) ) {
+		if ( ! kpopblog_public_iso8601_date( $release_at ) ) {
 			continue;
 		}
 		$type = (string) kpopblog_meta( $post->ID, 'kb_type', 'album' );
@@ -365,6 +393,10 @@ function kpopblog_render_rss() {
 		$content = wp_trim_words( wp_strip_all_tags( $post->post_content ), 40 );
 		if ( '' !== $content ) {
 			$description .= '. ' . $content;
+		}
+		$source_urls = kpopblog_public_source_urls( $post->ID );
+		if ( ! empty( $source_urls ) ) {
+			$description .= ' Sources: ' . implode( ', ', $source_urls ) . '.';
 		}
 		$output .= '<item><title>' . kpopblog_xml_escape( get_the_title( $post ) ) . '</title>';
 		$output .= '<link>' . kpopblog_xml_escape( home_url( '/comebacks#event-' . $post->ID ) ) . '</link>';
@@ -399,11 +431,23 @@ function kpopblog_render_llms() {
 			continue;
 		}
 		$lines[] = '- [' . sanitize_text_field( get_the_title( $post ) ) . '](' . esc_url_raw( home_url( '/news/' . $post->post_name ) ) . ')';
+		$source_urls = kpopblog_public_source_urls( $post->ID );
+		if ( ! empty( $source_urls ) ) {
+			$lines[] = '  - Sources: <' . implode( '>, <', $source_urls ) . '>';
+		}
 	}
 	$lines[] = '';
 	$lines[] = '## Comeback schedule';
 	foreach ( kpopblog_public_posts( 'kb_comeback', 50 ) as $post ) {
+		$release_at = (string) kpopblog_meta( $post->ID, 'kb_release_at' );
+		if ( ! kpopblog_public_iso8601_date( $release_at ) ) {
+			continue;
+		}
 		$lines[] = '- [' . sanitize_text_field( get_the_title( $post ) ) . '](' . esc_url_raw( home_url( '/comebacks#event-' . $post->ID ) ) . ')';
+		$source_urls = kpopblog_public_source_urls( $post->ID );
+		if ( ! empty( $source_urls ) ) {
+			$lines[] = '  - Sources: <' . implode( '>, <', $source_urls ) . '>';
+		}
 	}
 	return implode( "\n", $lines ) . "\n";
 }
