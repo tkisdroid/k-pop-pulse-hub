@@ -27,6 +27,22 @@ function kpopblog_int( $v, $default = 0 ) {
 	return is_numeric( $v ) ? (int) $v : $default;
 }
 
+/**
+ * REST text fields are rendered by clients as plain text, not HTML.
+ * Normalize numeric and named entities from WordPress title filters and feeds.
+ */
+function kpopblog_decode_text_entities( $value ) {
+	$text = wp_strip_all_tags( (string) $value, true );
+	for ( $pass = 0; $pass < 2; $pass++ ) {
+		$decoded = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		if ( $decoded === $text ) {
+			break;
+		}
+		$text = $decoded;
+	}
+	return $text;
+}
+
 function kpopblog_map_article( WP_Post $p ) {
 	$author      = get_userdata( $p->post_author );
 	$tag_terms   = wp_get_post_terms( $p->ID, 'post_tag', array( 'fields' => 'names' ) );
@@ -37,9 +53,9 @@ function kpopblog_map_article( WP_Post $p ) {
 		'id'               => (string) $p->ID,
 		'wpId'             => $p->ID,
 		'slug'             => $p->post_name,
-		'title'            => get_the_title( $p ),
-		'subtitle'         => (string) kpopblog_meta( $p->ID, 'kb_subtitle' ),
-		'excerpt'          => has_excerpt( $p ) ? get_the_excerpt( $p ) : wp_trim_words( wp_strip_all_tags( $p->post_content ), 40 ),
+		'title'            => kpopblog_decode_text_entities( get_the_title( $p ) ),
+		'subtitle'         => kpopblog_decode_text_entities( kpopblog_meta( $p->ID, 'kb_subtitle' ) ),
+		'excerpt'          => kpopblog_decode_text_entities( has_excerpt( $p ) ? get_the_excerpt( $p ) : wp_trim_words( wp_strip_all_tags( $p->post_content ), 40 ) ),
 		'content'          => apply_filters( 'the_content', $p->post_content ),
 		'featuredImage'    => kpopblog_thumb_url( $p->ID ),
 		'author'           => $author ? $author->display_name : 'KpopBlog',
@@ -63,7 +79,7 @@ function kpopblog_map_artist( WP_Post $p ) {
 	return array(
 		'id'           => (string) $p->ID,
 		'slug'         => $p->post_name,
-		'name'         => get_the_title( $p ),
+		'name'         => kpopblog_decode_text_entities( get_the_title( $p ) ),
 		'koreanName'   => kpopblog_meta( $p->ID, 'kb_korean_name' ),
 		'type'         => kpopblog_meta( $p->ID, 'kb_type', 'boy_group' ),
 		'agency'       => kpopblog_meta( $p->ID, 'kb_agency' ),
@@ -84,7 +100,7 @@ function kpopblog_map_member( WP_Post $p ) {
 	return array(
 		'id'         => (string) $p->ID,
 		'slug'       => $p->post_name,
-		'stageName'  => kpopblog_meta( $p->ID, 'kb_stage_name', get_the_title( $p ) ),
+		'stageName'  => kpopblog_decode_text_entities( kpopblog_meta( $p->ID, 'kb_stage_name', get_the_title( $p ) ) ),
 		'fullName'   => kpopblog_meta( $p->ID, 'kb_full_name' ),
 		'koreanName' => kpopblog_meta( $p->ID, 'kb_korean_name' ),
 		'birthday'   => kpopblog_meta( $p->ID, 'kb_birthday' ),
@@ -101,10 +117,10 @@ function kpopblog_map_comeback( WP_Post $p ) {
 	return array(
 		'id'          => (string) $p->ID,
 		'artistId'    => kpopblog_meta( $p->ID, 'kb_artist_slug' ),
-		'title'       => get_the_title( $p ),
+		'title'       => kpopblog_decode_text_entities( get_the_title( $p ) ),
 		'type'        => kpopblog_meta( $p->ID, 'kb_type', 'album' ),
 		'releaseAt'   => kpopblog_meta( $p->ID, 'kb_release_at' ),
-		'description' => wp_strip_all_tags( $p->post_content ),
+		'description' => kpopblog_decode_text_entities( $p->post_content ),
 		'image'       => kpopblog_thumb_url( $p->ID ),
 	);
 }
@@ -113,7 +129,7 @@ function kpopblog_map_chart( WP_Post $p ) {
 	return array(
 		'id'            => (string) $p->ID,
 		'chartId'       => kpopblog_meta( $p->ID, 'kb_chart_id', 'weekly-global' ),
-		'title'         => get_the_title( $p ),
+		'title'         => kpopblog_decode_text_entities( get_the_title( $p ) ),
 		'weekStartDate' => kpopblog_meta( $p->ID, 'kb_week_start_date' ),
 		'entries'       => (array) kpopblog_meta( $p->ID, 'kb_entries', array() ),
 	);
@@ -124,8 +140,8 @@ function kpopblog_map_thread( WP_Post $p ) {
 		'id'           => (string) $p->ID,
 		'slug'         => $p->post_name,
 		'categoryId'   => kpopblog_meta( $p->ID, 'kb_category_slug', 'general' ),
-		'title'        => get_the_title( $p ),
-		'body'         => wp_strip_all_tags( $p->post_content ),
+		'title'        => kpopblog_decode_text_entities( get_the_title( $p ) ),
+		'body'         => kpopblog_decode_text_entities( $p->post_content ),
 		'authorId'     => (string) $p->post_author,
 		'author'       => function_exists( 'kpopblog_public_author' ) ? kpopblog_public_author( $p->post_author ) : array(),
 		'flair'        => kpopblog_meta( $p->ID, 'kb_flair' ),
@@ -148,8 +164,8 @@ function kpopblog_map_poll( WP_Post $p ) {
 	return array(
 		'id'          => (string) $p->ID,
 		'slug'        => $p->post_name,
-		'title'       => get_the_title( $p ),
-		'description' => wp_strip_all_tags( $p->post_content ),
+		'title'       => kpopblog_decode_text_entities( get_the_title( $p ) ),
+		'description' => kpopblog_decode_text_entities( $p->post_content ),
 		'options'     => $options,
 		'totalVotes'  => $total,
 		'endsAt'      => kpopblog_meta( $p->ID, 'kb_ends_at' ),
@@ -173,14 +189,14 @@ function kpopblog_map_video( WP_Post $p ) {
 	return array(
 		'id'          => (string) $p->ID,
 		'slug'        => $p->post_name,
-		'title'       => get_the_title( $p ),
+		'title'       => kpopblog_decode_text_entities( get_the_title( $p ) ),
 		'artistId'    => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
 		'artistSlug'  => (string) kpopblog_meta( $p->ID, 'kb_artist_slug' ),
 		'category'    => (string) kpopblog_meta( $p->ID, 'kb_video_category', 'Other' ),
 		'youtubeId'   => $youtube_id,
 		'thumbnail'   => $youtube_id ? 'https://i.ytimg.com/vi/' . rawurlencode( $youtube_id ) . '/hqdefault.jpg' : kpopblog_thumb_url( $p->ID ),
 		'duration'    => (string) kpopblog_meta( $p->ID, 'kb_duration' ),
-		'description' => wp_strip_all_tags( $p->post_content ),
+		'description' => kpopblog_decode_text_entities( $p->post_content ),
 		'commentCount'=> (int) $p->comment_count,
 	);
 }
