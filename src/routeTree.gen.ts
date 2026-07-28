@@ -45,10 +45,10 @@ import { Route as VideosRouteImport } from './routes/videos'
 import { Route as ArtistSlugRouteImport } from './routes/artist.$slug'
 import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
-import { Route as ForumCategorySlugRouteImport } from './routes/forum.$categorySlug'
+import { Route as ForumCategorySlugRouteImport } from './routes/forum_.$categorySlug'
 import { Route as MemberSlugRouteImport } from './routes/member.$slug'
 import { Route as NewsSlugRouteImport } from './routes/news.$slug'
-import { Route as PollsSlugRouteImport } from './routes/polls.$slug'
+import { Route as PollsSlugRouteImport } from './routes/polls_.$slug'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as TagSlugRouteImport } from './routes/tag.$slug'
 import { Route as ThreadThreadSlugRouteImport } from './routes/thread.$threadSlug'
@@ -235,9 +235,9 @@ const CategorySlugRoute = CategorySlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForumCategorySlugRoute = ForumCategorySlugRouteImport.update({
-  id: '/$categorySlug',
-  path: '/$categorySlug',
-  getParentRoute: () => ForumRoute,
+  id: '/forum_/$categorySlug',
+  path: '/forum/$categorySlug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MemberSlugRoute = MemberSlugRouteImport.update({
   id: '/member/$slug',
@@ -250,9 +250,9 @@ const NewsSlugRoute = NewsSlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PollsSlugRoute = PollsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => PollsRoute,
+  id: '/polls_/$slug',
+  path: '/polls/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileUsernameRoute = ProfileUsernameRouteImport.update({
   id: '/profile/$username',
@@ -291,13 +291,13 @@ export interface FileRoutesByFullPath {
   '/copyright': typeof CopyrightRoute
   '/corrections': typeof CorrectionsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/forum': typeof ForumRouteWithChildren
+  '/forum': typeof ForumRoute
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
-  '/polls': typeof PollsRouteWithChildren
+  '/polls': typeof PollsRoute
   '/privacy': typeof PrivacyRoute
   '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -337,13 +337,13 @@ export interface FileRoutesByTo {
   '/copyright': typeof CopyrightRoute
   '/corrections': typeof CorrectionsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/forum': typeof ForumRouteWithChildren
+  '/forum': typeof ForumRoute
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
-  '/polls': typeof PollsRouteWithChildren
+  '/polls': typeof PollsRoute
   '/privacy': typeof PrivacyRoute
   '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -384,13 +384,13 @@ export interface FileRoutesById {
   '/copyright': typeof CopyrightRoute
   '/corrections': typeof CorrectionsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/forum': typeof ForumRouteWithChildren
+  '/forum': typeof ForumRoute
   '/latest': typeof LatestRoute
   '/login': typeof LoginRoute
   '/moderation': typeof ModerationRoute
   '/newsletter': typeof NewsletterRoute
   '/onboarding': typeof OnboardingRoute
-  '/polls': typeof PollsRouteWithChildren
+  '/polls': typeof PollsRoute
   '/privacy': typeof PrivacyRoute
   '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -405,10 +405,10 @@ export interface FileRoutesById {
   '/artist/$slug': typeof ArtistSlugRoute
   '/author/$slug': typeof AuthorSlugRoute
   '/category/$slug': typeof CategorySlugRoute
-  '/forum/$categorySlug': typeof ForumCategorySlugRoute
+  '/forum_/$categorySlug': typeof ForumCategorySlugRoute
   '/member/$slug': typeof MemberSlugRoute
   '/news/$slug': typeof NewsSlugRoute
-  '/polls/$slug': typeof PollsSlugRoute
+  '/polls_/$slug': typeof PollsSlugRoute
   '/profile/$username': typeof ProfileUsernameRoute
   '/tag/$slug': typeof TagSlugRoute
   '/thread/$threadSlug': typeof ThreadThreadSlugRoute
@@ -545,10 +545,10 @@ export interface FileRouteTypes {
     | '/artist/$slug'
     | '/author/$slug'
     | '/category/$slug'
-    | '/forum/$categorySlug'
+    | '/forum_/$categorySlug'
     | '/member/$slug'
     | '/news/$slug'
-    | '/polls/$slug'
+    | '/polls_/$slug'
     | '/profile/$username'
     | '/tag/$slug'
     | '/thread/$threadSlug'
@@ -571,13 +571,13 @@ export interface RootRouteChildren {
   CopyrightRoute: typeof CopyrightRoute
   CorrectionsRoute: typeof CorrectionsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  ForumRoute: typeof ForumRouteWithChildren
+  ForumRoute: typeof ForumRoute
   LatestRoute: typeof LatestRoute
   LoginRoute: typeof LoginRoute
   ModerationRoute: typeof ModerationRoute
   NewsletterRoute: typeof NewsletterRoute
   OnboardingRoute: typeof OnboardingRoute
-  PollsRoute: typeof PollsRouteWithChildren
+  PollsRoute: typeof PollsRoute
   PrivacyRoute: typeof PrivacyRoute
   QuizRoute: typeof QuizRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -592,8 +592,10 @@ export interface RootRouteChildren {
   ArtistSlugRoute: typeof ArtistSlugRoute
   AuthorSlugRoute: typeof AuthorSlugRoute
   CategorySlugRoute: typeof CategorySlugRoute
+  ForumCategorySlugRoute: typeof ForumCategorySlugRoute
   MemberSlugRoute: typeof MemberSlugRoute
   NewsSlugRoute: typeof NewsSlugRoute
+  PollsSlugRoute: typeof PollsSlugRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
   TagSlugRoute: typeof TagSlugRoute
   ThreadThreadSlugRoute: typeof ThreadThreadSlugRoute
@@ -854,12 +856,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategorySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/forum/$categorySlug': {
-      id: '/forum/$categorySlug'
-      path: '/$categorySlug'
+    '/forum_/$categorySlug': {
+      id: '/forum_/$categorySlug'
+      path: '/forum/$categorySlug'
       fullPath: '/forum/$categorySlug'
       preLoaderRoute: typeof ForumCategorySlugRouteImport
-      parentRoute: typeof ForumRoute
+      parentRoute: typeof rootRouteImport
     }
     '/member/$slug': {
       id: '/member/$slug'
@@ -875,12 +877,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/polls/$slug': {
-      id: '/polls/$slug'
-      path: '/$slug'
+    '/polls_/$slug': {
+      id: '/polls_/$slug'
+      path: '/polls/$slug'
       fullPath: '/polls/$slug'
       preLoaderRoute: typeof PollsSlugRouteImport
-      parentRoute: typeof PollsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/profile/$username': {
       id: '/profile/$username'
@@ -913,26 +915,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ForumRouteChildren {
-  ForumCategorySlugRoute: typeof ForumCategorySlugRoute
-}
-
-const ForumRouteChildren: ForumRouteChildren = {
-  ForumCategorySlugRoute: ForumCategorySlugRoute,
-}
-
-const ForumRouteWithChildren = ForumRoute._addFileChildren(ForumRouteChildren)
-
-interface PollsRouteChildren {
-  PollsSlugRoute: typeof PollsSlugRoute
-}
-
-const PollsRouteChildren: PollsRouteChildren = {
-  PollsSlugRoute: PollsSlugRoute,
-}
-
-const PollsRouteWithChildren = PollsRoute._addFileChildren(PollsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -949,13 +931,13 @@ const rootRouteChildren: RootRouteChildren = {
   CopyrightRoute: CopyrightRoute,
   CorrectionsRoute: CorrectionsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  ForumRoute: ForumRouteWithChildren,
+  ForumRoute: ForumRoute,
   LatestRoute: LatestRoute,
   LoginRoute: LoginRoute,
   ModerationRoute: ModerationRoute,
   NewsletterRoute: NewsletterRoute,
   OnboardingRoute: OnboardingRoute,
-  PollsRoute: PollsRouteWithChildren,
+  PollsRoute: PollsRoute,
   PrivacyRoute: PrivacyRoute,
   QuizRoute: QuizRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
@@ -970,8 +952,10 @@ const rootRouteChildren: RootRouteChildren = {
   ArtistSlugRoute: ArtistSlugRoute,
   AuthorSlugRoute: AuthorSlugRoute,
   CategorySlugRoute: CategorySlugRoute,
+  ForumCategorySlugRoute: ForumCategorySlugRoute,
   MemberSlugRoute: MemberSlugRoute,
   NewsSlugRoute: NewsSlugRoute,
+  PollsSlugRoute: PollsSlugRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,
   TagSlugRoute: TagSlugRoute,
   ThreadThreadSlugRoute: ThreadThreadSlugRoute,

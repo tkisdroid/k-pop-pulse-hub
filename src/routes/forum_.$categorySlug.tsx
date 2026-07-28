@@ -7,7 +7,7 @@ import { useAuthModal } from "@/hooks/useAuthModal";
 import { communityProvider } from "@/services/community";
 import type { ForumCategory, ForumThread } from "@/types";
 
-export const Route = createFileRoute("/forum/$categorySlug")({
+export const Route = createFileRoute("/forum_/$categorySlug")({
   head: ({ params }) =>
     buildHead({ title: params.categorySlug, canonical: `/forum/${params.categorySlug}` }),
   component: CategoryPage,
@@ -87,17 +87,18 @@ function CategoryPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-lg bg-accent text-2xl">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-accent text-2xl">
             {category?.icon ?? "💬"}
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="font-display text-3xl font-bold">{category?.name ?? "Forum"}</h1>
             <p className="text-sm text-muted-foreground">{category?.description}</p>
           </div>
         </div>
         <Button
+          className="shrink-0"
           onClick={() => (user ? setFormOpen((open) => !open) : show("Log in to create a thread"))}
         >
           Create thread

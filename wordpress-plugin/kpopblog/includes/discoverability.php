@@ -640,12 +640,41 @@ function kpopblog_discovery_last_modified() {
 	return gmdate( 'Y-m-d H:i:s', $latest_timestamp ?: time() );
 }
 
+function kpopblog_render_manifest() {
+	$design = function_exists( 'kpopblog_get_design_settings' ) ? kpopblog_get_design_settings() : array();
+	$site_name   = ! empty( $design['site_name'] ) ? (string) $design['site_name'] : 'Kpop';
+	$accent_word = isset( $design['accent_word'] ) ? (string) $design['accent_word'] : 'Blog';
+	$brand       = trim( $site_name . $accent_word );
+	$tagline     = ! empty( $design['tagline'] ) ? (string) $design['tagline'] : 'K-pop news, artist profiles, comeback calendar, polls and a global fan community.';
+	$accent      = ! empty( $design['accent_color'] ) ? (string) $design['accent_color'] : '#0b0b10';
+	$icons_base  = KPOPBLOG_URL . 'icons/';
+
+	$manifest = array(
+		'name'             => $brand . ' — Global K-pop newsroom',
+		'short_name'       => $brand,
+		'description'      => $tagline,
+		'id'               => home_url( '/' ),
+		'start_url'        => home_url( '/' ),
+		'scope'            => home_url( '/' ),
+		'display'          => 'standalone',
+		'background_color' => '#0b0b10',
+		'theme_color'      => $accent,
+		'orientation'      => 'portrait',
+		'icons'            => array(
+			array( 'src' => $icons_base . 'icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable' ),
+			array( 'src' => $icons_base . 'icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable' ),
+		),
+	);
+	return (string) wp_json_encode( $manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+}
+
 function kpopblog_serve_machine_endpoint() {
 	$renderers = array(
-		'/robots.txt'  => array( 'text/plain; charset=utf-8', 'kpopblog_render_robots' ),
-		'/sitemap.xml' => array( 'application/xml; charset=utf-8', 'kpopblog_render_sitemap' ),
-		'/rss.xml'     => array( 'application/rss+xml; charset=utf-8', 'kpopblog_render_rss' ),
-		'/llms.txt'    => array( 'text/plain; charset=utf-8', 'kpopblog_render_llms' ),
+		'/robots.txt'          => array( 'text/plain; charset=utf-8', 'kpopblog_render_robots' ),
+		'/sitemap.xml'         => array( 'application/xml; charset=utf-8', 'kpopblog_render_sitemap' ),
+		'/rss.xml'             => array( 'application/rss+xml; charset=utf-8', 'kpopblog_render_rss' ),
+		'/llms.txt'            => array( 'text/plain; charset=utf-8', 'kpopblog_render_llms' ),
+		'/manifest.webmanifest'=> array( 'application/manifest+json; charset=utf-8', 'kpopblog_render_manifest' ),
 	);
 	$path = kpopblog_request_path();
 	if ( ! isset( $renderers[ $path ] ) ) { return; }

@@ -95,18 +95,20 @@
        exposes the area outside <body>; without this it falls back to the UA's
        white backdrop and reads as a white gutter/margin around the app. */
     background-color: var(--color-background);
+    /* Safety net against horizontal page overflow on small screens. This must
+       live on the root element: `clip`/`hidden` set on <body> does not
+       reliably propagate to the viewport, so a stray wide child still made
+       the document horizontally scrollable and exposed a blank gutter when
+       swiping. On the root, `clip` applies to the viewport itself (computing
+       to `hidden` there), which contains the width without turning <body>
+       into a scroll container — the sticky header keeps working. */
+    overflow-x: clip;
   }
   html, body { font-family: var(--font-sans); }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     width: 100%;
-    /* Clip any accidental horizontal overflow so a stray wide child can never
-       widen the layout viewport past device-width — the root cause of the
-       white margin that appears when zooming out on mobile. Use `clip`, not
-       `hidden`: `hidden` makes <body> a scroll container and breaks the
-       `sticky` header, whereas `clip` contains the width without either. */
-    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -148,6 +150,11 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+  /* Safe-area padding for fixed-bottom chrome (bottom nav) so it clears the
+     home indicator on notched/gesture-nav phones. Requires viewport-fit=cover. */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
   .glass {
     background-color: color-mix(in oklab, var(--background) 70%, transparent);

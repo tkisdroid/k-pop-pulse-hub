@@ -18,6 +18,13 @@ declare global {
       locale?: string;
       registrationEnabled?: boolean;
       adminUrl?: string;
+      branding?: {
+        siteName?: string;
+        accentWord?: string;
+        tagline?: string;
+        accentColor?: string;
+        logoUrl?: string;
+      };
     };
   }
 }

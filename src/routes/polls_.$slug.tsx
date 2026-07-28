@@ -9,7 +9,7 @@ import { useRuntimeData } from "@/services/cms/runtimeData";
 import { ShareButtons } from "@/components/articles/ShareButtons";
 
 
-export const Route = createFileRoute("/polls/$slug")({
+export const Route = createFileRoute("/polls_/$slug")({
   head: ({ params }) => buildHead({ title: "Poll", canonical: `/polls/${params.slug}` }),
   component: PollPage,
 });

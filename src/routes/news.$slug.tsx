@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { buildHead, breadcrumbLd } from "@/components/layout/seo";
+import { LocalTime } from "@/components/layout/LocalTime";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { ArticleSummary } from "@/components/articles/ArticleSummary";
 import { Button } from "@/components/ui/button";
@@ -229,7 +230,7 @@ function ArticlePage() {
           {article.authorAvatar && <img src={article.authorAvatar} alt="" className="size-7 rounded-full" />}
           <Link to="/author/$slug" params={{ slug: article.author.toLowerCase().replace(/\s+/g, "-") }} className="hover:text-foreground">{article.author}</Link>
         </div>
-        <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+        <span><LocalTime value={article.publishedAt} mode="date" /></span>
         <span className="flex items-center gap-1"><Clock className="size-3" />{article.readingTime} min read</span>
         <span className="flex items-center gap-1"><Eye className="size-3" />{article.viewCount.toLocaleString()}</span>
         <span className="flex items-center gap-1"><MessageCircle className="size-3" />{article.commentCount}</span>

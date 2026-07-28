@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { buildHead } from "@/components/layout/seo";
+import { LocalTime } from "@/components/layout/LocalTime";
 import { Button } from "@/components/ui/button";
 import { useRuntimeData } from "@/services/cms/runtimeData";
 import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
@@ -29,7 +30,7 @@ function MemberPage() {
         <h1 className="font-display text-4xl font-bold">{m.stageName}</h1>
         <p className="text-muted-foreground">{m.fullName} · {m.koreanName}</p>
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">Birthday</div>{new Date(m.birthday).toLocaleDateString()}</div>
+          <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">Birthday</div><LocalTime value={m.birthday} mode="date" /></div>
           <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">Nationality</div>{m.nationality}</div>
           <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">Position</div>{m.position.join(", ")}</div>
           <div className="p-3 rounded-md bg-card border border-border"><div className="text-xs text-muted-foreground">MBTI</div>{m.mbti}</div>

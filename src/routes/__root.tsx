@@ -12,6 +12,7 @@ import {
 import { registerPwa } from "@/pwa/register";
 import { setupQueryPersistence } from "@/pwa/queryPersist";
 import { localNotifications } from "@/services/notifications/local";
+import { applyBranding } from "@/services/cms/branding";
 import { OfflineBadge } from "@/components/layout/OfflineBadge";
 
 
@@ -149,6 +150,7 @@ function RouteFadeOutlet() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => {
+    applyBranding();
     setupQueryPersistence(queryClient);
     registerPwa();
     localNotifications.hydrate();

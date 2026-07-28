@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useRuntimeData } from "@/services/cms/runtimeData";
 import { SectionHeader } from "@/components/layout/SectionHeader";
+import { LocalTime } from "@/components/layout/LocalTime";
 import { buildHead } from "@/components/layout/seo";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { NotifyButton } from "@/components/notifications/NotifyButton";
@@ -39,14 +40,14 @@ function Comebacks() {
             const a = data.artists.find((x) => x.id === c.artistId || x.slug === c.artistId);
             const days = Math.ceil((+new Date(c.releaseAt) - Date.now()) / 86400000);
             return (
-              <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
+              <div key={c.id} className="min-w-0 flex flex-wrap items-center gap-4 p-4 rounded-xl bg-card border border-border">
                 <div className="size-16 rounded-lg overflow-hidden shrink-0"><img src={c.image} alt={c.title} className="size-full object-cover" /></div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="text-xs uppercase text-primary">{c.type}</div>
                   <div className="font-semibold">{c.title}</div>
-                  <div className="text-xs text-muted-foreground">{a?.name ?? c.artistId} · {new Date(c.releaseAt).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">{a?.name ?? c.artistId} · <LocalTime value={c.releaseAt} /></div>
                 </div>
-                <div className="text-right space-y-1">
+                <div className="ml-auto text-right space-y-1">
                   <div className="font-display text-2xl text-gradient font-bold">{days > 0 ? `${days}d` : "LIVE"}</div>
                   <div className="flex gap-1 justify-end">
                     <NotifyButton

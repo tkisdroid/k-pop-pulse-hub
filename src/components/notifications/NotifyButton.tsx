@@ -22,8 +22,12 @@ interface Props {
 export function NotifyButton({ reminder, size = "sm", variant = "outline", className, label = "Remind" }: Props) {
   const [on, setOn] = useState(false);
   const [perm, setPerm] = useState<NotificationPermission>("default");
+  // Notification only exists in browsers; checking it during render would make
+  // SSR output (null) disagree with the client render (button) and break hydration.
+  const [supported, setSupported] = useState(false);
 
   useEffect(() => {
+    setSupported(typeof Notification !== "undefined");
     setOn(localNotifications.has(reminder.id));
     setPerm(localNotifications.permission());
     const onChange = () => setOn(localNotifications.has(reminder.id));
@@ -31,7 +35,7 @@ export function NotifyButton({ reminder, size = "sm", variant = "outline", class
     return () => window.removeEventListener("reminders:changed", onChange);
   }, [reminder.id]);
 
-  if (typeof Notification === "undefined") return null;
+  if (!supported) return null;
 
   async function toggle() {
     if (on) {

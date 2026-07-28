@@ -43,11 +43,24 @@ function kpopblog_strip_foreign_markup( $html ) {
 ob_start();
 wp_head();
 $kpopblog_head = kpopblog_strip_foreign_markup( ob_get_clean() );
+
+$kpopblog_design  = function_exists( 'kpopblog_get_design_settings' ) ? kpopblog_get_design_settings() : array();
+$kpopblog_theme_c = ! empty( $kpopblog_design['accent_color'] ) ? $kpopblog_design['accent_color'] : '#0b0b10';
+$kpopblog_brand   = trim( ( ! empty( $kpopblog_design['site_name'] ) ? $kpopblog_design['site_name'] : 'Kpop' ) . ( isset( $kpopblog_design['accent_word'] ) ? $kpopblog_design['accent_word'] : 'Blog' ) );
+$kpopblog_icons   = KPOPBLOG_URL . 'icons/';
 ?><!DOCTYPE html>
 <html <?php language_attributes(); ?> class="dark">
 <head>
 <meta charset="<?php bloginfo( 'charset' ); ?>" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="<?php echo esc_attr( $kpopblog_theme_c ); ?>" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="<?php echo esc_attr( $kpopblog_brand ); ?>" />
+<link rel="manifest" href="<?php echo esc_url( home_url( '/manifest.webmanifest' ) ); ?>" />
+<link rel="apple-touch-icon" href="<?php echo esc_url( $kpopblog_icons . 'apple-touch-icon.png' ); ?>" />
+<link rel="icon" type="image/png" sizes="192x192" href="<?php echo esc_url( $kpopblog_icons . 'icon-192.png' ); ?>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />

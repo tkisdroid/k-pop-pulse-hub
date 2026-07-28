@@ -115,14 +115,14 @@ function Index() {
 
       {/* Comebacks + Spotlight */}
       <section className="mx-auto max-w-7xl px-4 py-8 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <SectionHeader eyebrow="Comeback Calendar" title="Upcoming releases" />
           <div className="grid gap-3">
             {upcoming.map((c) => {
               const artist = data.artists.find((a) => a.id === c.artistId || a.slug === c.artistId);
               const days = Math.max(0, Math.ceil((+new Date(c.releaseAt) - Date.now()) / 86400000));
               return (
-                <div key={c.id} className="flex items-center gap-4 p-3 rounded-xl bg-card border border-border">
+                <div key={c.id} className="min-w-0 flex items-center gap-4 p-3 rounded-xl bg-card border border-border">
                   <div className="size-14 rounded-lg overflow-hidden shrink-0"><img src={c.image} alt={c.title} className="size-full object-cover" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs uppercase text-primary">{c.type}</div>
@@ -157,13 +157,13 @@ function Index() {
 
       {/* Forum + Polls */}
       <section className="mx-auto max-w-7xl px-4 py-8 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <SectionHeader eyebrow="Hot Forum Threads" title="Where fans are talking" />
           <div className="grid gap-2">
             {hotThreads.map((t) => {
               const cat = data.categories.find((c) => c.id === t.categoryId || c.slug === t.categoryId);
               return (
-                <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/40">
+                <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="min-w-0 flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/40">
                   <div className="size-10 grid place-items-center rounded-lg bg-accent">{cat?.icon ?? "💬"}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

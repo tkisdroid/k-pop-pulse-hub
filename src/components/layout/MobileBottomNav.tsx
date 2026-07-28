@@ -13,7 +13,7 @@ const ITEMS = [
 export function MobileBottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-border pb-safe">
       <div className="grid grid-cols-5">
         {ITEMS.map((i) => {
           const active = path === i.to || (i.to !== "/" && path.startsWith(i.to));

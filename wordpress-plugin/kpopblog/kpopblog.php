@@ -37,6 +37,7 @@ require_once KPOPBLOG_PATH . 'includes/user-admin.php';
 require_once KPOPBLOG_PATH . 'includes/admin-fields.php';
 require_once KPOPBLOG_PATH . 'includes/settings.php';
 require_once KPOPBLOG_PATH . 'includes/ads.php';
+require_once KPOPBLOG_PATH . 'includes/design.php';
 require_once KPOPBLOG_PATH . 'includes/notifications.php';
 require_once KPOPBLOG_PATH . 'includes/notifications-admin.php';
 require_once KPOPBLOG_PATH . 'includes/automation.php';
@@ -46,6 +47,7 @@ require_once KPOPBLOG_PATH . 'includes/newsletter-admin.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
 require_once KPOPBLOG_PATH . 'includes/block.php';
 require_once KPOPBLOG_PATH . 'includes/template.php';
+require_once KPOPBLOG_PATH . 'includes/cli-seed.php';
 
 function kpopblog_activate() {
 	kpopblog_register_cpts();

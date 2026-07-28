@@ -50,6 +50,7 @@ function kpopblog_enqueue_assets() {
 			'defaultReason' => (string) $mod['default_reason'],
 		),
 		'ads'        => function_exists( 'kpopblog_ads_frontend_config' ) ? kpopblog_ads_frontend_config() : array( 'enabled' => false, 'publisherId' => '', 'slots' => (object) array() ),
+		'branding'   => function_exists( 'kpopblog_design_frontend_config' ) ? kpopblog_design_frontend_config() : array( 'siteName' => 'Kpop', 'accentWord' => 'Blog', 'tagline' => '', 'accentColor' => '', 'logoUrl' => '' ),
 	) );
 
 	// Styles are printed inside wp_head() (priority 8) — by the time the

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { buildHead } from "@/components/layout/seo";
+import { LocalTime } from "@/components/layout/LocalTime";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { useRuntimeData } from "@/services/cms/runtimeData";
 import { FollowArtistButton } from "@/components/artists/FollowArtistButton";
@@ -42,7 +43,7 @@ function ArtistPage() {
           <div className="flex-1">
             <div className="text-xs uppercase tracking-wider text-primary">{artist.type.replace("_", " ")} · {artist.agency}</div>
             <h1 className="font-display text-4xl font-bold">{artist.name}</h1>
-            <p className="text-sm text-muted-foreground">Fandom: {artist.fandomName} · Debut {new Date(artist.debutDate).toLocaleDateString()} · {artist.followerCount.toLocaleString()} followers</p>
+            <p className="text-sm text-muted-foreground">Fandom: {artist.fandomName} · Debut <LocalTime value={artist.debutDate} mode="date" /> · {artist.followerCount.toLocaleString()} followers</p>
           </div>
           <div className="flex flex-wrap gap-2"><FollowArtistButton artist={artist} /><ShareButtons title={`${artist.name} on KpopBlog`} url={typeof window !== "undefined" ? window.location.href : `/artist/${artist.slug}`} /></div>
         </div>

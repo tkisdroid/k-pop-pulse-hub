@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { buildHead } from "@/components/layout/seo";
+import { LocalTime } from "@/components/layout/LocalTime";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthModal } from "@/hooks/useAuthModal";
@@ -140,7 +141,7 @@ function ThreadPage() {
         )}
         <span className="font-medium">{thread.author?.displayName ?? "Community member"}</span>
         <span className="text-muted-foreground">
-          · {new Date(thread.createdAt).toLocaleDateString()}
+          · <LocalTime value={thread.createdAt} mode="date" />
         </span>
       </div>
       <article className="mt-4 rounded-xl border border-border bg-card p-4">
@@ -165,7 +166,7 @@ function ThreadPage() {
               )}
               <span className="font-medium">{post.author?.displayName ?? "Community member"}</span>
               <span className="text-xs text-muted-foreground">
-                · {new Date(post.createdAt).toLocaleString()}
+                · <LocalTime value={post.createdAt} />
               </span>
             </div>
             <p className="whitespace-pre-wrap text-sm">{post.body}</p>

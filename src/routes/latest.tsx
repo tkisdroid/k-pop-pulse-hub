@@ -42,9 +42,9 @@ function Latest() {
             <button key={c} onClick={() => setCat(c)} className={`shrink-0 px-3 py-1.5 rounded-full text-sm ${cat === c ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{c}</button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search news" className="h-9 px-3 rounded-md bg-background border border-input text-sm" />
-          <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="h-9 px-2 rounded-md bg-background border border-input text-sm">
+        <div className="min-w-0 flex gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search news" className="h-9 min-w-0 flex-1 px-3 rounded-md bg-background border border-input text-sm" />
+          <select value={sort} onChange={(e) => setSort(e.target.value as any)} className="h-9 shrink-0 px-2 rounded-md bg-background border border-input text-sm">
             {SORTS.map((s) => <option key={s}>{s}</option>)}
           </select>
         </div>

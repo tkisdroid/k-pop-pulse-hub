@@ -8,7 +8,7 @@ export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="p-2 rounded-md hover:bg-accent flex items-center gap-1 text-sm" aria-label="Language">
+      <button onClick={() => setOpen((o) => !o)} className="p-1.5 sm:p-2 rounded-md hover:bg-accent flex items-center gap-1 text-sm" aria-label="Language">
         <Globe className="size-5" />
         <span className="hidden md:inline text-xs">{(localeMeta[lang as string]?.label ?? "EN").slice(0, 2)}</span>
       </button>
