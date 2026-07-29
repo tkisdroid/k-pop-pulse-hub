@@ -27,6 +27,12 @@ try {
     if ( ! taxonomy_exists( 'kb_forum_category' ) ) {
         throw new Exception( 'forum category taxonomy missing' );
     }
+	foreach ( array( 'general', 'comebacks', 'news-reactions', 'fandoms', 'concerts', 'albums-merch', 'fashion', 'fan-art' ) as $category_slug ) {
+		$starter_term = get_term_by( 'slug', $category_slug, 'kb_forum_category' );
+		if ( ! $starter_term || 8 > (int) $starter_term->count ) {
+			throw new Exception( 'forum starter threads missing for ' . $category_slug );
+		}
+	}
     if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $reports_table ) ) !== $reports_table ) {
         throw new Exception( 'reports table missing' );
     }
@@ -99,7 +105,8 @@ try {
     $category_request->set_param( 'category', 'general' );
     $category_response = rest_do_request( $category_request );
     $category_items = $category_response->get_data();
-    if ( 200 !== $category_response->get_status() || 1 !== count( $category_items ) || $thread_id !== (int) $category_items[0]['id'] ) {
+    $filtered_thread_ids = array_map( function ( $item ) { return (int) $item['id']; }, $category_items );
+    if ( 200 !== $category_response->get_status() || ! in_array( $thread_id, $filtered_thread_ids, true ) ) {
         throw new Exception( 'thread category filter did not return the published thread' );
     }
 

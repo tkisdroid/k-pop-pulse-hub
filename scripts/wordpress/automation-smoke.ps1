@@ -176,7 +176,7 @@ $mock_http = function ( $preempt, $args, $url ) use ( &$captured_request, &$inte
                             'items' => array(
                                 array(
                                     'kind'          => 'news',
-                                    'title'         => 'BTS confirms a new group release schedule',
+                                    'title'         => 'The &#8220;Jimin Effect&#8221; and the High-Fashion Renaissance',
                                     'excerpt'       => 'The group announced a verified release schedule through official channels.',
                                     'content'       => "BTS has confirmed a new group release schedule through official channels.\n\nThe announcement provides fans with a clear timeline and release details. This automated article records only details supported by the cited sources and does not invent quotations.\n\nReaders should use the linked sources for the original announcement and any later updates.",
                                     'artist_slugs'  => array( 'bts' ),
@@ -341,6 +341,22 @@ try {
         if ( 'publish' !== get_post_status( $post_id ) ) {
             throw new Exception( 'verified automation item was not auto-published' );
         }
+    }
+    $entity_title_post = null;
+    foreach ( $created_ids as $post_id ) {
+        $candidate = get_post( (int) $post_id );
+        if ( $candidate && false !== strpos( $candidate->post_title, 'Jimin Effect' ) ) {
+            $entity_title_post = $candidate;
+            break;
+        }
+    }
+    $expected_entity_title = html_entity_decode( 'The &#8220;Jimin Effect&#8221; and the High-Fashion Renaissance', ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    if ( ! $entity_title_post || $expected_entity_title !== $entity_title_post->post_title ) {
+        throw new Exception( 'automation did not normalize HTML entities in the title' );
+    }
+    $entity_title_api = kpopblog_map_article( $entity_title_post );
+    if ( $expected_entity_title !== $entity_title_api['title'] ) {
+        throw new Exception( 'REST article mapping did not normalize HTML entities' );
     }
 
     $article_id = 0;

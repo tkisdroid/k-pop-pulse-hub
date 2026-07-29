@@ -15,7 +15,7 @@ function kpopblog_public_author( $user_id ) {
 	return array(
 		'id'          => (string) $user->ID,
 		'username'    => $user->user_login,
-		'displayName' => $user->display_name,
+		'displayName' => kpopblog_decode_text_entities( $user->display_name ),
 		'avatar'      => get_avatar_url( $user->ID ),
 	);
 }
@@ -25,7 +25,7 @@ function kpopblog_map_community_post( WP_Post $post ) {
 		'id'        => (string) $post->ID,
 		'authorId'  => (string) $post->post_author,
 		'author'    => kpopblog_public_author( $post->post_author ),
-		'body'      => wp_strip_all_tags( $post->post_content ),
+		'body'      => kpopblog_decode_text_entities( $post->post_content ),
 		'language'  => (string) kpopblog_meta( $post->ID, 'kb_language', 'en' ),
 		'reactions' => kpopblog_int( get_post_meta( $post->ID, 'kb_reactions', true ) ),
 		'createdAt' => mysql_to_rfc3339( $post->post_date_gmt ),
@@ -41,7 +41,7 @@ function kpopblog_map_community_comment( WP_Comment $comment ) {
 		'articleId' => (string) $comment->comment_post_ID,
 		'authorId'  => (string) $comment->user_id,
 		'author'    => kpopblog_public_author( $comment->user_id ),
-		'body'      => wp_strip_all_tags( $comment->comment_content ),
+		'body'      => kpopblog_decode_text_entities( $comment->comment_content ),
 		'reactions' => (int) get_comment_meta( $comment->comment_ID, 'kb_reactions', true ),
 		'createdAt' => mysql_to_rfc3339( $comment->comment_date_gmt ),
 		'status'    => '1' === (string) $comment->comment_approved ? 'published' : 'pending',
@@ -164,8 +164,8 @@ function kpopblog_get_forum_categories_data() {
 		$items[] = array(
 			'id'          => (string) $term->term_id,
 			'slug'        => $term->slug,
-			'name'        => $term->name,
-			'description' => $term->description,
+			'name'        => kpopblog_decode_text_entities( $term->name ),
+			'description' => kpopblog_decode_text_entities( $term->description ),
 			'icon'        => '💬',
 			'threadCount' => (int) $term->count,
 			'postCount'   => 0,

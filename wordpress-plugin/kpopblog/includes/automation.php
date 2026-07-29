@@ -254,9 +254,9 @@ function kpopblog_validate_automation_item( $raw ) {
 	if ( ! in_array( $kind, array( 'news', 'comeback', 'concert' ), true ) ) {
 		return new WP_Error( 'invalid_kind', 'The content kind is unsupported.' );
 	}
-	$title   = sanitize_text_field( isset( $raw['title'] ) ? (string) $raw['title'] : '' );
-	$excerpt = sanitize_textarea_field( isset( $raw['excerpt'] ) ? (string) $raw['excerpt'] : '' );
-	$content = sanitize_textarea_field( isset( $raw['content'] ) ? (string) $raw['content'] : '' );
+	$title   = sanitize_text_field( kpopblog_decode_text_entities( isset( $raw['title'] ) ? (string) $raw['title'] : '' ) );
+	$excerpt = sanitize_textarea_field( kpopblog_decode_text_entities( isset( $raw['excerpt'] ) ? (string) $raw['excerpt'] : '' ) );
+	$content = sanitize_textarea_field( kpopblog_decode_text_entities( isset( $raw['content'] ) ? (string) $raw['content'] : '' ) );
 	if ( strlen( $title ) < 8 || strlen( $title ) > 160 || strlen( $excerpt ) < 40 || strlen( $content ) < 120 ) {
 		return new WP_Error( 'invalid_copy', 'The generated copy did not meet editorial length rules.' );
 	}
@@ -274,8 +274,8 @@ function kpopblog_validate_automation_item( $raw ) {
 		$seen_urls[ $url ] = true;
 		$sources[] = array(
 			'url'          => $url,
-			'title'        => substr( sanitize_text_field( isset( $source['title'] ) ? (string) $source['title'] : '' ), 0, 200 ),
-			'publisher'    => substr( sanitize_text_field( isset( $source['publisher'] ) ? (string) $source['publisher'] : '' ), 0, 120 ),
+			'title'        => substr( sanitize_text_field( kpopblog_decode_text_entities( isset( $source['title'] ) ? (string) $source['title'] : '' ) ), 0, 200 ),
+			'publisher'    => substr( sanitize_text_field( kpopblog_decode_text_entities( isset( $source['publisher'] ) ? (string) $source['publisher'] : '' ) ), 0, 120 ),
 			'published_at' => substr( sanitize_text_field( isset( $source['published_at'] ) ? (string) $source['published_at'] : '' ), 0, 40 ),
 		);
 		if ( count( $sources ) >= 5 ) { break; }
