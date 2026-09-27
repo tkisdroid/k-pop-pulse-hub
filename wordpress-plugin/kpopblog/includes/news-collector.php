@@ -303,12 +303,37 @@ function kpopblog_collector_ai_rewrite( array $item ) {
 	) );
 	$input = 'Original headline: ' . $item['title'] . "\n" . ( $artists ? 'Artists: ' . implode( ', ', $artists ) . "\n" : '' ) . 'Publisher: ' . $item['publisher'] . "\n\nSource text:\n" . $source;
 
+	// Configured model first; if the OpenAI project has no access to it, fall back to
+	// the next model this plugin supports and remember the outcome for six hours.
+	$models = array_values( array_unique( array_merge( array( $settings['model'] ), kpopblog_automation_models() ) ) );
+	$blocked = get_transient( 'kpopblog_ai_blocked_models' );
+	$blocked = is_array( $blocked ) ? $blocked : array();
+	foreach ( $models as $model ) {
+		if ( in_array( $model, $blocked, true ) ) { continue; }
+		$result = kpopblog_collector_ai_request( $model, $instructions, $input );
+		if ( is_array( $result ) ) {
+			$result['model'] = $model;
+			return $result;
+		}
+		if ( 'no_model_access' !== $result ) { return null; }
+		$blocked[] = $model;
+		set_transient( 'kpopblog_ai_blocked_models', $blocked, 6 * HOUR_IN_SECONDS );
+	}
+	return null;
+}
+
+/**
+ * One structured-output request. Returns the article array, 'no_model_access'
+ * when the project cannot use $model, or null on any other failure.
+ */
+function kpopblog_collector_ai_request( $model, $instructions, $input ) {
+	$GLOBALS['kpopblog_ai_last_status'] = 0;
 	$response = wp_remote_post( 'https://api.openai.com/v1/responses', array(
 		'timeout'     => 60,
 		'redirection' => 0,
 		'headers'     => array( 'Authorization' => 'Bearer ' . kpopblog_get_openai_api_key(), 'Content-Type' => 'application/json' ),
 		'body'        => wp_json_encode( array(
-			'model'             => $settings['model'],
+			'model'             => $model,
 			'store'             => false,
 			'reasoning'         => array( 'effort' => 'low' ),
 			'instructions'      => $instructions,
@@ -342,7 +367,12 @@ function kpopblog_collector_ai_rewrite( array $item ) {
 	$status = (int) wp_remote_retrieve_response_code( $response );
 	if ( 200 !== $status ) {
 		$error = json_decode( wp_remote_retrieve_body( $response ), true );
-		$GLOBALS['kpopblog_ai_last_error'] = 'HTTP ' . $status . ( isset( $error['error']['message'] ) ? ': ' . substr( (string) $error['error']['message'], 0, 160 ) : '' );
+		$message = isset( $error['error']['message'] ) ? (string) $error['error']['message'] : '';
+		$GLOBALS['kpopblog_ai_last_error'] = 'HTTP ' . $status . ( '' !== $message ? ': ' . substr( $message, 0, 160 ) : '' );
+		$GLOBALS['kpopblog_ai_last_status'] = $status;
+		if ( ( 403 === $status || 404 === $status ) && preg_match( '/does not have access to model|model_not_found|does not exist/i', $message ) ) {
+			return 'no_model_access';
+		}
 		return null;
 	}
 	$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -403,6 +433,9 @@ function kpopblog_collector_rewrite_existing( $limit, $deadline ) {
 		if ( ! $ai ) {
 			$out['failed']++;
 			$out['errors'][] = isset( $GLOBALS['kpopblog_ai_last_error'] ) ? $GLOBALS['kpopblog_ai_last_error'] : 'unknown';
+			$status = isset( $GLOBALS['kpopblog_ai_last_status'] ) ? (int) $GLOBALS['kpopblog_ai_last_status'] : 0;
+			// Account problems (access, auth, quota, rate limits) are retried on a later run.
+			if ( in_array( $status, array( 401, 403, 404, 429 ), true ) || $status >= 500 ) { break; }
 			update_post_meta( $post->ID, 'kb_ai_rewrite_failed', gmdate( 'c' ) );
 			continue;
 		}
@@ -413,7 +446,7 @@ function kpopblog_collector_rewrite_existing( $limit, $deadline ) {
 			'post_content' => kpopblog_collector_article_html( $ai['body'] ),
 		) ) );
 		update_post_meta( $post->ID, 'kb_source', 'ai-brief' );
-		update_post_meta( $post->ID, 'kb_ai_model', kpopblog_get_automation_settings()['model'] );
+		update_post_meta( $post->ID, 'kb_ai_model', $ai['model'] );
 		if ( '' === (string) get_post_meta( $post->ID, 'kb_source_title', true ) ) {
 			update_post_meta( $post->ID, 'kb_source_title', $item['title'] );
 		}
@@ -846,7 +879,7 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 					$item['summary']  = $ai['summary'];
 					$item['ai_body']  = $ai['body'];
 					$item['ai_questions'] = $ai['questions'];
-					$item['ai_model'] = kpopblog_get_automation_settings()['model'];
+					$item['ai_model'] = $ai['model'];
 					$extra['ai']++;
 				} else {
 					$extra['ai_failed']++;

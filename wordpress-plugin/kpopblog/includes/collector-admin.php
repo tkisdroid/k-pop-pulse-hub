@@ -185,9 +185,16 @@ function kpopblog_register_collector_rest_routes() {
 	register_rest_route( KPOPBLOG_REST_NS, '/admin/collector/rewrite', array(
 		'methods'             => 'POST',
 		'permission_callback' => function () { return current_user_can( 'kb_manage_automation' ); },
-		'args'                => array( 'limit' => array( 'type' => 'integer', 'default' => 5, 'minimum' => 1, 'maximum' => 20 ) ),
+		'args'                => array(
+			'limit'       => array( 'type' => 'integer', 'default' => 5, 'minimum' => 1, 'maximum' => 20 ),
+			'retryFailed' => array( 'type' => 'boolean', 'default' => false ),
+		),
 		'callback'            => function ( WP_REST_Request $request ) {
 			if ( function_exists( 'set_time_limit' ) ) { @set_time_limit( 300 ); } // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			if ( $request->get_param( 'retryFailed' ) ) {
+				delete_post_meta_by_key( 'kb_ai_rewrite_failed' );
+				delete_transient( 'kpopblog_ai_blocked_models' );
+			}
 			return rest_ensure_response( kpopblog_collector_rewrite_existing( (int) $request->get_param( 'limit' ), time() + 240 ) );
 		},
 	) );
