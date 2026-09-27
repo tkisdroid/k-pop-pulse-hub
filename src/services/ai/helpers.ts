@@ -123,10 +123,14 @@ export const aiHelpers = {
     } else {
       // Local fallback: basic profanity / spam regex.
       const banned = /\b(slur1|slur2|kys|fuck you|nigger|faggot)\b/i;
-      const spammy = /(https?:\/\/\S+){3,}|(.)\1{8,}/i;
+      // Three or more links, or one character repeated 9+ times. (The previous single
+      // regex used \1 in its second branch, which matched any character and flagged
+      // every comment as spam.)
+      const linkCount = (text.match(/https?:\/\/\S+/gi) ?? []).length;
+      const repeated = /(.)\1{8,}/.test(text);
       reasons = [];
       if (banned.test(text)) reasons.push("hateful language");
-      if (spammy.test(text)) reasons.push("spam");
+      if (linkCount >= 3 || repeated) reasons.push("spam");
       score = reasons.length ? 1 : 0;
       flagged = reasons.length > 0;
     }

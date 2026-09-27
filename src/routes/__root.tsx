@@ -128,6 +128,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // Inside WordPress the app is mounted into #kpopblog-root within the page's own
+  // <body>. Rendering <html>/<head>/<body> there makes React 19 adopt the real
+  // document elements as part of a tree that lives inside <body>, and its event
+  // dispatcher then loops forever on document-level events such as
+  // "selectionchange" (the page freezes as soon as any input is focused).
+  // <title>/<meta>/<link> from HeadContent are still hoisted into <head>.
+  if (typeof window !== "undefined" && window.kpopblogConfig?.apiUrl) {
+    return (
+      <>
+        <HeadContent />
+        {children}
+      </>
+    );
+  }
   return (
     <html lang="en" className="dark">
       <head><HeadContent /></head>

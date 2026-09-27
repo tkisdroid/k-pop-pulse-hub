@@ -83,7 +83,7 @@ function ForumIndex() {
                   </div>
                   <p className="text-sm text-muted-foreground">{category.description}</p>
                   <div className="mt-3 text-xs text-muted-foreground">
-                    {category.threadCount} threads · {category.postCount} replies
+                    {[`${category.threadCount} threads`, category.postCount ? `${category.postCount} replies` : null].filter(Boolean).join(" · ")}
                   </div>
                 </Link>
               ))}

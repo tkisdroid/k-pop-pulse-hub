@@ -29,6 +29,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 function kpopblog_strip_foreign_markup( $html ) {
 	$html = preg_replace( '/<style\b[^>]*>.*?<\/style>/is', '', $html );
+	// Theme and WordPress site icons: the shell prints the KpopBlog icon set itself.
+	$html = preg_replace( '/<link\b[^>]*rel=["\'](?:shortcut icon|icon|apple-touch-icon)["\'][^>]*>\s*/i', '', $html );
+	$html = preg_replace( '/<meta\b[^>]*name=["\']msapplication-TileImage["\'][^>]*>\s*/i', '', $html );
 	$html = preg_replace_callback( '/<link\b[^>]*rel=["\']stylesheet["\'][^>]*>/i', function ( $m ) {
 		return strpos( $m[0], 'kpopblog-app-css' ) !== false ? $m[0] : '';
 	}, $html );
@@ -59,8 +62,10 @@ $kpopblog_icons   = KPOPBLOG_URL . 'icons/';
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="<?php echo esc_attr( $kpopblog_brand ); ?>" />
 <link rel="manifest" href="<?php echo esc_url( home_url( '/manifest.webmanifest' ) ); ?>" />
-<link rel="apple-touch-icon" href="<?php echo esc_url( $kpopblog_icons . 'apple-touch-icon.png' ); ?>" />
-<link rel="icon" type="image/png" sizes="192x192" href="<?php echo esc_url( $kpopblog_icons . 'icon-192.png' ); ?>" />
+<link rel="icon" href="<?php echo esc_url( home_url( '/favicon.ico' ) ); ?>" sizes="48x48" />
+<link rel="icon" type="image/svg+xml" href="<?php echo esc_url( $kpopblog_icons . 'favicon.svg' ); ?>" />
+<link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( $kpopblog_icons . 'favicon-32.png' ); ?>" />
+<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( $kpopblog_icons . 'apple-touch-icon.png' ); ?>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />

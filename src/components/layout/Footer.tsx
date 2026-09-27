@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/hooks/useI18n";
 import { NewsletterCTA } from "@/components/newsletter/NewsletterCTA";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 const COLS = [
   {
@@ -43,7 +44,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 pb-12 grid gap-8 md:grid-cols-4">
         <div>
           <Link to="/" className="flex items-center gap-2">
-            <div className="size-8 rounded-lg gradient-neon" />
+            <BrandMark />
             <span className="font-display text-xl font-bold">
               Kpop<span className="text-gradient">Blog</span>
             </span>

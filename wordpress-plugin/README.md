@@ -136,8 +136,14 @@ artists in **KpopBlog Artists**.
 - **Schedule.** Runs hourly on WP-Cron. If a scheduled run is overdue, the next
   public API request starts one after its response has been sent. **Collect
   now** runs one batch; **Backfill all artists** reads every artist feed once.
-- **OpenAI (optional).** With a key (constant, environment variable, or the AI
-  Automation page), summaries can instead be rewritten from the publisher's text.
+- **Original articles with AI.** With an OpenAI key (constant, environment
+  variable, or the AI Automation page) and "Rewrite each story" on, the model
+  selected on the AI Automation page (default `gpt-6-luna`) writes a new
+  headline, standfirst, three-paragraph article, and two discussion questions.
+  It uses structured output and only facts from the publisher's text. If a
+  rewrite fails, the extractive summary is used and the reason is logged.
+- **Daily quota.** "Articles per day" (default 48) is paced across the day, so
+  the site publishes steadily instead of in bursts.
 
 ### Community automation
 
@@ -155,6 +161,10 @@ official. They never impersonate members, and no counters are inflated.
   poll.
 - **Counters.** Article and thread views count at most once per visitor every
   30 minutes. Zero counters are hidden in lists.
+- **Member posting.** Threads, replies, comments, and community posts from
+  logged-in members publish immediately. Content with three or more links, or
+  words from the WordPress moderation or disallowed lists, waits for review.
+  Reports and moderators remain the backstop.
 
 ### SEO and answer engines
 
@@ -178,10 +188,19 @@ tags, schema.org JSON-LD, and readable fallback HTML for these routes:
   IndexNow (Bing, Naver, Yandex, Seznam) as they are published.
 - `llms.txt` includes an artist directory.
 
+The app shell prints its own icon set (`/favicon.ico`, SVG, 32 px, 180 px
+Apple touch, maskable 192/512 manifest icons) and drops theme and WordPress
+default icons. Pages without an image use `icons/og-default.jpg` as their
+share image.
+
 AdSense supports **Auto ads**, which needs only the publisher ID, alongside
-manual ad units. Ads load after the in-site consent banner by default; switch to
-Google's certified CMP after publishing the consent message in AdSense Privacy &
-messaging.
+manual ad units. Consent modes:
+
+- **In-site banner:** ads load after "Accept".
+- **Opt-out:** ads load for everyone; visitors who choose "Reject optional" get
+  non-personalized ads.
+- **Google certified CMP:** use this after publishing the consent message in
+  AdSense Privacy & messaging.
 
 ### AI and search discoverability
 

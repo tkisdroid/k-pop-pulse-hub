@@ -14,7 +14,7 @@ function kpopblog_automation_defaults() {
 	return array(
 		'enabled'      => 0,
 		'auto_publish' => 1,
-		'model'        => 'gpt-5.6-luna',
+		'model'        => 'gpt-6-luna',
 		'frequency'    => 'twicedaily',
 		'max_items'    => 6,
 		'artist_focus' => '',
@@ -22,7 +22,7 @@ function kpopblog_automation_defaults() {
 }
 
 function kpopblog_automation_models() {
-	return array( 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol' );
+	return array( 'gpt-6-luna', 'gpt-6-sol', 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol' );
 }
 
 function kpopblog_sanitize_automation_settings( $input ) {
@@ -167,7 +167,7 @@ function kpopblog_automation_prompt( array $settings ) {
 
 	return implode( "\n", array(
 		'Today is ' . gmdate( 'Y-m-d' ) . ' UTC. Search the live web for verified K-pop developments from the last 72 hours.',
-		'Find material news plus newly announced or materially changed comeback and concert schedules.',
+		'Focus on newly announced or materially changed comeback, album, single, debut, and concert schedules with an exact date. Include material news only when it has no schedule.',
 		$focus,
 		'Return no more than ' . (int) $settings['max_items'] . ' unique items. Return an empty items array when nothing meets the rules.',
 		'Every factual item must have at least one direct HTTPS source URL. Prefer official artist, agency, promoter, venue, chart, and established newsroom sources.',
@@ -227,6 +227,19 @@ function kpopblog_openai_request( array $settings ) {
 	}
 
 	$status = (int) wp_remote_retrieve_response_code( $response );
+	if ( 403 === $status || 404 === $status ) {
+		$error = json_decode( wp_remote_retrieve_body( $response ), true );
+		$message = isset( $error['error']['message'] ) ? (string) $error['error']['message'] : '';
+		if ( preg_match( '/does not have access to model|model_not_found|does not exist/i', $message ) ) {
+			// Try the next supported model when the project cannot use this one.
+			$models = kpopblog_automation_models();
+			$index  = array_search( $settings['model'], $models, true );
+			if ( false !== $index && isset( $models[ $index + 1 ] ) ) {
+				return kpopblog_openai_request( array_merge( $settings, array( 'model' => $models[ $index + 1 ] ) ) );
+			}
+			return new WP_Error( 'openai_model_unavailable', 'The OpenAI project has no access to the configured models.' );
+		}
+	}
 	if ( 401 === $status || 403 === $status ) {
 		return new WP_Error( 'openai_auth_failed', 'OpenAI rejected the server credential.' );
 	}
@@ -482,6 +495,11 @@ function kpopblog_run_automation( $trigger_type = 'manual' ) {
 		$response = kpopblog_openai_request( $settings );
 		if ( is_wp_error( $response ) ) { throw new Exception( $response->get_error_code() . '|' . $response->get_error_message() ); }
 		$response_id = isset( $response['id'] ) ? sanitize_text_field( (string) $response['id'] ) : '';
+		if ( ! empty( $response['model'] ) ) {
+			// Record the model that actually answered (it may be a fallback).
+			$settings['model'] = sanitize_text_field( (string) $response['model'] );
+			$wpdb->update( $runs_table, array( 'model' => substr( $settings['model'], 0, 64 ) ), array( 'id' => $run_id ) );
+		}
 		$output_text = kpopblog_extract_openai_output_text( $response );
 		if ( is_wp_error( $output_text ) ) { throw new Exception( $output_text->get_error_code() . '|' . $output_text->get_error_message() ); }
 		$payload = json_decode( $output_text, true );
@@ -493,6 +511,8 @@ function kpopblog_run_automation( $trigger_type = 'manual' ) {
 		foreach ( array_slice( $payload['items'], 0, (int) $settings['max_items'] ) as $raw_item ) {
 			$item = kpopblog_validate_automation_item( $raw_item );
 			if ( is_wp_error( $item ) ) { $counts['skipped']++; continue; }
+			// General news is covered by the RSS news collector; keep this run for schedules.
+			if ( 'news' === $item['kind'] && function_exists( 'kpopblog_get_collector_settings' ) && ! empty( kpopblog_get_collector_settings()['enabled'] ) ) { $counts['skipped']++; continue; }
 			$result = kpopblog_persist_automation_item( $item, $settings, $response_id );
 			if ( is_wp_error( $result ) ) { $counts['skipped']++; continue; }
 			$counts[ $result['state'] ]++;

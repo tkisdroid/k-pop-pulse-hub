@@ -117,3 +117,37 @@ function kpopblog_app_permalink( $permalink, $post ) {
 }
 add_filter( 'post_link', 'kpopblog_app_permalink', 20, 2 );
 add_filter( 'post_type_link', 'kpopblog_app_permalink', 20, 2 );
+
+/**
+ * WordPress redirects /login to wp-login.php. The app has its own /login page,
+ * so keep that URL in the app when the front page is the app shell (refreshes,
+ * bookmarks, and shared links would otherwise land on the bare WordPress form).
+ */
+function kpopblog_keep_app_login_route() {
+	$front_id = (int) get_option( 'page_on_front' );
+	if ( $front_id <= 0 || ! kpopblog_uses_app_shell( $front_id ) ) { return; }
+	$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
+	if ( '/login' === untrailingslashit( $path ) ) {
+		remove_action( 'template_redirect', 'wp_redirect_admin_locations', 1000 );
+	}
+}
+add_action( 'template_redirect', 'kpopblog_keep_app_login_route', 0 );
+
+/** /favicon.ico: serve the KpopBlog icon instead of WordPress's default "W" redirect. */
+function kpopblog_serve_favicon() {
+	$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
+	if ( '/favicon.ico' !== $path || ! is_readable( KPOPBLOG_PATH . 'icons/favicon.ico' ) ) { return; }
+	status_header( 200 );
+	header( 'Content-Type: image/x-icon' );
+	header( 'Cache-Control: public, max-age=604800' );
+	readfile( KPOPBLOG_PATH . 'icons/favicon.ico' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile
+	exit;
+}
+add_action( 'template_redirect', 'kpopblog_serve_favicon', 0 );
+add_action( 'do_favicon', 'kpopblog_serve_favicon', 0 );
+
+/** The app's content and interface are English; say so to browsers and search engines. */
+function kpopblog_app_shell_language( $output ) {
+	return function_exists( 'kpopblog_current_request_is_app_shell' ) && kpopblog_current_request_is_app_shell() ? 'lang="en"' : $output;
+}
+add_filter( 'language_attributes', 'kpopblog_app_shell_language' );

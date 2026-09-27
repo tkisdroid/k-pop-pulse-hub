@@ -349,17 +349,18 @@ function kpopblog_render_public_head() {
 	echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
 	echo '<meta property="og:type" content="' . esc_attr( $open_graph_type ) . '" />' . "\n";
 	echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '" />' . "\n";
-	echo '<meta name="twitter:card" content="' . ( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
+	echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
 	echo '<meta name="twitter:title" content="' . esc_attr( $title ) . '" />' . "\n";
 	echo '<meta name="twitter:description" content="' . esc_attr( $description ) . '" />' . "\n";
 	if ( 'article' === $kind ) {
 		echo '<meta property="article:published_time" content="' . esc_attr( $published ) . '" />' . "\n";
 		echo '<meta property="article:modified_time" content="' . esc_attr( $modified ) . '" />' . "\n";
 	}
-	if ( $image ) {
-		echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
-		echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
+	if ( ! $image ) {
+		$image = KPOPBLOG_URL . 'icons/og-default.jpg';
 	}
+	echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
+	echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
 	echo kpopblog_render_public_json_ld( $json_ld );
 }
 add_action( 'wp_head', 'kpopblog_render_public_head' );

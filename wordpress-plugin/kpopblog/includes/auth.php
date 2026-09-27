@@ -103,6 +103,23 @@ function kpopblog_auth_response( $extra = array() ) {
 	return array_merge( array( 'nonce' => wp_create_nonce( 'wp_rest' ) ), $extra );
 }
 
+/**
+ * A wp_rest nonce is bound to the session token in the logged-in cookie. When a
+ * request logs someone in (or out), that cookie only exists in the response, so
+ * wp_create_nonce() would use the old (empty) token and hand the browser a nonce
+ * that fails with "Cookie check failed" on its next request. Mirror the cookie
+ * into $_COOKIE as soon as WordPress sets it so the returned nonce is valid.
+ */
+function kpopblog_sync_logged_in_cookie( $logged_in_cookie ) {
+	$_COOKIE[ LOGGED_IN_COOKIE ] = $logged_in_cookie;
+}
+add_action( 'set_logged_in_cookie', 'kpopblog_sync_logged_in_cookie' );
+
+function kpopblog_clear_logged_in_cookie() {
+	unset( $_COOKIE[ LOGGED_IN_COOKIE ] );
+}
+add_action( 'clear_auth_cookie', 'kpopblog_clear_logged_in_cookie' );
+
 function kpopblog_register_auth_routes() {
 
 	register_rest_route( KPOPBLOG_REST_NS, '/auth/register', array(
@@ -182,8 +199,18 @@ function kpopblog_register_auth_routes() {
 			'password' => array( 'type' => 'string', 'required' => true ),
 		),
 		'callback'            => function ( WP_REST_Request $r ) {
+			$login = trim( (string) $r->get_param( 'login' ) );
+			// Some security plugins reject username (but not email) sign-ins that arrive
+			// through the REST API. Resolve a username to the account's email first; the
+			// password is still verified by WordPress as usual.
+			if ( '' !== $login && ! is_email( $login ) ) {
+				$account = get_user_by( 'login', $login );
+				if ( $account && is_email( $account->user_email ) ) {
+					$login = $account->user_email;
+				}
+			}
 			$user = wp_signon( array(
-				'user_login'    => (string) $r->get_param( 'login' ),
+				'user_login'    => $login,
 				'user_password' => (string) $r->get_param( 'password' ),
 				'remember'      => true,
 			), is_ssl() );
