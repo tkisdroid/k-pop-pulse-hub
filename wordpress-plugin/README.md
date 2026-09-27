@@ -112,24 +112,76 @@ MariaDB data remain available across ordinary bootstrap and verification runs.
 ### Automated K-pop news collector
 
 **News Collector** (K-pop Pulse Hub menu) keeps the site filled without any API
-key. Every run reads the general feeds (Soompi, The Korea Times entertainment,
-Yonhap culture) plus a rotating set of per-artist Soompi tag feeds, keeps only
-K-pop stories, tags them with the artists in **KpopBlog Artists**, and publishes
-short credited briefs under the **KpopBlog Newsroom** byline. Each brief links
-to the original story and uses the source's preview image. The same run adds
-official videos from label YouTube channels, release dates stated in comeback
-announcements, newsroom threads in *News Reactions*, and a weekly fan poll.
+key. Every run reads the enabled publisher feeds and a rotating set of
+per-artist Soompi tag feeds, keeps only K-pop stories, and tags them with the
+artists in **KpopBlog Artists**.
 
-- Runs hourly on WP-Cron. If loopback cron never fires, an overdue run starts
-  after a public API response has been sent.
-- **Collect now** runs one batch. **Backfill all artists** reads every artist
-  feed once, which is useful right after installation.
-- Artists are matched by the *News keywords* field on each artist. The *News
-  tag* field selects the artist's Soompi tag feed. Upgrading to 1.4.0 creates
-  30 starter artists with members, opens member registration, and turns the
-  collector on.
-- With an OpenAI key (constant, environment variable, or the AI Automation
-  page), briefs can optionally be rewritten from the feed summary.
+- **Sources.** English sources are on by default: Soompi, Billboard (K-pop),
+  The Korea Herald, Yonhap, The Korea Times, KBS World, NME, Rolling Stone,
+  Variety, Teen Vogue, Hypebae, Koreaboo, and KBIZoom. Korean-language desks
+  (Yonhap, Newsis, Sports Donga, SBS, Chosun) are available but off by default.
+  General music and fashion outlets only contribute stories that name a followed
+  artist. Gossip-leaning outlets skip rumor-style headlines.
+- **On-site summaries.** Each story is published under the **KpopBlog Newsroom**
+  byline as a summary of up to four sentences, built from the publisher's own
+  standfirst and lead with filler removed. Readers get the story without leaving
+  the site. The rendered article adds an "About {artist}" fact box, more
+  coverage of the same artist, the next release, and links to the forum thread
+  and artist page. A small "Summary based on reporting by …" credit links to
+  every outlet and opens in a new tab.
+- **Same story, several outlets.** Later reports of a story that is already
+  published are credited on the existing article instead of being posted again.
+- **Also added:** official label YouTube videos, and release dates stated in
+  comeback announcements.
+- **Schedule.** Runs hourly on WP-Cron. If a scheduled run is overdue, the next
+  public API request starts one after its response has been sent. **Collect
+  now** runs one batch; **Backfill all artists** reads every artist feed once.
+- **OpenAI (optional).** With a key (constant, environment variable, or the AI
+  Automation page), summaries can instead be rewritten from the publisher's text.
+
+### Community automation
+
+All automated community posts use the newsroom account and are flagged
+official. They never impersonate members, and no counters are inflated.
+
+- **Topic threads.** Fresh artist headlines open threads in the matching board:
+  Comebacks, Concerts, Styling and Fashion, Albums and Merch, or News Reactions.
+- **Fan hubs.** Each artist has a hub thread in Artist Fandoms, refreshed with
+  their latest headlines and next release.
+- **Recurring threads.** A daily news roundup (General), plus weekly threads:
+  comeback watch (Mondays), concert check-in (Wednesdays), and a fan-art prompt
+  (Fridays).
+- **Polls.** A weekly "most-followed news" poll and a most-anticipated-release
+  poll.
+- **Counters.** Article and thread views count at most once per visitor every
+  30 minutes. Zero counters are hidden in lists.
+
+### SEO and answer engines
+
+Crawlers, answer engines, and link previews read the first HTML response. The
+plugin server-renders the title, description, canonical, Open Graph/Twitter
+tags, schema.org JSON-LD, and readable fallback HTML for these routes:
+
+| Route | JSON-LD |
+| --- | --- |
+| Home | Organization, WebSite with SearchAction, latest-news ItemList |
+| `/latest`, `/trending`, `/artists`, `/forum`, `/forum/{board}` | CollectionPage |
+| `/artist/{slug}` | MusicGroup or Person, plus an FAQPage (debut, agency, fandom, members, next comeback) |
+| `/thread/{slug}` | DiscussionForumPosting with replies |
+| `/watch/{id}` | VideoObject |
+| `/polls/{slug}` | Question |
+| `/news/{slug}`, `/comebacks` | (existing) |
+
+- `/news-sitemap.xml` lists the last 48 hours of articles in Google News format;
+  robots.txt links it.
+- New or updated articles, threads, artists, polls, and videos are sent to
+  IndexNow (Bing, Naver, Yandex, Seznam) as they are published.
+- `llms.txt` includes an artist directory.
+
+AdSense supports **Auto ads**, which needs only the publisher ID, alongside
+manual ad units. Ads load after the in-site consent banner by default; switch to
+Google's certified CMP after publishing the consent message in AdSense Privacy &
+messaging.
 
 ### AI and search discoverability
 

@@ -173,10 +173,33 @@ function kpopblog_register_write_routes() {
 			$post_id = kpopblog_post_id_by_slug( 'post', $r->get_param( 'slug' ) );
 			if ( ! $post_id ) return new WP_Error( 'not_found', 'Article not found', array( 'status' => 404 ) );
 			$key   = $r->get_param( 'kind' ) === 'view' ? 'kb_view_count' : 'kb_reaction_count';
-			$value = (int) get_post_meta( $post_id, $key, true ) + 1;
-			update_post_meta( $post_id, $key, $value );
-			return rest_ensure_response( array( 'value' => $value ) );
+			return rest_ensure_response( array( 'value' => kpopblog_count_once( $post_id, $key ) ) );
 		},
 	) );
+
+	register_rest_route( KPOPBLOG_REST_NS, '/threads/(?P<slug>[a-zA-Z0-9_-]+)/view', array(
+		'methods'             => 'POST',
+		'permission_callback' => '__return_true',
+		'callback'            => function ( WP_REST_Request $r ) {
+			$post_id = kpopblog_post_id_by_slug( 'kb_thread', $r->get_param( 'slug' ) );
+			if ( ! $post_id ) return new WP_Error( 'not_found', 'Thread not found', array( 'status' => 404 ) );
+			return rest_ensure_response( array( 'value' => kpopblog_count_once( $post_id, 'kb_views' ) ) );
+		},
+	) );
+}
+
+/**
+ * Increment a counter at most once per visitor (IP + user agent) per post and
+ * counter every 30 minutes, so refreshes and scripted calls don't inflate it.
+ */
+function kpopblog_count_once( $post_id, $key ) {
+	$ip    = function_exists( 'kpopblog_request_ip' ) ? kpopblog_request_ip() : ( isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '' );
+	$agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? substr( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ), 0, 200 ) : '';
+	$guard = 'kb_cnt_' . md5( $key . '|' . $post_id . '|' . $ip . '|' . $agent . '|' . get_current_user_id() );
+	$value = (int) get_post_meta( $post_id, $key, true );
+	if ( get_transient( $guard ) ) { return $value; }
+	set_transient( $guard, 1, 30 * MINUTE_IN_SECONDS );
+	update_post_meta( $post_id, $key, $value + 1 );
+	return $value + 1;
 }
 add_action( 'rest_api_init', 'kpopblog_register_write_routes' );

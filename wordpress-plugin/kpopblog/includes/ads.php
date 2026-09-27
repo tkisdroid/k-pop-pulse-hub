@@ -33,7 +33,7 @@ function kpopblog_ads_allowed_slots() {
 }
 
 function kpopblog_ads_defaults() {
-	return array( 'enabled' => false, 'publisher_id' => '', 'slots' => array() );
+	return array( 'enabled' => false, 'publisher_id' => '', 'slots' => array(), 'auto_ads' => false, 'consent_mode' => 'site' );
 }
 
 function kpopblog_sanitize_ads_settings( $input ) {
@@ -63,10 +63,16 @@ function kpopblog_sanitize_ads_settings( $input ) {
 		}
 	}
 
+	$auto_ads = ! empty( $input['auto_ads'] );
 	return array(
-		'enabled'      => ! empty( $input['enabled'] ) && ! empty( $slots ),
+		// Auto Ads only needs the publisher ID; manual placements also need slot IDs.
+		'enabled'      => ! empty( $input['enabled'] ) && ( ! empty( $slots ) || $auto_ads ),
 		'publisher_id' => $publisher_id,
 		'slots'        => $slots,
+		'auto_ads'     => $auto_ads,
+		// site: load ads after the in-app "advertising" consent. google: load for everyone and
+		// let Google's certified CMP (AdSense Privacy & messaging) ask where the law requires.
+		'consent_mode' => isset( $input['consent_mode'] ) && 'google' === $input['consent_mode'] ? 'google' : 'site',
 	);
 }
 
@@ -81,6 +87,8 @@ function kpopblog_ads_frontend_config() {
 		'enabled'     => (bool) $settings['enabled'],
 		'publisherId' => (string) $settings['publisher_id'],
 		'slots'       => $settings['slots'],
+		'autoAds'     => (bool) $settings['auto_ads'],
+		'consentMode' => (string) $settings['consent_mode'],
 	);
 }
 
@@ -115,14 +123,25 @@ function kpopblog_render_ads_admin_page() {
 	?>
 	<div class="wrap">
 		<h1>Google AdSense</h1>
-		<p>KpopBlog uses manually placed responsive display units so React owns the page layout. Auto Ads are intentionally not injected into the app shell.</p>
-		<p><strong>Before production:</strong> configure a Google-certified consent management platform in AdSense Privacy &amp; messaging for every region where Google requires one. This page only controls KpopBlog's local consent gate and ad-unit mapping.</p>
+		<p>Choose <strong>Auto ads</strong> to let Google place ads automatically (only the publisher ID is needed; turn on Auto ads for this site in AdSense → Ads → By site). Add manual ad-unit IDs below for fixed placements; both can run together.</p>
+		<p><strong>Consent:</strong> with "In-site consent banner", ads load only after a visitor accepts advertising. For higher fill, enable Google's certified consent message in AdSense → Privacy &amp; messaging (European regulations and US state regulations), then switch to "Google certified CMP".</p>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'kpopblog_ads_group' ); ?>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th><label for="kb_ads_enabled">Enable AdSense</label></th>
 					<td><label><input id="kb_ads_enabled" type="checkbox" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[enabled]" value="1" <?php checked( $settings['enabled'] ); ?>> Render configured units after advertising consent</label></td>
+				</tr>
+				<tr>
+					<th>Auto ads</th>
+					<td><label><input type="checkbox" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[auto_ads]" value="1" <?php checked( $settings['auto_ads'] ); ?>> Load the AdSense Auto ads script on every page</label></td>
+				</tr>
+				<tr>
+					<th>Consent</th>
+					<td>
+						<label><input type="radio" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[consent_mode]" value="site" <?php checked( 'site', $settings['consent_mode'] ); ?>> In-site consent banner (ads after "Accept")</label><br>
+						<label><input type="radio" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[consent_mode]" value="google" <?php checked( 'google', $settings['consent_mode'] ); ?>> Google certified CMP (requires the AdSense Privacy &amp; messaging consent message to be published)</label>
+					</td>
 				</tr>
 				<tr>
 					<th><label for="kb_ads_publisher">Publisher ID</label></th>
@@ -151,5 +170,7 @@ add_action( 'update_option_' . KPOPBLOG_ADS_OPTION, function ( $old_value, $valu
 		'enabled'             => (bool) $settings['enabled'],
 		'publisher_configured' => (bool) $settings['publisher_id'],
 		'slot_count'          => count( $settings['slots'] ),
+		'auto_ads'            => (bool) $settings['auto_ads'],
+		'consent_mode'        => $settings['consent_mode'],
 	) );
 }, 10, 2 );

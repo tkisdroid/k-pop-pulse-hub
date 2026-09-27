@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { LinkifiedText } from "@/components/layout/LinkifiedText";
 import { buildHead } from "@/components/layout/seo";
 import { LocalTime } from "@/components/layout/LocalTime";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,20 @@ function ThreadPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Count one view per thread per browser session (the server also rate-limits).
+  useEffect(() => {
+    const apiUrl = typeof window !== "undefined" ? window.kpopblogConfig?.apiUrl : undefined;
+    if (!apiUrl || !thread) return;
+    const key = `kb-thread-view:${thread.slug}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* storage unavailable: the server-side limit still applies */
+    }
+    void fetch(`${apiUrl.replace(/\/$/, "")}/threads/${encodeURIComponent(thread.slug)}/view`, { method: "POST", credentials: "same-origin" }).catch(() => undefined);
+  }, [thread]);
 
   async function reply() {
     if (!draft.trim() || posting || !thread) return;
@@ -145,7 +160,7 @@ function ThreadPage() {
         </span>
       </div>
       <article className="mt-4 rounded-xl border border-border bg-card p-4">
-        <p className="whitespace-pre-wrap">{thread.body}</p>
+        <LinkifiedText text={thread.body} className="space-y-1 break-words" />
         <div className="mt-3 flex gap-2 text-xs">
           <Button size="sm" variant="ghost" onClick={() => void report("thread", thread.id)}>
             <Flag className="size-3" /> Report

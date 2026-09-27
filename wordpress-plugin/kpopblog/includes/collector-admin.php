@@ -53,9 +53,9 @@ function kpopblog_render_collector_admin_page() {
 	?>
 	<div class="wrap">
 		<h1>News Collector</h1>
-		<p>Collects K-pop headlines for every artist in <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=kb_artist' ) ); ?>">KpopBlog Artists</a> from publisher RSS feeds, publishes short credited briefs that link to the original story, adds official YouTube videos and announced release dates, and opens newsroom discussion threads. No API key is required.</p>
+		<p>Collects K-pop news for every artist in <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=kb_artist' ) ); ?>">KpopBlog Artists</a> from the publishers selected below. Each story is published as an on-site summary with a small source credit; when several outlets report the same story they are credited on one article. Official YouTube videos, announced release dates, and newsroom discussion threads are added automatically. No API key is required.</p>
 		<?php if ( 'completed' === $notice && is_array( $result ) ) : ?>
-			<div class="notice notice-success is-dismissible"><p><?php echo esc_html( sprintf( 'Run finished: %d new articles, %d videos, %d release dates, %d discussion threads, %d polls (%d feeds read).', $result['created'], $result['videos'], $result['comebacks'], $result['threads'], $result['polls'], $result['feeds'] ) ); ?></p></div>
+			<div class="notice notice-success is-dismissible"><p><?php echo esc_html( sprintf( 'Run finished: %d new articles, %d extra sources merged into existing stories, %d videos, %d release dates, %d discussion threads, %d polls (%d feeds read).', $result['created'], $result['updated'], $result['videos'], $result['comebacks'], $result['threads'], $result['polls'], $result['feeds'] ) ); ?></p></div>
 		<?php elseif ( 'failed' === $notice ) : ?>
 			<div class="notice notice-error is-dismissible"><p><?php echo esc_html( is_string( $result ) ? $result : 'The collector could not complete. Review the run log below.' ); ?></p></div>
 		<?php elseif ( 'seeded' === $notice && is_array( $result ) ) : ?>
@@ -104,12 +104,25 @@ function kpopblog_render_collector_admin_page() {
 					<?php $checkbox( 'fetch_images', 'Use the source article\'s preview image (og:image) as the thumbnail' ); ?><br />
 					<?php $checkbox( 'collect_videos', 'Add official music videos, teasers, and performances from label YouTube channels' ); ?><br />
 					<?php $checkbox( 'extract_comebacks', 'Add release dates announced in comeback headlines to the comeback calendar' ); ?><br />
-					<?php $checkbox( 'weekly_poll', 'Open a weekly fan poll built from the artists in the news' ); ?><br />
+					<?php $checkbox( 'weekly_poll', 'Open weekly fan polls (most-followed news and most-anticipated release)' ); ?><br />
+					<?php $checkbox( 'community_hubs', 'Keep a newsroom fan hub thread per artist in Artist Fandoms, refreshed with their latest news' ); ?><br />
+					<?php $checkbox( 'recurring_threads', 'Post recurring newsroom threads: daily news roundup, weekly comeback watch, concert check-in, and fan-art prompt' ); ?><br />
 					<?php $checkbox( 'ai_rewrite', 'Rewrite briefs with OpenAI when a key is configured on the AI Automation page' ); ?>
 				</td></tr>
-				<tr><th scope="row"><label for="kb_collector_threads">Discussion threads per run</label></th><td><input id="kb_collector_threads" class="small-text" type="number" min="0" max="10" name="<?php echo esc_attr( $option ); ?>[discussion_threads]" value="<?php echo esc_attr( $settings['discussion_threads'] ); ?>" /><p class="description">Newsroom threads in News Reactions for fresh artist headlines. Set 0 to turn off.</p></td></tr>
+				<tr><th scope="row"><label for="kb_collector_threads">Discussion threads per run</label></th><td><input id="kb_collector_threads" class="small-text" type="number" min="0" max="10" name="<?php echo esc_attr( $option ); ?>[discussion_threads]" value="<?php echo esc_attr( $settings['discussion_threads'] ); ?>" /><p class="description">Newsroom threads for fresh artist headlines, routed to the matching board (Comebacks, Concerts, Styling and Fashion, Albums and Merch, or News Reactions). Set 0 to turn off.</p></td></tr>
 				<tr><th scope="row"><label for="kb_collector_template">Artist feed URL</label></th><td><input id="kb_collector_template" class="large-text code" type="url" name="<?php echo esc_attr( $option ); ?>[artist_feed_template]" value="<?php echo esc_attr( $settings['artist_feed_template'] ); ?>" /><p class="description"><code>%s</code> is replaced with each artist's "News tag" field. Leave empty to use general feeds only.</p></td></tr>
-				<tr><th scope="row"><label for="kb_collector_feeds">General feeds</label></th><td><textarea id="kb_collector_feeds" class="large-text code" rows="4" name="<?php echo esc_attr( $option ); ?>[general_feeds]"><?php echo esc_textarea( $settings['general_feeds'] ); ?></textarea><p class="description">One HTTPS RSS or Atom URL per line. Items are kept only when they are about K-pop.</p></td></tr>
+				<tr><th scope="row">Sources</th><td>
+					<?php foreach ( array( 'en' => 'English', 'ko' => 'Korean (shown as-is on the English site)' ) as $lang => $lang_label ) : ?>
+						<p><strong><?php echo esc_html( $lang_label ); ?></strong></p>
+						<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 16px;margin-bottom:10px">
+						<?php foreach ( kpopblog_collector_source_catalog() as $key => $source ) : if ( $source['lang'] !== $lang ) { continue; } ?>
+							<label><input type="checkbox" name="<?php echo esc_attr( $option ); ?>[sources][]" value="<?php echo esc_attr( $key ); ?>" <?php checked( in_array( $key, (array) $settings['sources'], true ) ); ?> /> <?php echo esc_html( $source['name'] ); ?></label>
+						<?php endforeach; ?>
+						</div>
+					<?php endforeach; ?>
+					<p class="description">General music and fashion outlets only contribute stories that name a followed artist in the headline. Rumor-style headlines are skipped for gossip-leaning outlets.</p>
+				</td></tr>
+				<tr><th scope="row"><label for="kb_collector_feeds">Additional feeds</label></th><td><textarea id="kb_collector_feeds" class="large-text code" rows="3" name="<?php echo esc_attr( $option ); ?>[general_feeds]"><?php echo esc_textarea( $settings['general_feeds'] ); ?></textarea><p class="description">Optional. One HTTPS RSS or Atom URL per line; items are kept only when they are about K-pop.</p></td></tr>
 				<tr><th scope="row"><label for="kb_collector_channels">YouTube channel IDs</label></th><td><textarea id="kb_collector_channels" class="large-text code" rows="4" name="<?php echo esc_attr( $option ); ?>[video_channels]"><?php echo esc_textarea( $settings['video_channels'] ); ?></textarea><p class="description">Official label or artist channels (IDs start with UC). Videos are added only when the title names a followed artist.</p></td></tr>
 			</table>
 			<?php submit_button( 'Save collector settings' ); ?>
@@ -117,14 +130,19 @@ function kpopblog_render_collector_admin_page() {
 
 		<h2>Recent runs</h2>
 		<table class="widefat striped">
-			<thead><tr><th>Started (UTC)</th><th>Trigger</th><th>Status</th><th>Items read</th><th>Published</th><th>Skipped</th><th>Details</th></tr></thead>
-			<tbody><?php if ( ! $runs ) : ?><tr><td colspan="7">No collector runs yet.</td></tr><?php else : foreach ( $runs as $run ) :
+			<thead><tr><th>Started (UTC)</th><th>Trigger</th><th>Status</th><th>Items read</th><th>Published</th><th>Merged</th><th>Skipped</th><th>Details</th></tr></thead>
+			<tbody><?php if ( ! $runs ) : ?><tr><td colspan="8">No collector runs yet.</td></tr><?php else : foreach ( $runs as $run ) :
 				$details = json_decode( (string) $run->error_text, true );
 				$summary = is_array( $details ) && isset( $details['extra'] ) ? sprintf( '%d feeds · %d videos · %d dates · %d threads · %d polls', $details['extra']['feeds'], $details['extra']['videos'], $details['extra']['comebacks'], $details['extra']['threads'], $details['extra']['polls'] ) : (string) $run->error_text;
+				if ( is_array( $details ) && ! empty( $details['sources'] ) ) {
+					$parts = array();
+					foreach ( $details['sources'] as $name => $count ) { $parts[] = $name . ' ' . (int) $count; }
+					$summary .= ' — ' . implode( ', ', $parts );
+				}
 				if ( is_array( $details ) && ! empty( $details['log'] ) ) { $summary .= ' — ' . implode( '; ', array_slice( $details['log'], 0, 3 ) ); }
 				?><tr>
 				<td><?php echo esc_html( $run->started_at ); ?></td><td><?php echo esc_html( $run->trigger_type ); ?></td><td><?php echo esc_html( $run->status ); ?></td>
-				<td><?php echo esc_html( (string) $run->discovered ); ?></td><td><?php echo esc_html( (string) $run->created ); ?></td><td><?php echo esc_html( (string) $run->skipped ); ?></td><td><?php echo esc_html( $summary ); ?></td>
+				<td><?php echo esc_html( (string) $run->discovered ); ?></td><td><?php echo esc_html( (string) $run->created ); ?></td><td><?php echo esc_html( (string) $run->updated ); ?></td><td><?php echo esc_html( (string) $run->skipped ); ?></td><td><?php echo esc_html( $summary ); ?></td>
 			</tr><?php endforeach; endif; ?></tbody>
 		</table>
 	</div>
@@ -168,7 +186,7 @@ function kpopblog_register_collector_rest_routes() {
 		'permission_callback' => function () { return current_user_can( 'kb_manage_automation' ); },
 		'callback'            => function () {
 			global $wpdb;
-			$runs = $wpdb->get_results( $wpdb->prepare( "SELECT id, trigger_type, status, discovered, created, skipped, error_text, started_at, finished_at FROM {$wpdb->prefix}kb_automation_runs WHERE model = %s ORDER BY id DESC LIMIT 10", KPOPBLOG_COLLECTOR_MODEL ), ARRAY_A );
+			$runs = $wpdb->get_results( $wpdb->prepare( "SELECT id, trigger_type, status, discovered, created, updated, skipped, error_text, started_at, finished_at FROM {$wpdb->prefix}kb_automation_runs WHERE model = %s ORDER BY id DESC LIMIT 10", KPOPBLOG_COLLECTOR_MODEL ), ARRAY_A );
 			return rest_ensure_response( array(
 				'settings'    => kpopblog_get_collector_settings(),
 				'nextRun'     => wp_next_scheduled( KPOPBLOG_COLLECTOR_HOOK ),
