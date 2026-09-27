@@ -7,7 +7,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-const KPOPBLOG_SCHEMA_VERSION = '1.3.0';
+const KPOPBLOG_SCHEMA_VERSION = '1.4.0';
 
 /**
  * Create or update plugin-owned tables and capabilities.

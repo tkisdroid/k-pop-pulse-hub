@@ -3,7 +3,7 @@
  * Plugin Name:       KpopBlog
  * Plugin URI:        https://thekpopblog.com
  * Description:       K-pop publishing and community platform with articles, artists, videos, comebacks, forums, polls, submissions, subscriptions, notifications, advertising, and source-grounded content automation managed from WordPress.
- * Version:           1.3.1
+ * Version:           1.4.0
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            thekpopblog.com
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.3.1' );
+define( 'KPOPBLOG_VERSION', '1.4.0' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
@@ -42,6 +42,10 @@ require_once KPOPBLOG_PATH . 'includes/notifications.php';
 require_once KPOPBLOG_PATH . 'includes/notifications-admin.php';
 require_once KPOPBLOG_PATH . 'includes/automation.php';
 require_once KPOPBLOG_PATH . 'includes/automation-admin.php';
+require_once KPOPBLOG_PATH . 'includes/artist-catalog.php';
+require_once KPOPBLOG_PATH . 'includes/news-collector.php';
+require_once KPOPBLOG_PATH . 'includes/community-automation.php';
+require_once KPOPBLOG_PATH . 'includes/collector-admin.php';
 require_once KPOPBLOG_PATH . 'includes/newsletter.php';
 require_once KPOPBLOG_PATH . 'includes/newsletter-admin.php';
 require_once KPOPBLOG_PATH . 'includes/shortcode.php';
@@ -53,6 +57,7 @@ function kpopblog_activate() {
 	kpopblog_register_cpts();
 	kpopblog_install_or_upgrade();
 	kpopblog_sync_automation_schedule();
+	kpopblog_sync_collector_schedule();
 	flush_rewrite_rules();
 	kpopblog_audit( 'plugin_activated', 'plugin' );
 }
@@ -61,6 +66,7 @@ register_activation_hook( __FILE__, 'kpopblog_activate' );
 function kpopblog_deactivate() {
 	wp_clear_scheduled_hook( 'kpopblog_process_notification_jobs' );
 	wp_clear_scheduled_hook( KPOPBLOG_AUTOMATION_HOOK );
+	wp_clear_scheduled_hook( KPOPBLOG_COLLECTOR_HOOK );
 	flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, 'kpopblog_deactivate' );
@@ -71,3 +77,32 @@ function kpopblog_maybe_upgrade() {
 	}
 }
 add_action( 'plugins_loaded', 'kpopblog_maybe_upgrade' );
+
+/**
+ * One-time site setup for automated publishing: follow the starter artists,
+ * create the newsroom byline, open member registration, and turn on the news
+ * collector. Runs on init so post types and taxonomies are registered.
+ */
+function kpopblog_maybe_run_site_setup() {
+	if ( get_option( 'kpopblog_site_setup_version' ) === '1.4.0' ) {
+		return;
+	}
+	update_option( 'kpopblog_site_setup_version', '1.4.0', false );
+
+	kpopblog_seed_artist_catalog();
+	kpopblog_newsroom_user_id();
+
+	if ( ! get_option( 'users_can_register' ) ) {
+		update_option( 'users_can_register', 1 );
+	}
+	if ( in_array( get_option( 'default_role' ), array( 'administrator', 'editor', 'author' ), true ) ) {
+		update_option( 'default_role', 'subscriber' );
+	}
+	if ( ! is_array( get_option( KPOPBLOG_COLLECTOR_OPTION, null ) ) ) {
+		add_option( KPOPBLOG_COLLECTOR_OPTION, kpopblog_collector_defaults() );
+	}
+	update_option( 'kpopblog_runtime_data_ready', 1, false );
+	kpopblog_sync_collector_schedule();
+	kpopblog_audit( 'site_setup_completed', 'plugin', 0, array( 'version' => '1.4.0' ) );
+}
+add_action( 'init', 'kpopblog_maybe_run_site_setup', 40 );

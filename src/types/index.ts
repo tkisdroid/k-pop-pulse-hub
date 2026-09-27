@@ -119,6 +119,7 @@ export interface ForumThread {
   locked?: boolean;
   official?: boolean;
   rumor?: boolean;
+  relatedArtistIds?: string[];
   views: number;
   replies: number;
   reactions: number;

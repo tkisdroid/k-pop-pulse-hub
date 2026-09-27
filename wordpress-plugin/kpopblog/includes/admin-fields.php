@@ -42,7 +42,7 @@ function kpopblog_field_schema( $post_type ) {
 		case 'kb_artist':
 			return array(
 				array( 'key' => 'kb_korean_name', 'label' => 'Korean name', 'type' => 'text' ),
-				array( 'key' => 'kb_type', 'label' => 'Type', 'type' => 'select', 'options' => array( 'boy_group' => 'Boy group', 'girl_group' => 'Girl group', 'solo' => 'Solo', 'other' => 'Other' ) ),
+				array( 'key' => 'kb_type', 'label' => 'Type', 'type' => 'select', 'options' => array( 'boy_group' => 'Boy group', 'girl_group' => 'Girl group', 'soloist' => 'Soloist', 'coed' => 'Co-ed group', 'band' => 'Band' ) ),
 				array( 'key' => 'kb_agency', 'label' => 'Agency', 'type' => 'text' ),
 				array( 'key' => 'kb_debut_date', 'label' => 'Debut date', 'type' => 'date' ),
 				array( 'key' => 'kb_fandom_name', 'label' => 'Fandom name', 'type' => 'text' ),
@@ -50,6 +50,8 @@ function kpopblog_field_schema( $post_type ) {
 				array( 'key' => 'kb_nationality', 'label' => 'Nationality', 'type' => 'text', 'placeholder' => 'South Korea' ),
 				array( 'key' => 'kb_generation', 'label' => 'Generation', 'type' => 'number' ),
 				array( 'key' => 'kb_social_links', 'label' => 'Social links', 'type' => 'social' ),
+				array( 'key' => 'kb_search_terms', 'label' => 'News keywords', 'type' => 'text', 'placeholder' => 'IVE, 아이브, Jang Wonyoung — comma separated' ),
+				array( 'key' => 'kb_news_tag', 'label' => 'News tag', 'type' => 'text', 'placeholder' => 'Soompi tag slug, e.g. ive' ),
 			);
 		case 'kb_member':
 			return array(
@@ -66,7 +68,7 @@ function kpopblog_field_schema( $post_type ) {
 		case 'kb_comeback':
 			return array(
 				array( 'key' => 'kb_artist_slug', 'label' => 'Artist', 'type' => 'artist_select' ),
-				array( 'key' => 'kb_type', 'label' => 'Type', 'type' => 'select', 'options' => array( 'album' => 'Album', 'single' => 'Single', 'mv' => 'Music video' ) ),
+				array( 'key' => 'kb_type', 'label' => 'Type', 'type' => 'select', 'options' => array( 'album' => 'Album', 'single' => 'Single', 'mv' => 'Music video', 'teaser' => 'Teaser', 'debut' => 'Debut', 'concert' => 'Concert', 'event' => 'Event' ) ),
 				array( 'key' => 'kb_release_at', 'label' => 'Release date', 'type' => 'date' ),
 			);
 		case 'kb_chart':
@@ -79,7 +81,7 @@ function kpopblog_field_schema( $post_type ) {
 			return array(
 				array( 'key' => 'kb_youtube_id', 'label' => 'YouTube video ID', 'type' => 'text', 'placeholder' => 'dQw4w9WgXcQ' ),
 				array( 'key' => 'kb_artist_slug', 'label' => 'Artist', 'type' => 'artist_select' ),
-				array( 'key' => 'kb_video_category', 'label' => 'Category', 'type' => 'select', 'options' => array( 'MV' => 'Music video', 'Performance' => 'Performance', 'Interview' => 'Interview', 'Other' => 'Other' ) ),
+				array( 'key' => 'kb_video_category', 'label' => 'Category', 'type' => 'select', 'options' => array( 'MV' => 'Music video', 'Teaser' => 'Teaser', 'Performance' => 'Performance', 'Behind' => 'Behind the scenes', 'Interview' => 'Interview', 'Other' => 'Other' ) ),
 				array( 'key' => 'kb_duration', 'label' => 'Duration', 'type' => 'text', 'placeholder' => '3:45' ),
 			);
 		case 'kb_thread':

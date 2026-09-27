@@ -20,8 +20,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const LABELS = ["BREAKING", "COMEBACK", "TOUR", "AWARD", "OFFICIAL", "RUMOR"];
-
 function Index() {
   const { data, isLoading, error } = useRuntimeData();
   const [latestCategory, setLatestCategory] = useState("All");
@@ -29,14 +27,31 @@ function Index() {
   if (error) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-destructive" role="alert">{error}</p>;
   if (data.articles.length === 0) return <p className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">No published articles yet.</p>;
 
+  const now = Date.now();
   const featured = data.articles[0];
   const secondary = data.articles.slice(1, 4);
-  const trending = data.articles.slice(0, 5);
+  // Most-read stories from the last week; fall back to the newest when nothing has views yet.
+  const weekAgo = now - 7 * 86400000;
+  const trending = [...data.articles]
+    .filter((article) => +new Date(article.publishedAt) >= weekAgo)
+    .sort((a, b) => b.viewCount - a.viewCount || +new Date(b.publishedAt) - +new Date(a.publishedAt))
+    .slice(0, 5);
+  if (trending.length < 5) trending.push(...data.articles.filter((a) => !trending.includes(a)).slice(0, 5 - trending.length));
   const categories = ["All", ...Array.from(new Set(data.articles.map((article) => article.category).filter(Boolean)))];
-  const latest = data.articles.filter((article) => latestCategory === "All" || article.category === latestCategory).slice(0, 8);
-  const upcoming = data.comebacks.slice(0, 5);
-  const spotlightArtists = data.artists.slice(0, 3);
-  const hotThreads = data.threads.slice(0, 5);
+  const latest = data.articles.filter((article) => latestCategory === "All" || article.category === latestCategory).slice(0, 9);
+  const upcoming = data.comebacks
+    .filter((c) => +new Date(c.releaseAt) >= now - 86400000)
+    .sort((a, b) => +new Date(a.releaseAt) - +new Date(b.releaseAt))
+    .slice(0, 5);
+  // Spotlight the artists with the most coverage right now.
+  const coverage = new Map<string, number>();
+  data.articles.forEach((article) => article.relatedArtistIds.forEach((id) => coverage.set(id, (coverage.get(id) ?? 0) + 1)));
+  const spotlightArtists = [...data.artists]
+    .sort((a, b) => (coverage.get(b.slug) ?? coverage.get(b.id) ?? 0) - (coverage.get(a.slug) ?? coverage.get(a.id) ?? 0))
+    .slice(0, 3);
+  const hotThreads = [...data.threads]
+    .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || +new Date(b.lastActivityAt || b.createdAt) - +new Date(a.lastActivityAt || a.createdAt))
+    .slice(0, 6);
   const polls = data.polls.slice(0, 2);
   const community = data.community.slice(0, 4);
 
@@ -47,9 +62,9 @@ function Index() {
         <div className="mx-auto max-w-7xl px-4 py-2 flex items-center gap-4">
           <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-destructive text-destructive-foreground">BREAKING</span>
           <div className="flex gap-6 overflow-x-auto scrollbar-hide text-sm">
-            {data.articles.slice(0, 6).map((a, i) => (
+            {data.articles.slice(0, 6).map((a) => (
               <Link key={a.id} to="/news/$slug" params={{ slug: a.slug }} className="whitespace-nowrap hover:text-primary">
-                <span className="text-primary mr-2 font-semibold">{LABELS[i % LABELS.length]}</span>
+                <span className="text-primary mr-2 font-semibold uppercase">{a.category || "News"}</span>
                 {a.title}
               </Link>
             ))}
@@ -86,7 +101,7 @@ function Index() {
         <div data-reveal-children className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {trending.map((a, i) => (
             <Link key={a.id} to="/news/$slug" params={{ slug: a.slug }} className="group relative rounded-xl overflow-hidden bg-card border border-border">
-              <div className="aspect-[4/5]"><img src={a.featuredImage} alt={a.title} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>
+              <div className="aspect-[4/5] bg-muted"><img src={a.featuredImage} alt={a.title} loading="lazy" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               <div className="absolute top-2 left-2 size-8 grid place-items-center rounded-full bg-primary text-primary-foreground font-display font-bold">{i + 1}</div>
               <div className="absolute bottom-0 p-3 text-white">
@@ -115,6 +130,7 @@ function Index() {
 
       {/* Comebacks + Spotlight */}
       <section className="mx-auto max-w-7xl px-4 py-8 grid gap-8 lg:grid-cols-3">
+        {upcoming.length > 0 && (
         <div className="min-w-0 lg:col-span-2">
           <SectionHeader eyebrow="Comeback Calendar" title="Upcoming releases" />
           <div className="grid gap-3">
@@ -139,20 +155,23 @@ function Index() {
             <Link to="/comebacks" className="text-sm text-primary hover:underline self-end">See full calendar →</Link>
           </div>
         </div>
-        <div>
+        )}
+        {spotlightArtists.length > 0 && (
+        <div className={upcoming.length > 0 ? "" : "lg:col-span-3"}>
           <SectionHeader eyebrow="Artist Spotlight" title="Featured artists" />
-          <div className="grid gap-3">
+          <div className={upcoming.length > 0 ? "grid gap-3" : "grid gap-3 sm:grid-cols-3"}>
             {spotlightArtists.map((a) => (
               <Link key={a.id} to="/artist/$slug" params={{ slug: a.slug }} className="block rounded-xl overflow-hidden bg-card border border-border">
                 <div className="aspect-[3/2]"><img src={a.image} alt={a.name} className="size-full object-cover" /></div>
                 <div className="p-3">
                   <div className="font-display font-bold">{a.name}</div>
-                  <div className="text-xs text-muted-foreground">{a.agency} · {a.followerCount.toLocaleString()} followers</div>
+                  <div className="text-xs text-muted-foreground">{a.agency}{coverage.get(a.slug) ? ` · ${coverage.get(a.slug)} recent stories` : ""}</div>
                 </div>
               </Link>
             ))}
           </div>
         </div>
+        )}
       </section>
 
       {/* Forum + Polls */}
@@ -189,7 +208,7 @@ function Index() {
                 <div className="font-semibold mb-2">{p.title}</div>
                 <div className="space-y-1">
                   {p.options.slice(0, 3).map((o) => {
-                    const pct = Math.round((o.votes / p.totalVotes) * 100);
+                    const pct = p.totalVotes > 0 ? Math.round((o.votes / p.totalVotes) * 100) : 0;
                     return (
                       <div key={o.id}>
                         <div className="flex justify-between text-xs"><span>{o.label}</span><span>{pct}%</span></div>
@@ -214,6 +233,7 @@ function Index() {
       </section>
 
       {/* Community wall */}
+      {community.length > 0 && (
       <section className="mx-auto max-w-7xl px-4 py-8">
         <SectionHeader eyebrow="Community Wall" title="Fans around the world" />
         <div data-reveal-children className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -235,6 +255,7 @@ function Index() {
           })}
         </div>
       </section>
+      )}
 
     </div>
   );

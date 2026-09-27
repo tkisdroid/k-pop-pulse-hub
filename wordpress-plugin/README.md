@@ -109,6 +109,28 @@ does not remove posts, users, settings, subscriptions, or the audit table. No
 repository script removes the named Docker volumes, so local WordPress and
 MariaDB data remain available across ordinary bootstrap and verification runs.
 
+### Automated K-pop news collector
+
+**News Collector** (K-pop Pulse Hub menu) keeps the site filled without any API
+key. Every run reads the general feeds (Soompi, The Korea Times entertainment,
+Yonhap culture) plus a rotating set of per-artist Soompi tag feeds, keeps only
+K-pop stories, tags them with the artists in **KpopBlog Artists**, and publishes
+short credited briefs under the **KpopBlog Newsroom** byline. Each brief links
+to the original story and uses the source's preview image. The same run adds
+official videos from label YouTube channels, release dates stated in comeback
+announcements, newsroom threads in *News Reactions*, and a weekly fan poll.
+
+- Runs hourly on WP-Cron. If loopback cron never fires, an overdue run starts
+  after a public API response has been sent.
+- **Collect now** runs one batch. **Backfill all artists** reads every artist
+  feed once, which is useful right after installation.
+- Artists are matched by the *News keywords* field on each artist. The *News
+  tag* field selects the artist's Soompi tag feed. Upgrading to 1.4.0 creates
+  30 starter artists with members, opens member registration, and turns the
+  collector on.
+- With an OpenAI key (constant, environment variable, or the AI Automation
+  page), briefs can optionally be rewritten from the feed summary.
+
 ### AI and search discoverability
 
 Published WordPress articles are present in the initial `/news/{slug}` HTML with canonical metadata and `NewsArticle` JSON-LD before the React application starts. The `/comebacks` response includes a semantic schedule fallback and `Event` structured data. React replaces this fallback in JavaScript-capable browsers; crawlers and no-script clients receive the same published WordPress content.

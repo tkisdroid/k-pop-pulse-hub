@@ -25,6 +25,12 @@ function kpopblog_register_automation_settings() {
 		'sanitize_callback' => 'kpopblog_sanitize_automation_settings',
 		'default'           => kpopblog_automation_defaults(),
 	) );
+	register_setting( 'kpopblog_automation_key_group', KPOPBLOG_OPENAI_KEY_OPTION, array(
+		'type'              => 'string',
+		'sanitize_callback' => 'kpopblog_sanitize_openai_api_key',
+		'default'           => '',
+		'show_in_rest'      => false,
+	) );
 }
 add_action( 'admin_init', 'kpopblog_register_automation_settings' );
 
@@ -44,11 +50,19 @@ function kpopblog_render_automation_admin_page() {
 		<?php if ( 'failed' === $notice ) : ?><div class="notice notice-error is-dismissible"><p>Automation could not complete. Review the recent run log below.</p></div><?php endif; ?>
 		<table class="widefat striped" style="max-width:900px;margin:16px 0 24px">
 			<tbody>
-				<tr><th style="width:220px">Server credential</th><td><?php echo kpopblog_has_openai_api_key() ? '<span style="color:#008a20">Configured</span>' : '<span style="color:#b32d2e">Missing</span>'; ?> — the key is read from <code>KPOPBLOG_OPENAI_API_KEY</code> or <code>OPENAI_API_KEY</code> and is never stored in WordPress.</td></tr>
+				<tr><th style="width:220px">OpenAI credential</th><td><?php echo kpopblog_has_openai_api_key() ? '<span style="color:#008a20">Configured</span> (' . esc_html( kpopblog_openai_key_source() ) . ')' : '<span style="color:#b32d2e">Missing</span>'; ?> — optional. The keyless <a href="<?php echo esc_url( admin_url( 'admin.php?page=kpopblog-collector' ) ); ?>">News Collector</a> keeps the site updated without it.</td></tr>
 				<tr><th>Next scheduled run</th><td><?php $next = wp_next_scheduled( KPOPBLOG_AUTOMATION_HOOK ); echo $next ? esc_html( wp_date( 'Y-m-d H:i:s T', $next ) ) : 'Not scheduled'; ?></td></tr>
 				<tr><th>Last successful run</th><td><?php echo esc_html( (string) get_option( 'kpopblog_automation_last_success', 'Never' ) ); ?></td></tr>
 			</tbody>
 		</table>
+
+		<form method="post" action="options.php" style="max-width:900px;margin-bottom:24px">
+			<?php settings_fields( 'kpopblog_automation_key_group' ); ?>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row"><label for="kb_openai_key">OpenAI API key</label></th><td><input id="kb_openai_key" class="regular-text code" type="password" autocomplete="new-password" name="<?php echo esc_attr( KPOPBLOG_OPENAI_KEY_OPTION ); ?>" value="" placeholder="<?php echo '' !== (string) get_option( KPOPBLOG_OPENAI_KEY_OPTION, '' ) ? 'Saved — leave blank to keep' : 'sk-…'; ?>" /><p class="description">Used only when <code>KPOPBLOG_OPENAI_API_KEY</code> or <code>OPENAI_API_KEY</code> is not set on the server. The key is never shown again after saving. Enter <code>-</code> to remove it.</p></td></tr>
+			</table>
+			<?php submit_button( 'Save API key', 'secondary' ); ?>
+		</form>
 
 		<form method="post" action="options.php">
 			<?php settings_fields( 'kpopblog_automation_group' ); ?>

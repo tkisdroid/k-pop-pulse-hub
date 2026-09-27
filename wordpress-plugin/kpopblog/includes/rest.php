@@ -18,6 +18,30 @@ function kpopblog_thumb_url( $post_id, $size = 'large' ) {
 	return $src ? $src[0] : '';
 }
 
+/**
+ * Article image: featured image, then the source preview image, then the
+ * first related artist's image, then the generic news artwork.
+ */
+function kpopblog_article_image_url( $post_id ) {
+	static $artist_images = array();
+	$image = kpopblog_thumb_url( $post_id );
+	if ( '' !== $image ) { return $image; }
+	$external = esc_url_raw( (string) get_post_meta( $post_id, 'kb_external_image', true ), array( 'https' ) );
+	if ( '' !== $external ) { return $external; }
+	if ( function_exists( 'kpopblog_artist_image_url' ) ) {
+		foreach ( (array) get_post_meta( $post_id, 'kb_related_artist_slugs', true ) as $slug ) {
+			$slug = sanitize_title( (string) $slug );
+			if ( ! array_key_exists( $slug, $artist_images ) ) {
+				$artist = kpopblog_get_artist_by_slug( $slug );
+				$artist_images[ $slug ] = $artist ? kpopblog_artist_image_url( $artist->ID ) : '';
+			}
+			if ( '' !== $artist_images[ $slug ] ) { return $artist_images[ $slug ]; }
+		}
+		return kpopblog_placeholder_image_url();
+	}
+	return '';
+}
+
 function kpopblog_meta( $post_id, $key, $default = '' ) {
 	$v = get_post_meta( $post_id, $key, true );
 	return ( $v === '' || $v === null ) ? $default : $v;
@@ -57,7 +81,7 @@ function kpopblog_map_article( WP_Post $p ) {
 		'subtitle'         => kpopblog_decode_text_entities( kpopblog_meta( $p->ID, 'kb_subtitle' ) ),
 		'excerpt'          => kpopblog_decode_text_entities( has_excerpt( $p ) ? get_the_excerpt( $p ) : wp_trim_words( wp_strip_all_tags( $p->post_content ), 40 ) ),
 		'content'          => apply_filters( 'the_content', $p->post_content ),
-		'featuredImage'    => kpopblog_thumb_url( $p->ID ),
+		'featuredImage'    => kpopblog_article_image_url( $p->ID ),
 		'author'           => $author ? $author->display_name : 'KpopBlog',
 		'authorAvatar'     => $author ? get_avatar_url( $author->ID ) : '',
 		'category'         => kpopblog_meta( $p->ID, 'kb_category_slug', $cat_terms[0] ?? 'news' ),
@@ -89,7 +113,7 @@ function kpopblog_map_artist( WP_Post $p ) {
 		'status'       => kpopblog_meta( $p->ID, 'kb_status', 'active' ),
 		'nationality'  => kpopblog_meta( $p->ID, 'kb_nationality', 'South Korea' ),
 		'bio'          => wp_strip_all_tags( $p->post_content ),
-		'image'        => kpopblog_thumb_url( $p->ID ),
+		'image'        => function_exists( 'kpopblog_artist_image_url' ) ? kpopblog_artist_image_url( $p->ID ) : kpopblog_thumb_url( $p->ID ),
 		'followerCount'=> kpopblog_int( get_post_meta( $p->ID, 'kb_follower_count', true ) ),
 		'memberIds'    => array(),
 		'socialLinks'  => (object) ( get_post_meta( $p->ID, 'kb_social_links', true ) ?: array() ),
@@ -108,9 +132,22 @@ function kpopblog_map_member( WP_Post $p ) {
 		'groupId'    => kpopblog_meta( $p->ID, 'kb_group_slug' ),
 		'position'   => (array) kpopblog_meta( $p->ID, 'kb_positions', array() ),
 		'mbti'       => kpopblog_meta( $p->ID, 'kb_mbti' ),
-		'image'      => kpopblog_thumb_url( $p->ID ),
+		'image'      => kpopblog_member_image_url( $p->ID ),
 		'facts'      => (array) kpopblog_meta( $p->ID, 'kb_facts', array() ),
 	);
+}
+
+/** Member image: featured image, then the group's artist image. */
+function kpopblog_member_image_url( $post_id ) {
+	static $group_images = array();
+	$image = kpopblog_thumb_url( $post_id );
+	if ( '' !== $image || ! function_exists( 'kpopblog_get_artist_by_slug' ) ) { return $image; }
+	$group = sanitize_title( (string) kpopblog_meta( $post_id, 'kb_group_slug' ) );
+	if ( ! array_key_exists( $group, $group_images ) ) {
+		$artist = kpopblog_get_artist_by_slug( $group );
+		$group_images[ $group ] = $artist ? kpopblog_artist_image_url( $artist->ID ) : kpopblog_placeholder_image_url();
+	}
+	return $group_images[ $group ];
 }
 
 function kpopblog_map_comeback( WP_Post $p ) {
@@ -121,8 +158,14 @@ function kpopblog_map_comeback( WP_Post $p ) {
 		'type'        => kpopblog_meta( $p->ID, 'kb_type', 'album' ),
 		'releaseAt'   => kpopblog_meta( $p->ID, 'kb_release_at' ),
 		'description' => kpopblog_decode_text_entities( $p->post_content ),
-		'image'       => kpopblog_thumb_url( $p->ID ),
+		'image'       => kpopblog_thumb_url( $p->ID ) ?: ( kpopblog_comeback_artist_image( $p->ID ) ?: kpopblog_article_image_url( $p->ID ) ),
+		'sourceUrl'   => (string) kpopblog_meta( $p->ID, 'kb_source_url' ),
 	);
+}
+
+function kpopblog_comeback_artist_image( $post_id ) {
+	$artist = function_exists( 'kpopblog_get_artist_by_slug' ) ? kpopblog_get_artist_by_slug( kpopblog_meta( $post_id, 'kb_artist_slug' ) ) : null;
+	return $artist ? kpopblog_artist_image_url( $artist->ID ) : '';
 }
 
 function kpopblog_map_chart( WP_Post $p ) {
@@ -149,6 +192,7 @@ function kpopblog_map_thread( WP_Post $p ) {
 		'pinned'       => (bool) get_post_meta( $p->ID, 'kb_pinned', true ),
 		'locked'       => (bool) get_post_meta( $p->ID, 'kb_locked', true ),
 		'official'     => (bool) get_post_meta( $p->ID, 'kb_official', true ),
+		'relatedArtistIds' => array_values( array_filter( (array) get_post_meta( $p->ID, 'kb_related_artist_slugs', true ), 'is_string' ) ),
 		'views'        => kpopblog_int( get_post_meta( $p->ID, 'kb_views', true ) ),
 		'replies'      => (int) $p->comment_count,
 		'reactions'    => kpopblog_int( get_post_meta( $p->ID, 'kb_reactions', true ) ),
@@ -181,6 +225,7 @@ function kpopblog_collection_args() {
 		'page'     => array( 'type' => 'integer', 'default' => 1,  'minimum' => 1 ),
 		'search'   => array( 'type' => 'string' ),
 		'category' => array( 'type' => 'string' ),
+		'artist'   => array( 'type' => 'string' ),
 	);
 }
 
@@ -209,6 +254,14 @@ function kpopblog_query( $post_type, WP_REST_Request $r ) {
 		'paged'          => (int) $r->get_param( 'page' ),
 		's'              => (string) $r->get_param( 'search' ),
 	);
+	$artist = sanitize_title( (string) $r->get_param( 'artist' ) );
+	if ( '' !== $artist && in_array( $post_type, array( 'post', 'kb_thread' ), true ) ) {
+		$args['meta_query'] = array( array(
+			'key'     => 'kb_related_artist_slugs',
+			'value'   => '"' . $artist . '"',
+			'compare' => 'LIKE',
+		) );
+	}
 	if ( 'kb_thread' === $post_type && $r->get_param( 'category' ) ) {
 		$args['tax_query'] = array( array(
 			'taxonomy' => 'kb_forum_category',
@@ -267,15 +320,29 @@ function kpopblog_register_routes() {
 		'methods'             => 'GET',
 		'permission_callback' => '__return_true',
 		'callback'            => function () {
-			$pick = function ( $post_type, $mapper, $n = 10 ) {
-				$posts = get_posts( array( 'post_type' => $post_type, 'numberposts' => $n, 'post_status' => 'publish' ) );
+			$pick = function ( $post_type, $mapper, $n = 10, array $extra = array() ) {
+				$posts = get_posts( array_merge( array( 'post_type' => $post_type, 'numberposts' => $n, 'post_status' => 'publish' ), $extra ) );
 				return array_map( $mapper, $posts );
 			};
+			// Upcoming releases first (soonest at the top), then the most recent past ones.
+			$today = gmdate( 'Y-m-d' );
+			$upcoming = $pick( 'kb_comeback', 'kpopblog_map_comeback', 30, array(
+				'meta_key'   => 'kb_release_at',
+				'orderby'    => 'meta_value',
+				'order'      => 'ASC',
+				'meta_query' => array( array( 'key' => 'kb_release_at', 'value' => $today, 'compare' => '>=' ) ),
+			) );
+			$past = count( $upcoming ) < 30 ? $pick( 'kb_comeback', 'kpopblog_map_comeback', 30 - count( $upcoming ), array(
+				'meta_key'   => 'kb_release_at',
+				'orderby'    => 'meta_value',
+				'order'      => 'DESC',
+				'meta_query' => array( array( 'key' => 'kb_release_at', 'value' => $today, 'compare' => '<' ) ),
+			) ) : array();
 			return rest_ensure_response( array(
-				'articles'  => $pick( 'post',        'kpopblog_map_article',  20 ),
-				'artists'   => $pick( 'kb_artist',   'kpopblog_map_artist',   40 ),
-				'members'   => $pick( 'kb_member',   'kpopblog_map_member',   60 ),
-				'comebacks' => $pick( 'kb_comeback', 'kpopblog_map_comeback', 30 ),
+				'articles'  => $pick( 'post',        'kpopblog_map_article',  40 ),
+				'artists'   => $pick( 'kb_artist',   'kpopblog_map_artist',   100, array( 'orderby' => 'title', 'order' => 'ASC' ) ),
+				'members'   => $pick( 'kb_member',   'kpopblog_map_member',   300 ),
+				'comebacks' => array_merge( $upcoming, $past ),
 				'charts'    => $pick( 'kb_chart',    'kpopblog_map_chart',    5  ),
 				'videos'    => $pick( 'kb_video',    'kpopblog_map_video',    40 ),
 				'threads'   => $pick( 'kb_thread',   'kpopblog_map_thread',   20 ),
