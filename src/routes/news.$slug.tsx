@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { buildHead, breadcrumbLd } from "@/components/layout/seo";
 import { LocalTime } from "@/components/layout/LocalTime";
 import { ArticleCard } from "@/components/articles/ArticleCard";
@@ -92,10 +92,33 @@ function ArticlePage() {
   const [reportReason, setReportReason] = useState("");
   const [reporting, setReporting] = useState(false);
   const artists = data.artists.filter((a) => article.relatedArtistIds.includes(a.id) || article.relatedArtistIds.includes(a.slug));
-  const related = data.articles.filter((a) => a.id !== article.id).slice(0, 4);
+  // Same artists first, then the same category, then the newest stories.
+  const related = data.articles
+    .filter((a) => a.id !== article.id)
+    .map((a) => ({
+      a,
+      score:
+        a.relatedArtistIds.filter((id) => id && article.relatedArtistIds.includes(id)).length * 10 +
+        (a.category === article.category ? 3 : 0),
+    }))
+    .sort((x, y) => y.score - x.score || +new Date(y.a.publishedAt) - +new Date(x.a.publishedAt))
+    .map((entry) => entry.a)
+    .slice(0, 4);
   const rootComments = comments.filter((comment) => !comment.parentId);
   const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // Links inside the article body are plain HTML; keep same-site ones inside the app
+  // (no full reload) and let external source credits open in a new tab.
+  const handleContentClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as HTMLElement).closest("a");
+    if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+    const url = new URL(anchor.href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+    event.preventDefault();
+    router.history.push(url.pathname + url.search + url.hash);
+  };
   const { html: contentHtml, headings } = useMemo(() => extractHeadings(article.content), [article.content]);
   const { lightbox } = useProseLightbox(contentRef);
 
@@ -268,7 +291,7 @@ function ArticlePage() {
           <div className="line-clamp-3 text-muted-foreground">{translated.replace(/<[^>]+>/g, "").slice(0, 240)}…</div>
         </div>
       )}
-      <div ref={contentRef} className="prose prose-invert max-w-none mt-8 dark:prose-invert scroll-mt-24" dangerouslySetInnerHTML={{ __html: contentHtml }} />
+      <div ref={contentRef} onClick={handleContentClick} className="prose prose-invert max-w-none mt-8 dark:prose-invert scroll-mt-24" dangerouslySetInnerHTML={{ __html: contentHtml }} />
 
       <AdSlot slotId={`article-${article.slug}-inline`} variant="in-article" className="my-8" />
 

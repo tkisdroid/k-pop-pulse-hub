@@ -107,7 +107,7 @@ function Index() {
               <div className="absolute bottom-0 p-3 text-white">
                 <div className="text-[10px] uppercase tracking-wider opacity-80">{a.category}</div>
                 <h3 className="text-sm font-semibold line-clamp-3 leading-snug">{a.title}</h3>
-                <div className="text-[11px] opacity-80 mt-1 flex items-center gap-2"><Flame className="size-3" />{a.viewCount.toLocaleString()} views</div>
+                {a.viewCount > 0 && <div className="text-[11px] opacity-80 mt-1 flex items-center gap-2"><Flame className="size-3" />{a.viewCount.toLocaleString()} views</div>}
               </div>
             </Link>
           ))}
@@ -190,7 +190,7 @@ function Index() {
                       {t.flair && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent">{t.flair}</span>}
                     </div>
                     <div className="font-semibold truncate">{t.title}</div>
-                    <div className="text-xs text-muted-foreground">{cat?.name ?? "Forum"} · {t.replies} replies · {t.views} views</div>
+                    <div className="text-xs text-muted-foreground">{[cat?.name ?? "Forum", t.replies ? `${t.replies} replies` : null, t.views ? `${t.views} views` : null].filter(Boolean).join(" · ")}</div>
                   </div>
                   <MessageSquare className="size-4 text-muted-foreground" />
                 </Link>

@@ -107,12 +107,12 @@ function kpopblog_get_health_checks() {
 	}
 
 	$ads_settings = function_exists( 'kpopblog_get_ads_settings' ) ? kpopblog_get_ads_settings() : array();
-	$ads_ready = ! empty( $ads_settings['enabled'] ) && ! empty( $ads_settings['publisher_id'] ) && ! empty( $ads_settings['slots'] );
+	$ads_ready = ! empty( $ads_settings['enabled'] ) && ! empty( $ads_settings['publisher_id'] ) && ( ! empty( $ads_settings['slots'] ) || ! empty( $ads_settings['auto_ads'] ) );
 	$checks[] = kpopblog_health_check(
 		'ads',
 		$ads_ready ? 'good' : 'warning',
 		'Google AdSense',
-		$ads_ready ? 'Consent-gated responsive ad units are configured.' : 'AdSense remains disabled until a valid publisher ID and at least one approved placement are saved.',
+		$ads_ready ? ( ! empty( $ads_settings['auto_ads'] ) ? 'AdSense Auto ads are enabled' : 'Responsive ad units are configured' ) . ( 'google' === ( $ads_settings['consent_mode'] ?? 'site' ) ? ' with Google\'s certified consent message.' : ' behind the in-site consent banner.' ) : 'AdSense remains disabled until a valid publisher ID and Auto ads or at least one ad unit are saved.',
 		admin_url( 'admin.php?page=kpopblog-ads' )
 	);
 

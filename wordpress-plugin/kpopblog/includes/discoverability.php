@@ -158,6 +158,15 @@ function kpopblog_prepare_public_context() {
 		);
 		remove_action( 'wp_head', 'rel_canonical' );
 		remove_action( 'template_redirect', 'redirect_canonical' );
+		return;
+	}
+	// Artist, thread, forum, video, poll, home, and listing routes (seo-pages.php).
+	$page = function_exists( 'kpopblog_seo_page_context' ) ? kpopblog_seo_page_context( $path ) : null;
+	if ( is_array( $page ) ) {
+		$GLOBALS['kpopblog_public_context'] = $page;
+		remove_action( 'wp_head', 'rel_canonical' );
+		remove_action( 'template_redirect', 'redirect_canonical' );
+		status_header( 'missing_article' === $page['kind'] ? 404 : 200 );
 	}
 }
 add_action( 'template_redirect', 'kpopblog_prepare_public_context', 1 );
@@ -209,6 +218,9 @@ function kpopblog_render_public_sources( $post_id ) {
 }
 
 function kpopblog_build_public_json_ld( array $context ) {
+	if ( 'page' === ( $context['kind'] ?? '' ) ) {
+		return isset( $context['json_ld'] ) ? $context['json_ld'] : array();
+	}
 	if ( 'article' === ( $context['kind'] ?? '' ) ) {
 		$post = $context['post'];
 		$author = get_userdata( $post->post_author );
@@ -221,7 +233,7 @@ function kpopblog_build_public_json_ld( array $context ) {
 			'datePublished'    => get_post_time( 'c', true, $post ),
 			'dateModified'     => get_post_modified_time( 'c', true, $post ),
 			'mainEntityOfPage' => array( '@type' => 'WebPage', '@id' => $canonical ),
-			'author'           => array( '@type' => 'Person', 'name' => $author ? $author->display_name : get_bloginfo( 'name' ) ),
+			'author'           => array( '@type' => (int) $post->post_author === (int) get_option( 'kpopblog_newsroom_user_id' ) ? 'Organization' : 'Person', 'name' => $author ? $author->display_name : get_bloginfo( 'name' ) ),
 			'publisher'        => array( '@type' => 'Organization', 'name' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ),
 			'citation'         => kpopblog_public_source_urls( $post->ID ),
 		);
@@ -270,8 +282,11 @@ function kpopblog_filter_public_title( $title ) {
 	if ( 'comebacks' === ( $context['kind'] ?? '' ) ) {
 		return 'Comeback Schedule — ' . get_bloginfo( 'name' );
 	}
+	if ( 'page' === ( $context['kind'] ?? '' ) ) {
+		return $context['title'];
+	}
 	if ( 'missing_article' === ( $context['kind'] ?? '' ) ) {
-		return 'Article not found — ' . get_bloginfo( 'name' );
+		return 'Page not found — ' . get_bloginfo( 'name' );
 	}
 	return $title;
 }
@@ -301,7 +316,14 @@ function kpopblog_render_public_head() {
 	if ( 'none' === $kind || 'missing_article' === $kind ) {
 		return;
 	}
-	if ( 'article' === $kind ) {
+	$image = '';
+	if ( 'page' === $kind ) {
+		$title = $context['title'];
+		$description = $context['description'];
+		$canonical = $context['canonical'];
+		$open_graph_type = $context['og_type'];
+		$image = $context['image'];
+	} elseif ( 'article' === $kind ) {
 		$post = $context['post'];
 		$title = get_the_title( $post ) . ' — ' . get_bloginfo( 'name' );
 		$description = kpopblog_public_description( $post );
@@ -326,12 +348,17 @@ function kpopblog_render_public_head() {
 	echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />' . "\n";
 	echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
 	echo '<meta property="og:type" content="' . esc_attr( $open_graph_type ) . '" />' . "\n";
+	echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '" />' . "\n";
+	echo '<meta name="twitter:card" content="' . ( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
+	echo '<meta name="twitter:title" content="' . esc_attr( $title ) . '" />' . "\n";
+	echo '<meta name="twitter:description" content="' . esc_attr( $description ) . '" />' . "\n";
 	if ( 'article' === $kind ) {
 		echo '<meta property="article:published_time" content="' . esc_attr( $published ) . '" />' . "\n";
 		echo '<meta property="article:modified_time" content="' . esc_attr( $modified ) . '" />' . "\n";
-		if ( $image ) {
-			echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
-		}
+	}
+	if ( $image ) {
+		echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
+		echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
 	}
 	echo kpopblog_render_public_json_ld( $json_ld );
 }
@@ -339,6 +366,9 @@ add_action( 'wp_head', 'kpopblog_render_public_head' );
 
 function kpopblog_render_public_fallback() {
 	$context = kpopblog_get_public_context();
+	if ( 'page' === ( $context['kind'] ?? '' ) ) {
+		return isset( $context['html'] ) ? $context['html'] : '';
+	}
 	if ( 'article' === ( $context['kind'] ?? '' ) ) {
 		$post = $context['post'];
 		$published = get_post_time( 'c', true, $post );
@@ -349,7 +379,8 @@ function kpopblog_render_public_fallback() {
 		if ( $modified !== $published ) {
 			$html .= ' · Updated <time datetime="' . esc_attr( $modified ) . '">' . esc_html( $modified ) . '</time>';
 		}
-		$html .= '</p><div>' . wp_kses_post( apply_filters( 'the_content', $post->post_content ) ) . '</div>';
+		$body = function_exists( 'kpopblog_render_article_content' ) ? kpopblog_render_article_content( $post ) : apply_filters( 'the_content', $post->post_content );
+		$html .= '</p><div>' . wp_kses_post( $body ) . '</div>';
 		$html .= kpopblog_render_public_sources( $post->ID );
 		return $html . '</article>';
 	}
@@ -425,6 +456,7 @@ function kpopblog_render_robots() {
 		$lines[] = '';
 	}
 	$lines[] = 'Sitemap: ' . esc_url_raw( home_url( '/sitemap.xml' ) );
+	$lines[] = 'Sitemap: ' . esc_url_raw( home_url( '/news-sitemap.xml' ) );
 	$lines[] = '# RSS: ' . esc_url_raw( home_url( '/rss.xml' ) );
 	$lines[] = '# LLMs: ' . esc_url_raw( home_url( '/llms.txt' ) );
 	return implode( "\n", $lines ) . "\n";
@@ -605,6 +637,16 @@ function kpopblog_render_llms() {
 			continue;
 		}
 		$lines[] = '- ' . kpopblog_llms_json_entry( $post, home_url( '/news/' . $post->post_name ) );
+	}
+	$lines[] = '';
+	$lines[] = '## Artists';
+	foreach ( kpopblog_public_posts( 'kb_artist', 100, 'title', array( 'order' => 'ASC' ) ) as $post ) {
+		$facts = array_filter( array(
+			(string) kpopblog_meta( $post->ID, 'kb_agency' ),
+			(string) kpopblog_meta( $post->ID, 'kb_debut_date' ) ? 'debut ' . kpopblog_meta( $post->ID, 'kb_debut_date' ) : '',
+			(string) kpopblog_meta( $post->ID, 'kb_fandom_name' ) ? 'fandom ' . kpopblog_meta( $post->ID, 'kb_fandom_name' ) : '',
+		) );
+		$lines[] = '- [' . get_the_title( $post ) . '](' . esc_url_raw( home_url( '/artist/' . $post->post_name ) ) . ')' . ( $facts ? ': ' . implode( '; ', $facts ) : '' );
 	}
 	$lines[] = '';
 	$lines[] = '## Comeback schedule';

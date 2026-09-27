@@ -27,7 +27,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { AuthModal } from "@/components/auth/AuthModal";
-import { AdSlot, StickyFooterAd } from "@/components/ads/AdSlot";
+import { AdSlot, AutoAdsLoader, StickyFooterAd } from "@/components/ads/AdSlot";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { KeepExploring } from "@/components/layout/KeepExploring";
 import { ScrollProgress } from "@/components/layout/ScrollProgress";
@@ -178,6 +178,7 @@ function RootComponent() {
                   <AdSlot slotId="global-pre-footer" variant="billboard" />
                 </div>
                 <StickyFooterAd />
+                <AutoAdsLoader />
                 <Footer />
                 <MobileBottomNav />
               </div>

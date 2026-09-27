@@ -2,15 +2,16 @@
 /**
  * Keyless K-pop news collector.
  *
- * Reads publisher RSS feeds (a general K-pop feed plus one tag feed per
- * artist, rotated across runs), keeps K-pop items, tags them with catalogue
- * artists, and publishes short attributed briefs that link to the original
- * story. Official label YouTube feeds fill the video section, comeback
- * announcements with explicit dates fill the release calendar, and
- * community-automation.php opens discussion threads and a weekly poll.
+ * Reads publisher RSS feeds (the source catalogue in news-sources.php plus
+ * per-artist tag feeds rotated across runs), keeps K-pop items, tags them with
+ * catalogue artists, merges the same story from several outlets, and publishes
+ * on-site summaries with a compact source credit. Official label YouTube feeds
+ * fill the video section, comeback announcements with explicit dates fill the
+ * release calendar, and community-automation.php opens discussion threads and
+ * a weekly poll.
  *
  * No API key is required. When an OpenAI key is configured and AI briefs are
- * enabled, each brief is rewritten from the feed summary only.
+ * enabled, each summary is rewritten from the publisher's text.
  *
  * @package KpopBlog
  */
@@ -31,15 +32,14 @@ function kpopblog_collector_defaults() {
 		'fetch_images'         => 1,
 		'collect_videos'       => 1,
 		'extract_comebacks'    => 1,
-		'discussion_threads'   => 2,
+		'discussion_threads'   => 3,
+		'community_hubs'       => 1,
+		'recurring_threads'    => 1,
 		'weekly_poll'          => 1,
 		'ai_rewrite'           => 0,
 		'artist_feed_template' => 'https://www.soompi.com/tag/%s/feed',
-		'general_feeds'        => implode( "\n", array(
-			'https://www.soompi.com/feed',
-			'https://www.koreatimes.co.kr/www/rss/entertainment.xml',
-			'https://en.yna.co.kr/RSS/culture.xml',
-		) ),
+		'sources'              => kpopblog_collector_default_sources(),
+		'general_feeds'        => '',
 		'video_channels'       => implode( "\n", array(
 			'UC3IZKseVpdzPSBaWxBxundA', // HYBE LABELS
 			'UCEf_Bc-KVd7onSeifS3py9g', // SMTOWN
@@ -91,6 +91,17 @@ function kpopblog_sanitize_collector_settings( $input ) {
 		if ( preg_match( '/^UC[A-Za-z0-9_-]{22}$/', $channel ) && ! in_array( $channel, $channels, true ) ) { $channels[] = $channel; }
 	}
 	$flag = function ( $key ) use ( $input ) { return ! empty( $input[ $key ] ) ? 1 : 0; };
+	$catalog = kpopblog_collector_source_catalog();
+	$sources = array();
+	foreach ( isset( $input['sources'] ) && is_array( $input['sources'] ) ? $input['sources'] : array() as $key => $value ) {
+		// Accept both a list of keys and checkbox maps (key => 1).
+		$source_key = is_int( $key ) ? sanitize_key( (string) $value ) : ( $value ? sanitize_key( (string) $key ) : '' );
+		if ( isset( $catalog[ $source_key ] ) && ! in_array( $source_key, $sources, true ) ) { $sources[] = $source_key; }
+	}
+	$builtin_urls = wp_list_pluck( $catalog, 'url' );
+	$custom = array_filter( explode( "\n", kpopblog_sanitize_url_lines( isset( $input['general_feeds'] ) ? $input['general_feeds'] : '' ) ), function ( $url ) use ( $builtin_urls ) {
+		return '' !== $url && ! in_array( $url, $builtin_urls, true );
+	} );
 
 	return array(
 		'enabled'              => $flag( 'enabled' ),
@@ -102,10 +113,13 @@ function kpopblog_sanitize_collector_settings( $input ) {
 		'collect_videos'       => $flag( 'collect_videos' ),
 		'extract_comebacks'    => $flag( 'extract_comebacks' ),
 		'discussion_threads'   => max( 0, min( 10, isset( $input['discussion_threads'] ) ? (int) $input['discussion_threads'] : $defaults['discussion_threads'] ) ),
+		'community_hubs'       => $flag( 'community_hubs' ),
+		'recurring_threads'    => $flag( 'recurring_threads' ),
 		'weekly_poll'          => $flag( 'weekly_poll' ),
 		'ai_rewrite'           => $flag( 'ai_rewrite' ),
 		'artist_feed_template' => esc_url_raw( $template, array( 'https' ) ) ? $template : '',
-		'general_feeds'        => kpopblog_sanitize_url_lines( isset( $input['general_feeds'] ) ? $input['general_feeds'] : '' ),
+		'sources'              => $sources,
+		'general_feeds'        => implode( "\n", $custom ),
 		'video_channels'       => implode( "\n", array_slice( $channels, 0, 20 ) ),
 	);
 }
@@ -118,35 +132,9 @@ function kpopblog_get_collector_settings() {
 
 /* ---------- text helpers ---------- */
 
+/** Short plain-text summary (videos, legacy callers). */
 function kpopblog_collector_clean_summary( $html, $max_chars = 420 ) {
-	$html = preg_replace( '#<a[^>]*class="more-link"[^>]*>.*?</a>#is', '', (string) $html );
-	$html = preg_replace( '#<p>\s*The post .*? appeared first on .*?</p>#is', '', $html );
-	$text = trim( preg_replace( '/\s+/u', ' ', kpopblog_decode_text_entities( $html ) ) );
-	$text = preg_replace( '/\s*(\[(…|\.\.\.)\]|…|\.\.\.)\s*(Continue reading.*)?$/u', '…', $text );
-	$text = preg_replace( '/\s*Continue reading.*$/u', '', $text );
-	// Drop pointers to media that only exists on the source page ("Check out the teaser below!").
-	$text = trim( preg_replace( '/(^|(?<=[.!?…]))\s*[^.!?…]*\b(below|above)\b[^.!?…]*[.!?]/iu', '', $text ) );
-	if ( function_exists( 'mb_strlen' ) && mb_strlen( $text, 'UTF-8' ) > $max_chars ) {
-		$cut = mb_substr( $text, 0, $max_chars, 'UTF-8' );
-		$stop = max( mb_strrpos( $cut, '. ', 0, 'UTF-8' ), mb_strrpos( $cut, '! ', 0, 'UTF-8' ), mb_strrpos( $cut, '? ', 0, 'UTF-8' ) );
-		$text = $stop > 120 ? mb_substr( $cut, 0, $stop + 1, 'UTF-8' ) : rtrim( $cut ) . '…';
-	}
-	return $text;
-}
-
-function kpopblog_collector_publisher_from_url( $url ) {
-	$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
-	$host = preg_replace( '/^(www|en|m)\./', '', $host );
-	$known = array(
-		'soompi.com'      => 'Soompi',
-		'koreatimes.co.kr'=> 'The Korea Times',
-		'yna.co.kr'       => 'Yonhap News Agency',
-		'koreaherald.com' => 'The Korea Herald',
-		'koreaboo.com'    => 'Koreaboo',
-		'billboard.com'   => 'Billboard',
-		'youtube.com'     => 'YouTube',
-	);
-	return isset( $known[ $host ] ) ? $known[ $host ] : $host;
+	return kpopblog_collector_build_summary( array( $html ), '', $max_chars );
 }
 
 function kpopblog_collector_normalize_url( $url ) {
@@ -157,32 +145,12 @@ function kpopblog_collector_normalize_url( $url ) {
 	return untrailingslashit( $url );
 }
 
-/** Keyword gate for feeds that mix K-pop with film, drama, and general culture news. */
-function kpopblog_collector_is_kpop( $title, $summary, array $categories, array $artists ) {
-	if ( preg_match( '/^\s*quiz\b/i', $title ) ) { return false; }
-	$cats = strtolower( implode( '|', $categories ) );
-	$text = $title . ' ' . $summary;
-	$music = preg_match( '/k-?pop|idol|girl group|boy group|comeback|debut|mini album|\balbum\b|\bEP\b|single|music video|\bM\/?V\b|music show|inkigayo|music bank|m countdown|show champion|fan ?meeting|fan-?con|world tour|concert|billboard|melon|circle chart|hanteo|choreograph|trainee|audition/i', $text );
-	$screen = preg_match( '/k-?drama|drama|film|movie|box office|actor|actress|series|variety show|webtoon/i', $title ) || false !== strpos( $cats, 'tv/film' ) || false !== strpos( $cats, 'drama' );
-	if ( $artists ) {
-		// An artist named in the headline is always relevant; body-only mentions need music context.
-		return true;
-	}
-	if ( false !== strpos( $cats, 'music' ) || false !== strpos( $cats, 'kpop' ) || false !== strpos( $cats, 'k-pop' ) ) {
-		return ! $screen || (bool) $music;
-	}
-	return (bool) $music && ! $screen;
-}
-
-function kpopblog_collector_category( $title ) {
-	if ( preg_match( '/\baward|\bwins?\b|\btrophy|takes? (home )?(1st|first)|daesang|\bMAMA\b|golden disc|music show win/i', $title ) ) { return 'Awards'; }
-	if ( preg_match( '/chart|billboard|\bNo\. ?1\b|number one|melon|circle|hanteo|oricon|spotify|streams|sales|brand reputation|record|million/i', $title ) ) { return 'Charts'; }
-	if ( preg_match( '/comeback|teaser|pre-release|track ?list|\balbum|\bEP\b|single|\bM\/?V\b|music video|release|debut|drops?\b/i', $title ) ) { return 'Comeback'; }
-	if ( preg_match( '/concert|tour|fan ?meeting|fan-?con|festival|stadium|encore|lineup|showcase|headline/i', $title ) ) { return 'Tour'; }
-	return 'News';
-}
-
 /* ---------- fetching ---------- */
+
+/** Some publishers send feeds with non-standard content types (e.g. "xml;charset=UTF-8"). */
+function kpopblog_collector_force_feed( $feed ) {
+	$feed->force_feed( true );
+}
 
 function kpopblog_collector_feed_lifetime() {
 	return 10 * MINUTE_IN_SECONDS;
@@ -198,7 +166,9 @@ function kpopblog_collector_fetch_feed( $url, $max_items = 60 ) {
 		include_once ABSPATH . WPINC . '/feed.php';
 	}
 	add_filter( 'wp_feed_cache_transient_lifetime', 'kpopblog_collector_feed_lifetime' );
+	add_action( 'wp_feed_options', 'kpopblog_collector_force_feed' );
 	$feed = fetch_feed( $url );
+	remove_action( 'wp_feed_options', 'kpopblog_collector_force_feed' );
 	remove_filter( 'wp_feed_cache_transient_lifetime', 'kpopblog_collector_feed_lifetime' );
 	if ( is_wp_error( $feed ) ) { return $feed; }
 
@@ -215,6 +185,11 @@ function kpopblog_collector_fetch_feed( $url, $max_items = 60 ) {
 		} elseif ( $enclosure && $enclosure->get_thumbnail() ) {
 			$image = $enclosure->get_thumbnail();
 		}
+		$description = (string) $item->get_description( true );
+		$content     = (string) $item->get_content( true );
+		if ( '' === $image && preg_match( '/<img[^>]+src=["\']([^"\']+)["\']/i', $description . $content, $img ) ) {
+			$image = html_entity_decode( $img[1], ENT_QUOTES, 'UTF-8' );
+		}
 		$media_tags = $item->get_item_tags( 'http://search.yahoo.com/mrss/', 'group' );
 		$media_description = '';
 		if ( ! empty( $media_tags[0]['child']['http://search.yahoo.com/mrss/']['description'][0]['data'] ) ) {
@@ -222,9 +197,10 @@ function kpopblog_collector_fetch_feed( $url, $max_items = 60 ) {
 		}
 		$items[] = array(
 			'id'          => (string) $item->get_id(),
-			'title'       => trim( kpopblog_decode_text_entities( (string) $item->get_title() ) ),
+			'title'       => trim( kpopblog_collector_decode( wp_strip_all_tags( (string) $item->get_title() ) ) ),
 			'url'         => (string) $item->get_permalink(),
-			'summary'     => (string) $item->get_description(),
+			'summary'     => '' !== $description ? $description : $content,
+			'content'     => $content !== $description ? $content : '',
 			'media_text'  => $media_description,
 			'timestamp'   => (int) $item->get_date( 'U' ),
 			'categories'  => $categories,
@@ -232,26 +208,6 @@ function kpopblog_collector_fetch_feed( $url, $max_items = 60 ) {
 		);
 	}
 	return $items;
-}
-
-/** Read the source page's social preview image (og:image). */
-function kpopblog_collector_preview_image( $url ) {
-	$response = wp_safe_remote_get( $url, array(
-		'timeout'             => 8,
-		'redirection'         => 3,
-		'limit_response_size' => 300 * KB_IN_BYTES,
-		'user-agent'          => 'Mozilla/5.0 (compatible; KpopBlogBot/1.0; +' . home_url( '/' ) . ')',
-	) );
-	if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) { return ''; }
-	$html = (string) wp_remote_retrieve_body( $response );
-	foreach ( array( 'og:image', 'twitter:image' ) as $property ) {
-		if ( preg_match( '/<meta[^>]+(?:property|name)=["\']' . preg_quote( $property, '/' ) . '["\'][^>]*content=["\']([^"\']+)["\']/i', $html, $match )
-			|| preg_match( '/<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\']' . preg_quote( $property, '/' ) . '["\']/i', $html, $match ) ) {
-			$image = esc_url_raw( html_entity_decode( $match[1], ENT_QUOTES, 'UTF-8' ), array( 'https' ) );
-			if ( '' !== $image ) { return $image; }
-		}
-	}
-	return '';
 }
 
 /* ---------- persistence helpers ---------- */
@@ -328,10 +284,10 @@ function kpopblog_collector_ai_brief( array $item ) {
 	$settings = function_exists( 'kpopblog_get_automation_settings' ) ? kpopblog_get_automation_settings() : array( 'model' => 'gpt-5.6-luna' );
 	$prompt = implode( "\n", array(
 		'Write an original English news brief of 90 to 160 words for a K-pop fan site.',
-		'Use ONLY the facts in the headline and summary below. Do not add names, numbers, dates, quotes, or claims that are not present.',
+		'Use ONLY the facts in the headline and source text below. Do not add names, numbers, dates, quotes, or claims that are not present.',
 		'Do not copy sentences verbatim. Plain paragraphs only, no headings, no markdown, no links.',
 		'Headline: ' . $item['title'],
-		'Summary: ' . $item['summary'],
+		'Source text: ' . ( ! empty( $item['source_text'] ) ? $item['source_text'] : $item['summary'] ),
 		'Publisher: ' . $item['publisher'],
 	) );
 	$response = wp_remote_post( 'https://api.openai.com/v1/responses', array(
@@ -356,19 +312,26 @@ function kpopblog_collector_ai_brief( array $item ) {
 
 /* ---------- publishing ---------- */
 
-function kpopblog_collector_article_html( array $item, $body_text ) {
+/**
+ * Stored body: the summary only. Internal links and the source credit are
+ * added at render time by kpopblog_collector_article_footer() so they stay
+ * current as related stories, threads, and extra sources arrive.
+ */
+function kpopblog_collector_article_html( $body_text ) {
 	$html = '';
-	foreach ( preg_split( '/\n{2,}|\r\n\r\n/', $body_text ) as $paragraph ) {
+	$paragraphs = preg_split( '/\n{2,}|\r\n\r\n/', $body_text );
+	if ( count( $paragraphs ) === 1 ) {
+		// Break a long single-block summary into two readable paragraphs.
+		$sentences = kpopblog_collector_sentences( $body_text );
+		if ( count( $sentences ) >= 4 ) {
+			$half = (int) ceil( count( $sentences ) / 2 );
+			$paragraphs = array( implode( ' ', array_slice( $sentences, 0, $half ) ), implode( ' ', array_slice( $sentences, $half ) ) );
+		}
+	}
+	foreach ( $paragraphs as $paragraph ) {
 		$paragraph = trim( $paragraph );
 		if ( '' !== $paragraph ) { $html .= '<p>' . esc_html( $paragraph ) . '</p>'; }
 	}
-	$link = esc_url( $item['url'] );
-	$publisher = esc_html( $item['publisher'] );
-	$html .= '<p class="kb-source-credit"><strong>Source:</strong> <a href="' . $link . '" rel="noopener noreferrer nofollow" target="_blank">' . $publisher . '</a>';
-	if ( $item['timestamp'] > 0 ) {
-		$html .= ' · ' . esc_html( gmdate( 'M j, Y', $item['timestamp'] ) );
-	}
-	$html .= '</p><p><a class="kb-read-more" href="' . $link . '" rel="noopener noreferrer nofollow" target="_blank">Read the full story on ' . $publisher . ' →</a></p>';
 	return $html;
 }
 
@@ -389,7 +352,7 @@ function kpopblog_collector_publish_article( array $item, array $settings ) {
 		'post_status'    => 'publish',
 		'post_title'     => $item['title'],
 		'post_excerpt'   => $item['summary'],
-		'post_content'   => kpopblog_collector_article_html( $item, $body ),
+		'post_content'   => kpopblog_collector_article_html( $body ),
 		'post_author'    => kpopblog_newsroom_user_id(),
 		'post_date_gmt'  => gmdate( 'Y-m-d H:i:s', $timestamp ),
 		'post_date'      => get_date_from_gmt( gmdate( 'Y-m-d H:i:s', $timestamp ) ),
@@ -399,8 +362,10 @@ function kpopblog_collector_publish_article( array $item, array $settings ) {
 
 	$meta = array(
 		'kb_category_slug'        => $item['category'],
-		'kb_language'             => 'en',
+		'kb_language'             => isset( $item['lang'] ) ? $item['lang'] : 'en',
 		'kb_source'               => $ai_written ? 'ai-brief' : 'aggregated',
+		'kb_sources'              => array( array( 'url' => $item['url'], 'title' => $item['title'], 'publisher' => $item['publisher'] ) ),
+		'kb_source_key'           => isset( $item['source_key'] ) ? $item['source_key'] : '',
 		'kb_source_url'           => $item['url'],
 		'kb_source_title'         => $item['title'],
 		'kb_source_publisher'     => $item['publisher'],
@@ -549,14 +514,22 @@ function kpopblog_collector_collect_videos( array $settings, $deadline, array &$
 /* ---------- run ---------- */
 
 /**
- * Feeds for this run: every general feed plus the next artist tag feeds in rotation.
+ * Feeds for this run: every enabled catalogue source and custom feed, plus the
+ * next artist tag feeds in rotation.
  *
- * @return array<int,array{url:string,artist:string}>
+ * @return array<int,array{url:string,artist:string,key:string,source:array}>
  */
 function kpopblog_collector_feed_plan( array $settings, $all_artists = false ) {
 	$plan = array();
+	$catalog = kpopblog_collector_source_catalog();
+	foreach ( (array) $settings['sources'] as $key ) {
+		if ( isset( $catalog[ $key ] ) ) {
+			$plan[] = array( 'url' => $catalog[ $key ]['url'], 'artist' => '', 'key' => $key, 'source' => $catalog[ $key ] );
+		}
+	}
 	foreach ( array_filter( preg_split( '/[\r\n]+/', (string) $settings['general_feeds'] ) ) as $url ) {
-		$plan[] = array( 'url' => trim( $url ), 'artist' => '' );
+		$url = trim( $url );
+		$plan[] = array( 'url' => $url, 'artist' => '', 'key' => 'custom:' . md5( $url ), 'source' => array( 'name' => kpopblog_collector_publisher_from_url( $url ), 'lang' => 'en', 'gate' => 'kpop' ) );
 	}
 	if ( '' === $settings['artist_feed_template'] ) { return $plan; }
 
@@ -567,12 +540,36 @@ function kpopblog_collector_feed_plan( array $settings, $all_artists = false ) {
 	if ( ! $count ) { return $plan; }
 	$take = $all_artists ? $count : min( $count, (int) $settings['artist_feeds_per_run'] );
 	$cursor = (int) get_option( 'kpopblog_collector_cursor', 0 ) % $count;
+	$artist_source = array( 'name' => kpopblog_collector_publisher_from_url( $settings['artist_feed_template'] ), 'lang' => 'en', 'gate' => 'none' );
 	for ( $i = 0; $i < $take; $i++ ) {
 		$matcher = $tagged[ ( $cursor + $i ) % $count ];
-		$plan[] = array( 'url' => sprintf( $settings['artist_feed_template'], rawurlencode( $matcher['tag'] ) ), 'artist' => $matcher['slug'] );
+		$plan[] = array( 'url' => sprintf( $settings['artist_feed_template'], rawurlencode( $matcher['tag'] ) ), 'artist' => $matcher['slug'], 'key' => 'artist:' . $matcher['slug'], 'source' => $artist_source );
 	}
 	update_option( 'kpopblog_collector_cursor', ( $cursor + $take ) % $count, false );
 	return $plan;
+}
+
+/**
+ * Fill in a thin summary and a missing image from the source page, then keep
+ * the publisher text for the optional AI rewrite.
+ */
+function kpopblog_collector_enrich( array $item, array $settings, $deadline ) {
+	$thin = kpopblog_collector_strlen( $item['summary'] ) < 260;
+	$no_image = ! empty( $settings['fetch_images'] ) && '' === $item['image'];
+	$texts = array( $item['raw_summary'], $item['raw_content'] );
+	if ( ( $thin || $no_image ) && time() < $deadline - 8 ) {
+		$page = kpopblog_collector_fetch_page_meta( $item['url'] );
+		if ( $no_image ) { $item['image'] = $page['image']; }
+		$texts[] = $page['description'];
+		$texts[] = $page['lead'];
+		if ( $thin ) {
+			$item['summary'] = kpopblog_collector_build_summary( $texts, $item['title'] );
+		}
+	}
+	$item['source_text'] = function_exists( 'mb_substr' )
+		? mb_substr( kpopblog_collector_plain_text( implode( "\n\n", array_filter( $texts ) ) ), 0, 4000, 'UTF-8' )
+		: substr( kpopblog_collector_plain_text( implode( "\n\n", array_filter( $texts ) ) ), 0, 4000 );
+	return $item;
 }
 
 /**
@@ -620,46 +617,51 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 	$candidates = array();
 	$seen_urls  = array();
 	$seen_titles = array();
+	$by_source  = array();
 
 	try {
 		foreach ( kpopblog_collector_feed_plan( $settings, $backfill ) as $feed ) {
 			if ( time() > $deadline - 25 ) { $log[] = 'Time budget reached before ' . $feed['url']; break; }
 			$items = kpopblog_collector_fetch_feed( $feed['url'], 60 );
-			if ( is_wp_error( $items ) ) { $log[] = $feed['url'] . ': ' . $items->get_error_message(); continue; }
+			if ( is_wp_error( $items ) ) { $log[] = $feed['source']['name'] . ': ' . $items->get_error_message(); continue; }
 			$extra['feeds']++;
-			$publisher = kpopblog_collector_publisher_from_url( $feed['url'] );
 			foreach ( $items as $raw ) {
 				$url = kpopblog_collector_normalize_url( $raw['url'] );
 				if ( '' === $url || '' === $raw['title'] || isset( $seen_urls[ $url ] ) ) { continue; }
 				if ( $raw['timestamp'] && $raw['timestamp'] < $max_age ) { continue; }
 				$seen_urls[ $url ] = true;
-				$title_key = strtolower( preg_replace( '/[^a-z0-9]+/i', '', $raw['title'] ) );
+				$title_key = strtolower( preg_replace( '/[^\p{L}\p{N}]+/u', '', $raw['title'] ) );
 				if ( isset( $seen_titles[ $title_key ] ) ) { continue; }
 				$seen_titles[ $title_key ] = true;
+				$counts['discovered']++;
 
-				$summary = kpopblog_collector_clean_summary( $raw['summary'] );
+				$summary = kpopblog_collector_build_summary( array( $raw['summary'], $raw['content'] ), $raw['title'] );
+				$title_artists = kpopblog_match_artists( $raw['title'] );
+				$gate_text = $summary . ' ' . ( function_exists( 'mb_substr' ) ? mb_substr( kpopblog_collector_plain_text( $raw['content'] ), 0, 800, 'UTF-8' ) : '' );
+				if ( ! kpopblog_collector_passes_gate( $feed['source'], $raw['title'], $gate_text, $raw['categories'], $title_artists, '' !== $feed['artist'] ) ) {
+					continue;
+				}
+				$dedupe = hash( 'sha256', 'rss|' . strtolower( $url ) );
+				if ( kpopblog_collector_seen( $dedupe ) ) { continue; }
 				$artists = kpopblog_match_artists( $raw['title'], $summary, $raw['categories'] );
 				if ( '' !== $feed['artist'] && ! in_array( $feed['artist'], $artists, true ) ) {
 					$artists[] = $feed['artist'];
 				}
-				$counts['discovered']++;
-				if ( ! kpopblog_collector_is_kpop( $raw['title'], $summary, $raw['categories'], kpopblog_match_artists( $raw['title'] ) ?: ( '' !== $feed['artist'] ? array( $feed['artist'] ) : array() ) ) ) {
-					continue;
-				}
-				if ( strlen( $summary ) < 60 ) { $counts['skipped']++; continue; }
-				$dedupe = hash( 'sha256', 'rss|' . strtolower( $url ) );
-				if ( kpopblog_collector_seen( $dedupe ) ) { continue; }
 
 				$candidates[] = array(
-					'dedupe'    => $dedupe,
-					'title'     => substr( $raw['title'], 0, 200 ),
-					'url'       => $url,
-					'summary'   => $summary,
-					'timestamp' => $raw['timestamp'],
-					'artists'   => $artists,
-					'image'     => esc_url_raw( $raw['image'], array( 'https' ) ),
-					'publisher' => $publisher,
-					'category'  => kpopblog_collector_category( $raw['title'] ),
+					'dedupe'      => $dedupe,
+					'title'       => substr( $raw['title'], 0, 200 ),
+					'url'         => $url,
+					'summary'     => $summary,
+					'raw_summary' => $raw['summary'],
+					'raw_content' => $raw['content'],
+					'timestamp'   => $raw['timestamp'],
+					'artists'     => $artists,
+					'image'       => esc_url_raw( $raw['image'], array( 'https' ) ),
+					'publisher'   => $feed['source']['name'],
+					'lang'        => isset( $feed['source']['lang'] ) ? $feed['source']['lang'] : 'en',
+					'source_key'  => $feed['key'],
+					'category'    => kpopblog_collector_category( $raw['title'] ),
 					'feed_artist' => $feed['artist'],
 				);
 			}
@@ -671,13 +673,11 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 			return $b['timestamp'] - $a['timestamp'];
 		} );
 
-		// Fair share first: a few stories per artist feed and from the general feeds,
-		// then fill any remaining slots by recency.
-		// Round-robin: every source gets its newest story in before any source gets a
-		// second one; general feeds count as one source per round.
+		// Round-robin: every publisher and every artist feed gets its newest story in
+		// before any of them gets a second one.
 		$groups = array();
 		foreach ( $candidates as $item ) {
-			$groups[ '' === $item['feed_artist'] ? '_general' : $item['feed_artist'] ][] = $item;
+			$groups[ '' !== $item['feed_artist'] ? 'artist:' . $item['feed_artist'] : $item['source_key'] ][] = $item;
 		}
 		$queue = array();
 		for ( $round = 0; count( $queue ) < count( $candidates ); $round++ ) {
@@ -691,21 +691,40 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 		}
 
 		$published = array();
+		$stories   = kpopblog_collector_recent_stories();
 		foreach ( $queue as $item ) {
 			if ( count( $published ) >= $max_posts || time() > $deadline ) { break; }
-			if ( ! empty( $settings['fetch_images'] ) && '' === $item['image'] && time() < $deadline - 10 ) {
-				$item['image'] = kpopblog_collector_preview_image( $item['url'] );
+			$source_ref = array( array( 'url' => $item['url'], 'title' => $item['title'], 'publisher' => $item['publisher'] ) );
+
+			// The same story from another outlet: credit it on the existing article.
+			$duplicate = kpopblog_collector_find_duplicate( $item, $stories );
+			if ( $duplicate ) {
+				if ( kpopblog_collector_add_source( $duplicate, $item ) ) {
+					$counts['updated']++;
+					$by_source[ $item['publisher'] . ' (merged)' ] = ( isset( $by_source[ $item['publisher'] . ' (merged)' ] ) ? $by_source[ $item['publisher'] . ' (merged)' ] : 0 ) + 1;
+				}
+				kpopblog_collector_remember( $item['dedupe'], 'rss-dup', $duplicate, $item['url'], $source_ref );
+				continue;
+			}
+
+			$item = kpopblog_collector_enrich( $item, $settings, $deadline );
+			if ( kpopblog_collector_strlen( $item['summary'] ) < 80 ) {
+				$counts['skipped']++;
+				kpopblog_collector_remember( $item['dedupe'], 'rss-thin', 0, $item['url'], $source_ref );
+				continue;
 			}
 			$post_id = kpopblog_collector_publish_article( $item, $settings );
 			if ( is_wp_error( $post_id ) ) { $counts['skipped']++; continue; }
-			if ( ! kpopblog_collector_remember( $item['dedupe'], 'rss', $post_id, $item['url'], array( array( 'url' => $item['url'], 'title' => $item['title'], 'publisher' => $item['publisher'] ) ) ) ) {
+			if ( ! kpopblog_collector_remember( $item['dedupe'], 'rss', $post_id, $item['url'], $source_ref ) ) {
 				wp_delete_post( $post_id, true );
 				$counts['skipped']++;
 				continue;
 			}
 			$counts['created']++;
+			$by_source[ $item['publisher'] ] = ( isset( $by_source[ $item['publisher'] ] ) ? $by_source[ $item['publisher'] ] : 0 ) + 1;
 			$item['post_id'] = $post_id;
 			$published[] = $item;
+			$stories[] = array( 'post_id' => $post_id, 'tokens' => kpopblog_collector_title_tokens( $item['title'] ), 'artists' => $item['artists'], 'publisher' => $item['publisher'] );
 			if ( ! empty( $settings['extract_comebacks'] ) && kpopblog_collector_maybe_comeback( $item, $post_id ) ) {
 				$extra['comebacks']++;
 			}
@@ -722,7 +741,7 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 
 		$wpdb->update( $runs_table, array_merge( $counts, array(
 			'status'      => 'completed',
-			'error_text'  => substr( wp_json_encode( array( 'extra' => $extra, 'log' => array_slice( $log, 0, 12 ) ) ), 0, 4000 ),
+			'error_text'  => substr( wp_json_encode( array( 'extra' => $extra, 'sources' => $by_source, 'log' => array_slice( $log, 0, 12 ) ), JSON_UNESCAPED_UNICODE ), 0, 4000 ),
 			'finished_at' => current_time( 'mysql', true ),
 		) ), array( 'id' => $run_id ) );
 		update_option( 'kpopblog_collector_last_success', gmdate( 'c' ), false );

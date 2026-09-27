@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-const KPOPBLOG_ARTIST_MATCHERS_TRANSIENT = 'kpopblog_artist_matchers_v1';
+const KPOPBLOG_ARTIST_MATCHERS_TRANSIENT = 'kpopblog_artist_matchers_v2';
 
 /**
  * Starter catalogue. Keys: name, korean, type, agency, debut, generation,
@@ -373,7 +373,9 @@ function kpopblog_get_artist_matchers() {
 			array_map( 'trim', explode( ',', (string) get_post_meta( $artist->ID, 'kb_search_terms', true ) ) )
 		);
 		$patterns = array();
+		$aliases  = array();
 		$exact    = array();
+		$korean   = (string) get_post_meta( $artist->ID, 'kb_korean_name', true );
 		foreach ( array_unique( array_filter( $terms, 'strlen' ) ) as $term ) {
 			$exact[] = function_exists( 'mb_strtolower' ) ? mb_strtolower( $term, 'UTF-8' ) : strtolower( $term );
 			if ( preg_match( '/[^\x00-\x7F]/', $term ) && ! preg_match( '/[A-Za-z]/', $term ) ) {
@@ -383,13 +385,22 @@ function kpopblog_get_artist_matchers() {
 			}
 			// Short or all-caps names ("IVE", "IU", "EXO") must match exactly to avoid common words.
 			$case_sensitive = strlen( $term ) <= 4 || strtoupper( $term ) === $term;
-			$patterns[] = '/(?<![\p{L}\p{N}])' . preg_quote( $term, '/' ) . '(?![\p{L}\p{N}])/u' . ( $case_sensitive ? '' : 'i' );
+			$pattern = '/(?<![\p{L}\p{N}])' . preg_quote( $term, '/' ) . '(?![\p{L}\p{N}])/u' . ( $case_sensitive ? '' : 'i' );
+			// Group names and all-caps group aliases match anywhere; personal names ("Jimin")
+			// are checked against the words in front of them (see kpopblog_artist_alias_context_ok).
+			if ( $term === $name || $term === $korean || strtoupper( $term ) === $term ) {
+				$patterns[] = $pattern;
+			} else {
+				$aliases[] = $pattern;
+			}
 		}
 		$matchers[] = array(
 			'slug'     => $artist->post_name,
 			'name'     => $name,
 			'tag'      => sanitize_title( (string) get_post_meta( $artist->ID, 'kb_news_tag', true ) ),
 			'patterns' => $patterns,
+			'aliases'  => $aliases,
+			'names'    => array_values( array_unique( array_filter( array( $name, $korean ) ) ) ),
 			'exact'    => array_values( array_unique( $exact ) ),
 		);
 	}
@@ -411,6 +422,49 @@ add_action( 'trashed_post', 'kpopblog_flush_artist_matchers' );
  *
  * @return string[] Artist slugs.
  */
+/**
+ * A member-name alias only counts when no other group is named right before
+ * it: "BTS's Jimin" and "Jimin's new single" match BTS, "former AOA Jimin" does not.
+ */
+function kpopblog_artist_alias_context_ok( $text, $offset, array $own_names ) {
+	$before = substr( $text, max( 0, $offset - 30 ), min( 30, $offset ) );
+	if ( ! preg_match_all( '/(?<![\p{L}\p{N}])([A-Z][A-Z0-9&().\-]{1,}(?:\s\d{2,3})?)(?:[’\']s)?\s*$|(?<![\p{L}\p{N}])([A-Z][A-Z0-9&().\-]{1,}(?:\s\d{2,3})?)(?:[’\']s)?\s+[^\s]*\s*$/u', $before, $matches ) ) {
+		return true;
+	}
+	$tokens = array_filter( array_merge( $matches[1], $matches[2] ) );
+	$ignore = array( 'K', 'US', 'UK', 'MV', 'EP', 'LP', 'TV', 'OST', 'KST', 'SNL', 'MTV', 'VMA', 'VMAS', 'MAMA', 'MMA', 'AI', 'CEO', 'PD', 'DJ', 'MC', 'NEW', 'THE', 'EX' );
+	foreach ( $tokens as $token ) {
+		$token = trim( $token );
+		if ( in_array( strtoupper( $token ), $ignore, true ) ) { continue; }
+		foreach ( $own_names as $own ) {
+			if ( 0 === stripos( $own, $token ) || false !== stripos( $token, $own ) ) { continue 2; }
+		}
+		return false;
+	}
+	return true;
+}
+
+function kpopblog_artist_text_matches( array $matcher, $text ) {
+	if ( '' === $text ) { return false; }
+	foreach ( $matcher['patterns'] as $pattern ) {
+		if ( preg_match( $pattern, $text ) ) { return true; }
+	}
+	foreach ( isset( $matcher['aliases'] ) ? $matcher['aliases'] : array() as $pattern ) {
+		if ( preg_match_all( $pattern, $text, $found, PREG_OFFSET_CAPTURE ) ) {
+			foreach ( $found[0] as $hit ) {
+				if ( kpopblog_artist_alias_context_ok( $text, $hit[1], isset( $matcher['names'] ) ? $matcher['names'] : array( $matcher['name'] ) ) ) { return true; }
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * Find artists mentioned in text or listed in feed categories.
+ * Title mentions rank first so the primary artist is the headline subject.
+ *
+ * @return string[] Artist slugs.
+ */
 function kpopblog_match_artists( $title, $body = '', array $categories = array() ) {
 	$title_hits = array();
 	$other_hits = array();
@@ -419,15 +473,9 @@ function kpopblog_match_artists( $title, $body = '', array $categories = array()
 	}, $categories );
 
 	foreach ( kpopblog_get_artist_matchers() as $matcher ) {
-		$in_title = false;
-		foreach ( $matcher['patterns'] as $pattern ) {
-			if ( preg_match( $pattern, $title ) ) { $in_title = true; break; }
-		}
-		if ( $in_title ) { $title_hits[] = $matcher['slug']; continue; }
+		if ( kpopblog_artist_text_matches( $matcher, $title ) ) { $title_hits[] = $matcher['slug']; continue; }
 		if ( array_intersect( $matcher['exact'], $categories ) ) { $other_hits[] = $matcher['slug']; continue; }
-		foreach ( $matcher['patterns'] as $pattern ) {
-			if ( '' !== $body && preg_match( $pattern, $body ) ) { $other_hits[] = $matcher['slug']; break; }
-		}
+		if ( kpopblog_artist_text_matches( $matcher, $body ) ) { $other_hits[] = $matcher['slug']; }
 	}
 	return array_slice( array_values( array_unique( array_merge( $title_hits, $other_hits ) ) ), 0, 8 );
 }

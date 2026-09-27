@@ -41,6 +41,9 @@ type AdsConfig = {
   enabled: boolean;
   publisherId: string;
   slots: Record<string, string>;
+  autoAds?: boolean;
+  /** "site": wait for the in-app advertising consent; "google": Google's certified CMP handles consent. */
+  consentMode?: "site" | "google";
 };
 
 type WordPressConfig = { apiUrl?: string; ads?: AdsConfig };
@@ -90,7 +93,7 @@ export function AdSlot({ slotId, variant = "rectangle", className, label }: AdSl
     ads?.enabled &&
     /^ca-pub-\d{16}$/.test(ads.publisherId) &&
     /^\d{4,20}$/.test(adUnit ?? "") &&
-    preferences?.advertising,
+    (ads.consentMode === "google" || preferences?.advertising),
   );
 
   useEffect(() => {
@@ -146,6 +149,27 @@ export function AdSlot({ slotId, variant = "rectangle", className, label }: AdSl
       </div>
     </aside>
   );
+}
+
+/**
+ * Loads the AdSense script once for Auto ads (Google chooses placements). Mounted
+ * in the root layout; manual <AdSlot> units keep working alongside it.
+ */
+export function AutoAdsLoader() {
+  const { preferences } = useConsent();
+  const config = wordpressConfig();
+  const ads = config?.ads;
+  const allowed = Boolean(
+    config?.apiUrl &&
+      ads?.enabled &&
+      ads.autoAds &&
+      /^ca-pub-\d{16}$/.test(ads.publisherId) &&
+      (ads.consentMode === "google" || preferences?.advertising),
+  );
+  useEffect(() => {
+    if (allowed && ads) ensureAdSenseScript(ads.publisherId);
+  }, [allowed, ads]);
+  return null;
 }
 
 export function StickyFooterAd({ slotId = "global-sticky-footer" }: { slotId?: string }) {

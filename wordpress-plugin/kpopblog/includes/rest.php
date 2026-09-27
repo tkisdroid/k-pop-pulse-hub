@@ -80,7 +80,7 @@ function kpopblog_map_article( WP_Post $p ) {
 		'title'            => kpopblog_decode_text_entities( get_the_title( $p ) ),
 		'subtitle'         => kpopblog_decode_text_entities( kpopblog_meta( $p->ID, 'kb_subtitle' ) ),
 		'excerpt'          => kpopblog_decode_text_entities( has_excerpt( $p ) ? get_the_excerpt( $p ) : wp_trim_words( wp_strip_all_tags( $p->post_content ), 40 ) ),
-		'content'          => apply_filters( 'the_content', $p->post_content ),
+		'content'          => function_exists( 'kpopblog_render_article_content' ) ? kpopblog_render_article_content( $p ) : apply_filters( 'the_content', $p->post_content ),
 		'featuredImage'    => kpopblog_article_image_url( $p->ID ),
 		'author'           => $author ? $author->display_name : 'KpopBlog',
 		'authorAvatar'     => $author ? get_avatar_url( $author->ID ) : '',

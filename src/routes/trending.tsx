@@ -43,7 +43,7 @@ function Trending() {
           {threads.map((t) => (
             <Link key={t.id} to="/thread/$threadSlug" params={{ threadSlug: t.slug }} className="p-3 rounded-xl bg-card border border-border hover:border-primary/40">
               <div className="font-semibold">{t.title}</div>
-              <div className="text-xs text-muted-foreground">{t.views} views · {t.replies} replies</div>
+              <div className="text-xs text-muted-foreground">{[t.views ? `${t.views} views` : null, t.replies ? `${t.replies} replies` : null].filter(Boolean).join(" · ") || "New discussion"}</div>
             </Link>
           ))}
         </div>
