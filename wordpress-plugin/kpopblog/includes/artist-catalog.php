@@ -444,15 +444,34 @@ function kpopblog_artist_alias_context_ok( $text, $offset, array $own_names ) {
 	return true;
 }
 
+/**
+ * True when the text names some other group (an all-caps name such as "AOA")
+ * while never naming this artist: then a bare member name belongs to that group.
+ */
+function kpopblog_artist_text_names_other_group( $text, array $own_names ) {
+	static $common = array( 'K-POP', 'KPOP', 'VOGUE', 'ELLE', 'KOREA', 'SEOUL', 'USA', 'NYC', 'MTV', 'VMA', 'VMAS', 'MAMA', 'MMA', 'SBS', 'KBS', 'MBC', 'JTBC', 'TVN', 'MNET', 'OST', 'CEO', 'KST', 'NBA', 'NFL', 'OMG', 'TMI', 'SNS', 'SNL', 'BBC', 'CNN', 'NBC', 'ABC', 'LOL', 'DIY', 'NFT', 'THE', 'AND', 'NEW', 'FAQ', 'BTS' );
+	if ( ! preg_match_all( '/(?<![\p{L}\p{N}])([A-Z][A-Z0-9&.\-]{2,})(?![\p{L}\p{N}])/u', $text, $tokens ) ) { return false; }
+	foreach ( $own_names as $own ) {
+		if ( '' !== $own && false !== stripos( $text, $own ) ) { return false; }
+	}
+	foreach ( $tokens[1] as $token ) {
+		if ( in_array( strtoupper( rtrim( $token, '.-' ) ), $common, true ) ) { continue; }
+		return true;
+	}
+	return false;
+}
+
 function kpopblog_artist_text_matches( array $matcher, $text ) {
 	if ( '' === $text ) { return false; }
 	foreach ( $matcher['patterns'] as $pattern ) {
 		if ( preg_match( $pattern, $text ) ) { return true; }
 	}
+	$own = isset( $matcher['names'] ) ? $matcher['names'] : array( $matcher['name'] );
 	foreach ( isset( $matcher['aliases'] ) ? $matcher['aliases'] : array() as $pattern ) {
 		if ( preg_match_all( $pattern, $text, $found, PREG_OFFSET_CAPTURE ) ) {
+			if ( kpopblog_artist_text_names_other_group( $text, $own ) ) { return false; }
 			foreach ( $found[0] as $hit ) {
-				if ( kpopblog_artist_alias_context_ok( $text, $hit[1], isset( $matcher['names'] ) ? $matcher['names'] : array( $matcher['name'] ) ) ) { return true; }
+				if ( kpopblog_artist_alias_context_ok( $text, $hit[1], $own ) ) { return true; }
 			}
 		}
 	}
