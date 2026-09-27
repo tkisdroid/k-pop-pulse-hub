@@ -57,14 +57,14 @@ function buildSections(pathname: string, data: ReturnType<typeof useRuntimeData>
     const artists = data.artists.filter((a) => article.relatedArtistIds.includes(a.id) || article.relatedArtistIds.includes(a.slug));
     const more = data.articles.filter((a) => a.id !== article.id && a.category === article.category).slice(0, 4);
     const videos = artists.flatMap((a) => data.videos.filter((v) => v.artistId === a.id || v.artistSlug === a.slug)).slice(0, 2);
+    const featured = [
+      ...artists.map((a) => ({ href: `/artist/${a.slug}`, label: a.name, sub: a.agency, icon: Music2 })),
+      ...videos.map((v) => ({ href: `/watch/${v.id}`, label: v.title, sub: "Watch", icon: PlayCircle })),
+    ].slice(0, 4);
     return [
-      {
-        title: "Featured in this story",
-        items: [
-          ...artists.map((a) => ({ href: `/artist/${a.slug}`, label: a.name, sub: a.agency, icon: Music2 })),
-          ...videos.map((v) => ({ href: `/watch/${v.id}`, label: v.title, sub: "Watch", icon: PlayCircle })),
-        ].slice(0, 4),
-      },
+      featured.length
+        ? { title: "Featured in this story", items: featured }
+        : { title: "Popular artists", items: data.artists.slice(0, 4).map((a) => ({ href: `/artist/${a.slug}`, label: a.name, sub: a.agency, icon: Music2 })) },
       {
         title: `More in ${article.category}`,
         items: more.length
@@ -179,7 +179,7 @@ export function KeepExploring() {
           <h2 className="font-display text-lg font-bold">Keep exploring</h2>
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
-          {sections.map((sec) => (
+          {sections.filter((sec) => sec.items.length > 0).map((sec) => (
             <div key={sec.title}>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">{sec.title}</h3>
               <ul className="space-y-2">

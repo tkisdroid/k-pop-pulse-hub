@@ -335,3 +335,50 @@
   font-size: 0.9rem;
   color: var(--muted-foreground);
 }
+
+/* Article body typography (the Tailwind typography plugin is not installed). */
+.prose p {
+  margin: 0 0 1.1em;
+  line-height: 1.75;
+}
+.prose h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 1.6em 0 0.6em;
+}
+.prose h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 1.4em 0 0.5em;
+}
+.prose ul,
+.prose ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.25rem;
+}
+.prose ul {
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li {
+  margin: 0.25em 0;
+}
+.prose a {
+  color: var(--primary);
+}
+.prose blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  margin: 1.2em 0;
+}
+.prose img {
+  border-radius: 0.75rem;
+  margin: 1.2em 0;
+}
+.prose .kb-article-extras ul.kb-related {
+  list-style: none;
+  padding-left: 0;
+}

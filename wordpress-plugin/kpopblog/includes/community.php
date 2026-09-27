@@ -186,7 +186,22 @@ function kpopblog_report_target_exists( $target_type, $target_id ) {
 	return $post && isset( $type_map[ $target_type ] ) && $type_map[ $target_type ] === $post->post_type;
 }
 
+function kpopblog_forum_category_icon( $slug ) {
+	$icons = array(
+		'general'        => '💬',
+		'comebacks'      => '💿',
+		'news-reactions' => '📰',
+		'fandoms'        => '💜',
+		'concerts'       => '🎤',
+		'albums-merch'   => '🛍️',
+		'fashion'        => '👗',
+		'fan-art'        => '🎨',
+	);
+	return isset( $icons[ $slug ] ) ? $icons[ $slug ] : '💬';
+}
+
 function kpopblog_get_forum_categories_data() {
+	global $wpdb;
 	$terms = get_terms( array( 'taxonomy' => 'kb_forum_category', 'hide_empty' => false, 'orderby' => 'name' ) );
 	if ( is_wp_error( $terms ) ) { return $terms; }
 	$items = array();
@@ -196,9 +211,12 @@ function kpopblog_get_forum_categories_data() {
 			'slug'        => $term->slug,
 			'name'        => kpopblog_decode_text_entities( $term->name ),
 			'description' => kpopblog_decode_text_entities( $term->description ),
-			'icon'        => '💬',
+			'icon'        => kpopblog_forum_category_icon( $term->slug ),
 			'threadCount' => (int) $term->count,
-			'postCount'   => 0,
+			'postCount'   => (int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COALESCE(SUM(p.comment_count), 0) FROM {$wpdb->posts} p INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = p.ID WHERE tr.term_taxonomy_id = %d AND p.post_type = 'kb_thread' AND p.post_status = 'publish'",
+				$term->term_taxonomy_id
+			) ),
 		);
 	}
 	return $items;
