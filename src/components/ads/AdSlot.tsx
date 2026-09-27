@@ -42,8 +42,12 @@ type AdsConfig = {
   publisherId: string;
   slots: Record<string, string>;
   autoAds?: boolean;
-  /** "site": wait for the in-app advertising consent; "google": Google's certified CMP handles consent. */
-  consentMode?: "site" | "google";
+  /**
+   * "site": wait for the in-app advertising consent.
+   * "optout": show ads unless the visitor rejected advertising; rejecters get non-personalized ads.
+   * "google": Google's certified CMP handles consent.
+   */
+  consentMode?: "site" | "optout" | "google";
 };
 
 type WordPressConfig = { apiUrl?: string; ads?: AdsConfig };
@@ -70,8 +74,24 @@ function logicalPlacement(slotId: string) {
   return slotId;
 }
 
-function ensureAdSenseScript(publisherId: string) {
+/** Whether ads may load under the configured consent mode, and whether they must be non-personalized. */
+function adConsent(ads: AdsConfig | undefined, preferences: ReturnType<typeof useConsent>["preferences"]) {
+  if (!ads) return { allowed: false, nonPersonalized: false };
+  if (ads.consentMode === "google") return { allowed: true, nonPersonalized: false };
+  if (ads.consentMode === "optout") {
+    // No choice yet or advertising accepted: standard ads. Advertising rejected: non-personalized ads only.
+    return { allowed: true, nonPersonalized: Boolean(preferences && !preferences.advertising) };
+  }
+  return { allowed: Boolean(preferences?.advertising), nonPersonalized: false };
+}
+
+function ensureAdSenseScript(publisherId: string, nonPersonalized = false) {
   const id = "kpopblog-app-adsense-runtime";
+  const adsWindow = window as AdSenseWindow & { adsbygoogle?: { requestNonPersonalizedAds?: number } };
+  if (nonPersonalized) {
+    adsWindow.adsbygoogle = adsWindow.adsbygoogle ?? [];
+    (adsWindow.adsbygoogle as unknown as { requestNonPersonalizedAds?: number }).requestNonPersonalizedAds = 1;
+  }
   if (document.getElementById(id)) return;
   const script = document.createElement("script");
   script.id = id;
@@ -88,12 +108,13 @@ export function AdSlot({ slotId, variant = "rectangle", className, label }: AdSl
   const isWordPress = Boolean(config?.apiUrl);
   const ads = config?.ads;
   const adUnit = ads?.slots?.[logicalPlacement(slotId)];
+  const consent = adConsent(ads, preferences);
   const canRender = Boolean(
     isWordPress &&
     ads?.enabled &&
     /^ca-pub-\d{16}$/.test(ads.publisherId) &&
     /^\d{4,20}$/.test(adUnit ?? "") &&
-    (ads.consentMode === "google" || preferences?.advertising),
+    consent.allowed,
   );
 
   useEffect(() => {
@@ -101,11 +122,11 @@ export function AdSlot({ slotId, variant = "rectangle", className, label }: AdSl
     if (!canRender || !element || !ads) return;
     if (element.dataset.kbAdsenseRequested === "1") return;
     element.dataset.kbAdsenseRequested = "1";
-    ensureAdSenseScript(ads.publisherId);
+    ensureAdSenseScript(ads.publisherId, consent.nonPersonalized);
     const adsWindow = window as AdSenseWindow;
     adsWindow.adsbygoogle = adsWindow.adsbygoogle ?? [];
     adsWindow.adsbygoogle.push({});
-  }, [ads, canRender]);
+  }, [ads, canRender, consent.nonPersonalized]);
 
   if (isWordPress && !canRender) return null;
 
@@ -159,16 +180,13 @@ export function AutoAdsLoader() {
   const { preferences } = useConsent();
   const config = wordpressConfig();
   const ads = config?.ads;
+  const consent = adConsent(ads, preferences);
   const allowed = Boolean(
-    config?.apiUrl &&
-      ads?.enabled &&
-      ads.autoAds &&
-      /^ca-pub-\d{16}$/.test(ads.publisherId) &&
-      (ads.consentMode === "google" || preferences?.advertising),
+    config?.apiUrl && ads?.enabled && ads.autoAds && /^ca-pub-\d{16}$/.test(ads.publisherId) && consent.allowed,
   );
   useEffect(() => {
-    if (allowed && ads) ensureAdSenseScript(ads.publisherId);
-  }, [allowed, ads]);
+    if (allowed && ads) ensureAdSenseScript(ads.publisherId, consent.nonPersonalized);
+  }, [allowed, ads, consent.nonPersonalized]);
   return null;
 }
 

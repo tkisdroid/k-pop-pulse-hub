@@ -13,6 +13,11 @@ export function ConsentBanner() {
   });
 
   if (preferences) return null;
+  const adsMode = typeof window !== "undefined" ? (window as typeof window & { kpopblogConfig?: { ads?: { consentMode?: string } } }).kpopblogConfig?.ads?.consentMode : undefined;
+  const bannerCopy =
+    adsMode === "optout" || adsMode === "google"
+      ? "Essential storage keeps the site working; analytics and personalization are optional. Ads from Google AdSense keep KpopBlog free. Choose “Reject optional” to stop personalized ads."
+      : "Essential storage keeps the site working. Analytics, personalization, and advertising are optional. AdSense does not load until you allow advertising.";
 
   return (
     <div
@@ -24,8 +29,7 @@ export function ConsentBanner() {
         Your privacy choices
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Essential storage keeps the site working. Analytics, personalization, and advertising are
-        optional. AdSense does not load until you allow advertising.
+        {bannerCopy}
       </p>
 
       {customizing && (

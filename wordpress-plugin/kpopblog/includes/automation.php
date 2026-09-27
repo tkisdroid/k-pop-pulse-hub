@@ -14,7 +14,7 @@ function kpopblog_automation_defaults() {
 	return array(
 		'enabled'      => 0,
 		'auto_publish' => 1,
-		'model'        => 'gpt-5.6-luna',
+		'model'        => 'gpt-6-luna',
 		'frequency'    => 'twicedaily',
 		'max_items'    => 6,
 		'artist_focus' => '',
@@ -22,7 +22,7 @@ function kpopblog_automation_defaults() {
 }
 
 function kpopblog_automation_models() {
-	return array( 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol' );
+	return array( 'gpt-6-luna', 'gpt-6-sol', 'gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol' );
 }
 
 function kpopblog_sanitize_automation_settings( $input ) {

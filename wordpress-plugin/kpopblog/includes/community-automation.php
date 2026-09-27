@@ -97,12 +97,16 @@ function kpopblog_create_news_discussion_threads( array $published, $limit ) {
 		if ( kpopblog_collector_seen( $dedupe ) ) { continue; }
 		$headline_artists = kpopblog_match_artists( $item['title'] );
 		$names = kpopblog_artist_names_for_slugs( $headline_artists ? array( $headline_artists[0] ) : array() );
-		$body = implode( "\n\n", array(
+		$parts = array(
 			$item['summary'],
-			'Full summary on KpopBlog: ' . kpopblog_article_url( $item['post_id'] ),
+			'Full story on KpopBlog: ' . kpopblog_article_url( $item['post_id'] ),
 			'Source: ' . $item['publisher'],
-			'What do you think? Share your reaction, keep it respectful, and label anything unconfirmed as speculation.',
-		) );
+		);
+		if ( ! empty( $item['ai_questions'] ) ) {
+			$parts[] = "Talking points:\n" . implode( "\n", array_map( function ( $question ) { return '• ' . $question; }, $item['ai_questions'] ) );
+		}
+		$parts[] = 'What do you think? Share your reaction, keep it respectful, and label anything unconfirmed as speculation.';
+		$body = implode( "\n\n", $parts );
 		$thread_id = kpopblog_newsroom_thread( $board, $item['title'], $body, $names ? $names[0] : kpopblog_forum_category_flair( $board ), $item['artists'], array( 'kb_article_id' => (int) $item['post_id'] ) );
 		if ( ! $thread_id ) { continue; }
 		update_post_meta( $item['post_id'], 'kb_discussion_thread_id', $thread_id );

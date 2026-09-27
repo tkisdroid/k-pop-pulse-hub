@@ -11,6 +11,7 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./UserMenu";
 import { getBranding } from "@/services/cms/branding";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 const NAV = [
   { to: "/", key: "nav.home" },
@@ -63,7 +64,7 @@ export function Header() {
               className="size-8 rounded-lg object-cover transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
             />
           ) : (
-            <div className="size-8 rounded-lg gradient-neon transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110" />
+            <BrandMark className="transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110" />
           )}
           {/* Wordmark drops below 360px so the action buttons always fit on one line */}
           <span className="hidden min-[360px]:inline font-display text-base sm:text-xl font-bold">

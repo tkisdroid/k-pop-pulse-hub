@@ -103,6 +103,23 @@ function kpopblog_auth_response( $extra = array() ) {
 	return array_merge( array( 'nonce' => wp_create_nonce( 'wp_rest' ) ), $extra );
 }
 
+/**
+ * A wp_rest nonce is bound to the session token in the logged-in cookie. When a
+ * request logs someone in (or out), that cookie only exists in the response, so
+ * wp_create_nonce() would use the old (empty) token and hand the browser a nonce
+ * that fails with "Cookie check failed" on its next request. Mirror the cookie
+ * into $_COOKIE as soon as WordPress sets it so the returned nonce is valid.
+ */
+function kpopblog_sync_logged_in_cookie( $logged_in_cookie ) {
+	$_COOKIE[ LOGGED_IN_COOKIE ] = $logged_in_cookie;
+}
+add_action( 'set_logged_in_cookie', 'kpopblog_sync_logged_in_cookie' );
+
+function kpopblog_clear_logged_in_cookie() {
+	unset( $_COOKIE[ LOGGED_IN_COOKIE ] );
+}
+add_action( 'clear_auth_cookie', 'kpopblog_clear_logged_in_cookie' );
+
 function kpopblog_register_auth_routes() {
 
 	register_rest_route( KPOPBLOG_REST_NS, '/auth/register', array(

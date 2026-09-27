@@ -65,9 +65,39 @@ function kpopblog_created_response( array $data ) {
 	return $response;
 }
 
-function kpopblog_member_post_status() {
-	return current_user_can( 'publish_posts' ) ? 'publish' : 'pending';
+/**
+ * Status for member-created content. Logged-in members publish immediately so
+ * the community feels live; content that looks like spam (3+ links, words from
+ * the WordPress moderation or disallowed lists) waits for review. Reports and
+ * moderators remain the backstop.
+ */
+function kpopblog_member_post_status( $content = '' ) {
+	if ( current_user_can( 'publish_posts' ) ) { return 'publish'; }
+	if ( ! is_user_logged_in() ) { return 'pending'; }
+	return kpopblog_member_content_needs_review( $content ) ? 'pending' : 'publish';
 }
+
+function kpopblog_member_content_needs_review( $content ) {
+	$content = (string) $content;
+	if ( preg_match_all( '#https?://|www\.#i', $content ) > 2 ) { return true; }
+	foreach ( array( 'moderation_keys', 'disallowed_keys' ) as $option ) {
+		foreach ( preg_split( '/[\r\n]+/', (string) get_option( $option, '' ) ) as $word ) {
+			$word = trim( $word );
+			if ( '' !== $word && false !== stripos( $content, $word ) ) { return true; }
+		}
+	}
+	return false;
+}
+
+/** Approve comments and replies from logged-in members unless they look like spam. */
+function kpopblog_auto_approve_member_comments( $approved, $commentdata ) {
+	if ( 0 !== $approved && '0' !== $approved ) { return $approved; }
+	if ( empty( $commentdata['user_id'] ) ) { return $approved; }
+	$post_type = get_post_type( isset( $commentdata['comment_post_ID'] ) ? (int) $commentdata['comment_post_ID'] : 0 );
+	if ( ! in_array( $post_type, array( 'post', 'kb_thread', 'kb_video', 'kb_community' ), true ) ) { return $approved; }
+	return kpopblog_member_content_needs_review( isset( $commentdata['comment_content'] ) ? $commentdata['comment_content'] : '' ) ? $approved : 1;
+}
+add_filter( 'pre_comment_approved', 'kpopblog_auto_approve_member_comments', 20, 2 );
 
 function kpopblog_validate_body( $value, $minimum, $maximum, $label ) {
 	$body = trim( sanitize_textarea_field( (string) $value ) );
@@ -232,7 +262,7 @@ function kpopblog_register_community_routes() {
 				if ( is_wp_error( $limit ) ) { return $limit; }
 				$body = kpopblog_validate_body( $request->get_param( 'body' ), 1, 2000, 'Community post' );
 				if ( is_wp_error( $body ) ) { return $body; }
-				$status = kpopblog_member_post_status();
+				$status = kpopblog_member_post_status( $body );
 				$post_id = wp_insert_post( array(
 					'post_type'    => 'kb_community',
 					'post_status'  => $status,
@@ -277,7 +307,7 @@ function kpopblog_register_community_routes() {
 			if ( ! $term ) {
 				return new WP_Error( 'category_not_found', 'Forum category not found.', array( 'status' => 404 ) );
 			}
-			$status = kpopblog_member_post_status();
+			$status = kpopblog_member_post_status( $title . "\n" . $body );
 			$slug = wp_unique_post_slug( sanitize_title( $title ), 0, 'publish', 'kb_thread', 0 );
 			$post_id = wp_insert_post( array(
 				'post_type'    => 'kb_thread',

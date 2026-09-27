@@ -27,6 +27,7 @@ function kpopblog_collector_defaults() {
 		'enabled'              => 1,
 		'frequency'            => 'hourly',
 		'max_posts'            => 8,
+		'daily_max_posts'      => 48,
 		'artist_feeds_per_run' => 6,
 		'max_age_days'         => 4,
 		'fetch_images'         => 1,
@@ -36,7 +37,7 @@ function kpopblog_collector_defaults() {
 		'community_hubs'       => 1,
 		'recurring_threads'    => 1,
 		'weekly_poll'          => 1,
-		'ai_rewrite'           => 0,
+		'ai_rewrite'           => 1,
 		'artist_feed_template' => 'https://www.soompi.com/tag/%s/feed',
 		'sources'              => kpopblog_collector_default_sources(),
 		'general_feeds'        => '',
@@ -107,6 +108,7 @@ function kpopblog_sanitize_collector_settings( $input ) {
 		'enabled'              => $flag( 'enabled' ),
 		'frequency'            => array_key_exists( $frequency, kpopblog_collector_frequencies() ) ? $frequency : $defaults['frequency'],
 		'max_posts'            => max( 1, min( 30, isset( $input['max_posts'] ) ? (int) $input['max_posts'] : $defaults['max_posts'] ) ),
+		'daily_max_posts'      => max( 1, min( 300, isset( $input['daily_max_posts'] ) ? (int) $input['daily_max_posts'] : $defaults['daily_max_posts'] ) ),
 		'artist_feeds_per_run' => max( 0, min( 40, isset( $input['artist_feeds_per_run'] ) ? (int) $input['artist_feeds_per_run'] : $defaults['artist_feeds_per_run'] ) ),
 		'max_age_days'         => max( 1, min( 14, isset( $input['max_age_days'] ) ? (int) $input['max_age_days'] : $defaults['max_age_days'] ) ),
 		'fetch_images'         => $flag( 'fetch_images' ),
@@ -273,41 +275,98 @@ function kpopblog_artist_names_for_slugs( array $slugs ) {
 	return $out;
 }
 
-/* ---------- optional AI brief ---------- */
+/* ---------- AI rewrite ---------- */
 
 /**
- * Rewrite a feed summary into an original brief. Returns '' on any failure so
- * the attributed feed summary is used instead.
+ * Rewrite a story as an original article with the configured OpenAI model
+ * (structured output). Facts come only from the publisher's text; wording,
+ * headline, and structure are new. Returns null on any failure so the
+ * extractive summary is used instead.
+ *
+ * @return array{title:string,summary:string,body:string}|null
  */
-function kpopblog_collector_ai_brief( array $item ) {
-	if ( ! function_exists( 'kpopblog_get_openai_api_key' ) || ! kpopblog_has_openai_api_key() ) { return ''; }
-	$settings = function_exists( 'kpopblog_get_automation_settings' ) ? kpopblog_get_automation_settings() : array( 'model' => 'gpt-5.6-luna' );
-	$prompt = implode( "\n", array(
-		'Write an original English news brief of 90 to 160 words for a K-pop fan site.',
-		'Use ONLY the facts in the headline and source text below. Do not add names, numbers, dates, quotes, or claims that are not present.',
-		'Do not copy sentences verbatim. Plain paragraphs only, no headings, no markdown, no links.',
-		'Headline: ' . $item['title'],
-		'Source text: ' . ( ! empty( $item['source_text'] ) ? $item['source_text'] : $item['summary'] ),
-		'Publisher: ' . $item['publisher'],
+function kpopblog_collector_ai_rewrite( array $item ) {
+	if ( ! function_exists( 'kpopblog_get_openai_api_key' ) || ! kpopblog_has_openai_api_key() ) { return null; }
+	$settings = function_exists( 'kpopblog_get_automation_settings' ) ? kpopblog_get_automation_settings() : array( 'model' => 'gpt-6-luna' );
+	$source = ! empty( $item['source_text'] ) ? $item['source_text'] : $item['summary'];
+	$artists = function_exists( 'kpopblog_artist_names_for_slugs' ) ? kpopblog_artist_names_for_slugs( $item['artists'] ) : array();
+	$instructions = implode( "\n", array(
+		'You are a news editor at KpopBlog, an English-language K-pop news site.',
+		'Rewrite the story below as an original article for K-pop fans.',
+		'- Use only facts stated in the source text. Never add names, numbers, dates, places, quotes, or claims that are not in it. If something is unclear, leave it out.',
+		'- Write every sentence in your own words; do not copy sentences or distinctive phrases. Keep at most one short direct quote, in quotation marks, and only if it is essential.',
+		'- Neutral, clear, friendly tone. No hype, no speculation, no questions to the reader, no markdown, no links, no emojis.',
+		'- title: a new factual headline, at most 90 characters, not clickbait.',
+		'- summary: one or two sentences (at most 240 characters) giving the key fact.',
+		'- body: three short paragraphs (120 to 220 words in total) separated by a blank line: what happened, the key details, and brief context from the source.',
+		'- questions: two short, open questions fans could discuss about this story (about the music, performance, or news itself; never about private lives or rumors).',
 	) );
+	$input = 'Original headline: ' . $item['title'] . "\n" . ( $artists ? 'Artists: ' . implode( ', ', $artists ) . "\n" : '' ) . 'Publisher: ' . $item['publisher'] . "\n\nSource text:\n" . $source;
+
 	$response = wp_remote_post( 'https://api.openai.com/v1/responses', array(
-		'timeout' => 45,
-		'headers' => array( 'Authorization' => 'Bearer ' . kpopblog_get_openai_api_key(), 'Content-Type' => 'application/json' ),
-		'body'    => wp_json_encode( array(
+		'timeout'     => 60,
+		'redirection' => 0,
+		'headers'     => array( 'Authorization' => 'Bearer ' . kpopblog_get_openai_api_key(), 'Content-Type' => 'application/json' ),
+		'body'        => wp_json_encode( array(
 			'model'             => $settings['model'],
 			'store'             => false,
-			'input'             => $prompt,
-			'max_output_tokens' => 700,
+			'reasoning'         => array( 'effort' => 'low' ),
+			'instructions'      => $instructions,
+			'input'             => $input,
+			'max_output_tokens' => 2000,
+			'text'              => array(
+				'format' => array(
+					'type'   => 'json_schema',
+					'name'   => 'kpopblog_article',
+					'strict' => true,
+					'schema' => array(
+						'type'                 => 'object',
+						'additionalProperties' => false,
+						'properties'           => array(
+							'title'     => array( 'type' => 'string' ),
+							'summary'   => array( 'type' => 'string' ),
+							'body'      => array( 'type' => 'string' ),
+							'questions' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ),
+						),
+						'required'             => array( 'title', 'summary', 'body', 'questions' ),
+					),
+				),
+			),
 		) ),
 		'data_format' => 'body',
 	) );
-	if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) { return ''; }
+	if ( is_wp_error( $response ) ) {
+		$GLOBALS['kpopblog_ai_last_error'] = 'transport: ' . $response->get_error_message();
+		return null;
+	}
+	$status = (int) wp_remote_retrieve_response_code( $response );
+	if ( 200 !== $status ) {
+		$error = json_decode( wp_remote_retrieve_body( $response ), true );
+		$GLOBALS['kpopblog_ai_last_error'] = 'HTTP ' . $status . ( isset( $error['error']['message'] ) ? ': ' . substr( (string) $error['error']['message'], 0, 160 ) : '' );
+		return null;
+	}
 	$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( ! is_array( $decoded ) || ! function_exists( 'kpopblog_extract_openai_output_text' ) ) { return ''; }
+	if ( ! is_array( $decoded ) || ! function_exists( 'kpopblog_extract_openai_output_text' ) ) { return null; }
 	$text = kpopblog_extract_openai_output_text( $decoded );
-	if ( is_wp_error( $text ) ) { return ''; }
-	$text = trim( sanitize_textarea_field( $text ) );
-	return strlen( $text ) >= 200 ? $text : '';
+	if ( is_wp_error( $text ) ) {
+		$GLOBALS['kpopblog_ai_last_error'] = $text->get_error_code();
+		return null;
+	}
+	$article = json_decode( $text, true );
+	if ( ! is_array( $article ) ) { return null; }
+	$title   = trim( sanitize_text_field( (string) ( $article['title'] ?? '' ) ) );
+	$summary = trim( sanitize_text_field( (string) ( $article['summary'] ?? '' ) ) );
+	$body    = trim( sanitize_textarea_field( (string) ( $article['body'] ?? '' ) ) );
+	if ( kpopblog_collector_strlen( $title ) < 15 || kpopblog_collector_strlen( $title ) > 140 || kpopblog_collector_strlen( $summary ) < 40 || kpopblog_collector_strlen( $body ) < 400 ) {
+		$GLOBALS['kpopblog_ai_last_error'] = 'output failed length checks';
+		return null;
+	}
+	$questions = array();
+	foreach ( array_slice( isset( $article['questions'] ) && is_array( $article['questions'] ) ? $article['questions'] : array(), 0, 2 ) as $question ) {
+		$question = trim( sanitize_text_field( (string) $question ) );
+		if ( kpopblog_collector_strlen( $question ) >= 10 && kpopblog_collector_strlen( $question ) <= 200 ) { $questions[] = $question; }
+	}
+	return array( 'title' => $title, 'summary' => $summary, 'body' => $body, 'questions' => $questions );
 }
 
 /* ---------- publishing ---------- */
@@ -339,12 +398,8 @@ function kpopblog_collector_article_html( $body_text ) {
  * @return int|WP_Error New post ID.
  */
 function kpopblog_collector_publish_article( array $item, array $settings ) {
-	$body = '';
-	if ( ! empty( $settings['ai_rewrite'] ) ) {
-		$body = kpopblog_collector_ai_brief( $item );
-	}
-	$ai_written = '' !== $body;
-	if ( ! $ai_written ) { $body = $item['summary']; }
+	$ai_written = ! empty( $item['ai_body'] );
+	$body = $ai_written ? $item['ai_body'] : $item['summary'];
 
 	$timestamp = $item['timestamp'] > 0 && $item['timestamp'] <= time() ? $item['timestamp'] : time();
 	$post_id = wp_insert_post( wp_slash( array(
@@ -364,10 +419,11 @@ function kpopblog_collector_publish_article( array $item, array $settings ) {
 		'kb_category_slug'        => $item['category'],
 		'kb_language'             => isset( $item['lang'] ) ? $item['lang'] : 'en',
 		'kb_source'               => $ai_written ? 'ai-brief' : 'aggregated',
-		'kb_sources'              => array( array( 'url' => $item['url'], 'title' => $item['title'], 'publisher' => $item['publisher'] ) ),
+		'kb_sources'              => array( array( 'url' => $item['url'], 'title' => isset( $item['source_title'] ) ? $item['source_title'] : $item['title'], 'publisher' => $item['publisher'] ) ),
+		'kb_ai_model'             => $ai_written ? ( isset( $item['ai_model'] ) ? $item['ai_model'] : '' ) : '',
 		'kb_source_key'           => isset( $item['source_key'] ) ? $item['source_key'] : '',
 		'kb_source_url'           => $item['url'],
-		'kb_source_title'         => $item['title'],
+		'kb_source_title'         => isset( $item['source_title'] ) ? $item['source_title'] : $item['title'],
 		'kb_source_publisher'     => $item['publisher'],
 		'kb_source_urls'          => array( $item['url'] ),
 		'kb_related_artist_slugs' => $item['artists'],
@@ -597,8 +653,21 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 	if ( function_exists( 'ignore_user_abort' ) ) { ignore_user_abort( true ); }
 	$started   = time();
 	$backfill  = 'backfill' === $trigger;
-	$deadline  = $started + ( $backfill ? 150 : 75 );
+	$use_ai    = ! empty( $settings['ai_rewrite'] ) && function_exists( 'kpopblog_has_openai_api_key' ) && kpopblog_has_openai_api_key();
+	$deadline  = $started + ( $backfill ? ( $use_ai ? 280 : 150 ) : ( $use_ai ? 200 : 75 ) );
 	$max_posts = $backfill ? max( 30, (int) $settings['max_posts'] ) : (int) $settings['max_posts'];
+
+	// Daily quota, paced across the day: by any time of day the site may have published
+	// its proportional share of the daily maximum (plus a small buffer). Backfill ignores pacing.
+	$day_key   = wp_date( 'Y-m-d' );
+	$day_state = get_option( 'kpopblog_collector_day', array() );
+	$today     = is_array( $day_state ) && isset( $day_state['date'] ) && $day_state['date'] === $day_key ? (int) $day_state['count'] : 0;
+	if ( ! $backfill ) {
+		$local    = current_datetime();
+		$fraction = max( 1 / 24, ( (int) $local->format( 'G' ) * 3600 + (int) $local->format( 'i' ) * 60 + 3600 ) / 86400 );
+		$paced    = min( (int) $settings['daily_max_posts'], (int) ceil( (int) $settings['daily_max_posts'] * $fraction ) + 2 );
+		$max_posts = max( 0, min( $max_posts, $paced - $today ) );
+	}
 	$max_age   = time() - ( $backfill ? max( 7, (int) $settings['max_age_days'] ) : (int) $settings['max_age_days'] ) * DAY_IN_SECONDS;
 
 	$runs_table = $wpdb->prefix . 'kb_automation_runs';
@@ -612,7 +681,7 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 	update_option( 'kpopblog_collector_last_started', time(), false );
 
 	$counts = array( 'discovered' => 0, 'created' => 0, 'updated' => 0, 'skipped' => 0 );
-	$extra  = array( 'videos' => 0, 'comebacks' => 0, 'threads' => 0, 'polls' => 0, 'feeds' => 0 );
+	$extra  = array( 'videos' => 0, 'comebacks' => 0, 'threads' => 0, 'polls' => 0, 'feeds' => 0, 'ai' => 0, 'ai_failed' => 0 );
 	$log    = array();
 	$candidates = array();
 	$seen_urls  = array();
@@ -713,6 +782,22 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 				kpopblog_collector_remember( $item['dedupe'], 'rss-thin', 0, $item['url'], $source_ref );
 				continue;
 			}
+			$item['source_title']   = $item['title'];
+			$item['source_summary'] = $item['summary'];
+			if ( $use_ai && time() < $deadline - 25 ) {
+				$ai = kpopblog_collector_ai_rewrite( $item );
+				if ( $ai ) {
+					$item['title']    = $ai['title'];
+					$item['summary']  = $ai['summary'];
+					$item['ai_body']  = $ai['body'];
+					$item['ai_questions'] = $ai['questions'];
+					$item['ai_model'] = kpopblog_get_automation_settings()['model'];
+					$extra['ai']++;
+				} else {
+					$extra['ai_failed']++;
+					$log[] = 'AI rewrite skipped: ' . ( isset( $GLOBALS['kpopblog_ai_last_error'] ) ? $GLOBALS['kpopblog_ai_last_error'] : 'unknown error' );
+				}
+			}
 			$post_id = kpopblog_collector_publish_article( $item, $settings );
 			if ( is_wp_error( $post_id ) ) { $counts['skipped']++; continue; }
 			if ( ! kpopblog_collector_remember( $item['dedupe'], 'rss', $post_id, $item['url'], $source_ref ) ) {
@@ -721,14 +806,18 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 				continue;
 			}
 			$counts['created']++;
+			$today++;
 			$by_source[ $item['publisher'] ] = ( isset( $by_source[ $item['publisher'] ] ) ? $by_source[ $item['publisher'] ] : 0 ) + 1;
 			$item['post_id'] = $post_id;
 			$published[] = $item;
-			$stories[] = array( 'post_id' => $post_id, 'tokens' => kpopblog_collector_title_tokens( $item['title'] ), 'artists' => $item['artists'], 'publisher' => $item['publisher'] );
-			if ( ! empty( $settings['extract_comebacks'] ) && kpopblog_collector_maybe_comeback( $item, $post_id ) ) {
+			$stories[] = array( 'post_id' => $post_id, 'tokens' => kpopblog_collector_title_tokens( $item['source_title'] ), 'artists' => $item['artists'], 'publisher' => $item['publisher'] );
+			// Release dates are read from the publisher's own wording.
+			if ( ! empty( $settings['extract_comebacks'] ) && kpopblog_collector_maybe_comeback( array_merge( $item, array( 'title' => $item['source_title'], 'summary' => $item['source_summary'] ) ), $post_id ) ) {
 				$extra['comebacks']++;
 			}
 		}
+
+		update_option( 'kpopblog_collector_day', array( 'date' => $day_key, 'count' => $today ), false );
 
 		if ( ! empty( $settings['collect_videos'] ) && time() < $deadline - 10 ) {
 			$extra['videos'] = kpopblog_collector_collect_videos( $settings, $deadline, $log );

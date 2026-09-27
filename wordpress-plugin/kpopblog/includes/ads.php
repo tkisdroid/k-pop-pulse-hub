@@ -70,9 +70,10 @@ function kpopblog_sanitize_ads_settings( $input ) {
 		'publisher_id' => $publisher_id,
 		'slots'        => $slots,
 		'auto_ads'     => $auto_ads,
-		// site: load ads after the in-app "advertising" consent. google: load for everyone and
-		// let Google's certified CMP (AdSense Privacy & messaging) ask where the law requires.
-		'consent_mode' => isset( $input['consent_mode'] ) && 'google' === $input['consent_mode'] ? 'google' : 'site',
+		// site: load ads after the in-app "advertising" consent.
+		// optout: load for everyone; visitors who reject advertising get non-personalized ads.
+		// google: load for everyone and let Google's certified CMP ask where the law requires.
+		'consent_mode' => isset( $input['consent_mode'] ) && in_array( $input['consent_mode'], array( 'optout', 'google' ), true ) ? $input['consent_mode'] : 'site',
 	);
 }
 
@@ -140,6 +141,7 @@ function kpopblog_render_ads_admin_page() {
 					<th>Consent</th>
 					<td>
 						<label><input type="radio" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[consent_mode]" value="site" <?php checked( 'site', $settings['consent_mode'] ); ?>> In-site consent banner (ads after "Accept")</label><br>
+						<label><input type="radio" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[consent_mode]" value="optout" <?php checked( 'optout', $settings['consent_mode'] ); ?>> Show ads to everyone; visitors who choose "Reject optional" get non-personalized ads</label><br>
 						<label><input type="radio" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[consent_mode]" value="google" <?php checked( 'google', $settings['consent_mode'] ); ?>> Google certified CMP (requires the AdSense Privacy &amp; messaging consent message to be published)</label>
 					</td>
 				</tr>
