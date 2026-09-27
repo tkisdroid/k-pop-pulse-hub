@@ -199,8 +199,18 @@ function kpopblog_register_auth_routes() {
 			'password' => array( 'type' => 'string', 'required' => true ),
 		),
 		'callback'            => function ( WP_REST_Request $r ) {
+			$login = trim( (string) $r->get_param( 'login' ) );
+			// Some security plugins reject username (but not email) sign-ins that arrive
+			// through the REST API. Resolve a username to the account's email first; the
+			// password is still verified by WordPress as usual.
+			if ( '' !== $login && ! is_email( $login ) ) {
+				$account = get_user_by( 'login', $login );
+				if ( $account && is_email( $account->user_email ) ) {
+					$login = $account->user_email;
+				}
+			}
 			$user = wp_signon( array(
-				'user_login'    => (string) $r->get_param( 'login' ),
+				'user_login'    => $login,
 				'user_password' => (string) $r->get_param( 'password' ),
 				'remember'      => true,
 			), is_ssl() );

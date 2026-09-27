@@ -3,7 +3,7 @@
  * Plugin Name:       KpopBlog
  * Plugin URI:        https://thekpopblog.com
  * Description:       K-pop publishing and community platform with articles, artists, videos, comebacks, forums, polls, submissions, subscriptions, notifications, advertising, and source-grounded content automation managed from WordPress.
- * Version:           1.6.0
+ * Version:           1.6.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            thekpopblog.com
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.6.0' );
+define( 'KPOPBLOG_VERSION', '1.6.1' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
@@ -155,3 +155,20 @@ function kpopblog_maybe_migrate_collector_content() {
 	}
 }
 add_action( 'init', 'kpopblog_maybe_migrate_collector_content', 42 );
+
+/**
+ * Each build ships new hashed JS/CSS filenames and removes the old ones, so page
+ * caches holding the previous HTML would load missing files. Purge WP Super Cache
+ * once whenever the packaged asset manifest changes.
+ */
+function kpopblog_purge_page_cache_on_asset_change() {
+	$manifest = KPOPBLOG_PATH . 'assets/manifest.json';
+	if ( ! is_readable( $manifest ) ) { return; }
+	$signature = md5_file( $manifest );
+	if ( get_option( 'kpopblog_assets_signature' ) === $signature ) { return; }
+	update_option( 'kpopblog_assets_signature', $signature, false );
+	if ( function_exists( 'wp_cache_clear_cache' ) ) {
+		wp_cache_clear_cache();
+	}
+}
+add_action( 'init', 'kpopblog_purge_page_cache_on_asset_change', 5 );
