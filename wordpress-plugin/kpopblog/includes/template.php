@@ -75,3 +75,45 @@ function kpopblog_strip_theme_assets() {
 	}
 }
 add_action( 'wp_enqueue_scripts', 'kpopblog_strip_theme_assets', 100 );
+
+/**
+ * Client-side routes such as /artist/ive or /thread/some-slug are not
+ * WordPress URLs. Without this, WordPress "guesses" a matching post for the
+ * 404 and 301-redirects to its CPT permalink (/artists/ive/), which the React
+ * router cannot render.
+ */
+function kpopblog_disable_404_permalink_guess( $do_redirect ) {
+	$front_id = (int) get_option( 'page_on_front' );
+	return ( $front_id > 0 && kpopblog_uses_app_shell( $front_id ) ) ? false : $do_redirect;
+}
+add_filter( 'do_redirect_guess_404_permalink', 'kpopblog_disable_404_permalink_guess' );
+
+/** Application route for a KpopBlog post, or '' when the post type has no app page. */
+function kpopblog_app_route_for_post( WP_Post $post ) {
+	switch ( $post->post_type ) {
+		case 'post':        return '/news/' . $post->post_name;
+		case 'kb_artist':   return '/artist/' . $post->post_name;
+		case 'kb_member':   return '/member/' . $post->post_name;
+		case 'kb_thread':   return '/thread/' . $post->post_name;
+		case 'kb_poll':     return '/polls/' . $post->post_name;
+		case 'kb_video':    return '/watch/' . $post->ID;
+		case 'kb_comeback': return '/comebacks';
+		case 'kb_chart':    return '/charts';
+	}
+	return '';
+}
+
+/**
+ * Point WordPress permalinks (admin "View" links, feeds, canonical tags) at the
+ * app routes so every generated link opens a page the app can render.
+ */
+function kpopblog_app_permalink( $permalink, $post ) {
+	$post = get_post( $post );
+	if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status || '' === $post->post_name ) { return $permalink; }
+	$front_id = (int) get_option( 'page_on_front' );
+	if ( $front_id <= 0 || ! kpopblog_uses_app_shell( $front_id ) ) { return $permalink; }
+	$route = kpopblog_app_route_for_post( $post );
+	return '' === $route ? $permalink : home_url( $route );
+}
+add_filter( 'post_link', 'kpopblog_app_permalink', 20, 2 );
+add_filter( 'post_type_link', 'kpopblog_app_permalink', 20, 2 );

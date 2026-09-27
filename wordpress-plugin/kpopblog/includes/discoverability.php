@@ -225,7 +225,7 @@ function kpopblog_build_public_json_ld( array $context ) {
 			'publisher'        => array( '@type' => 'Organization', 'name' => get_bloginfo( 'name' ), 'url' => home_url( '/' ) ),
 			'citation'         => kpopblog_public_source_urls( $post->ID ),
 		);
-		$image = kpopblog_thumb_url( $post->ID );
+		$image = kpopblog_article_image_url( $post->ID );
 		if ( $image ) {
 			$data['image'] = array( $image );
 		}
@@ -309,7 +309,7 @@ function kpopblog_render_public_head() {
 		$open_graph_type = 'article';
 		$published = get_post_time( 'c', true, $post );
 		$modified = get_post_modified_time( 'c', true, $post );
-		$image = kpopblog_thumb_url( $post->ID );
+		$image = kpopblog_article_image_url( $post->ID );
 	} else {
 		$title = 'Comeback Schedule — ' . get_bloginfo( 'name' );
 		$description = sanitize_text_field( get_bloginfo( 'description' ) );

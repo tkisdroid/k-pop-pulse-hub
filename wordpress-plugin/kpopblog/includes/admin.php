@@ -99,6 +99,9 @@ function kpopblog_get_health_checks() {
 		admin_url( 'plugins.php' )
 	);
 
+	if ( function_exists( 'kpopblog_get_collector_health_check' ) ) {
+		$checks[] = kpopblog_get_collector_health_check();
+	}
 	if ( function_exists( 'kpopblog_get_automation_health_check' ) ) {
 		$checks[] = kpopblog_get_automation_health_check();
 	}
@@ -209,6 +212,7 @@ function kpopblog_render_admin_dashboard() {
 		'Comments'    => admin_url( 'edit-comments.php' ),
 		'Subscribers' => admin_url( 'edit.php?post_type=kb_subscriber' ),
 		'Notifications' => admin_url( 'admin.php?page=kpopblog-notifications' ),
+		'News Collector' => admin_url( 'admin.php?page=kpopblog-collector' ),
 		'AI Automation' => admin_url( 'admin.php?page=kpopblog-automation' ),
 	);
 	?>
@@ -230,6 +234,9 @@ function kpopblog_render_admin_dashboard() {
 					$value = $counts['pendingComments'];
 				} elseif ( $label === 'Notifications' ) {
 					$value = $counts['pendingNotificationJobs'];
+				} elseif ( $label === 'News Collector' ) {
+					global $wpdb;
+					$value = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}kb_automation_items WHERE kind = 'rss'" );
 				} elseif ( $label === 'AI Automation' ) {
 					$value = get_option( 'kpopblog_automation_last_success', '' ) ? 1 : 0;
 				} else {

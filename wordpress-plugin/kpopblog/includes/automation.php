@@ -47,8 +47,12 @@ function kpopblog_get_automation_settings() {
 	return kpopblog_sanitize_automation_settings( array_merge( kpopblog_automation_defaults(), is_array( $saved ) ? $saved : array() ) );
 }
 
+const KPOPBLOG_OPENAI_KEY_OPTION = 'kpopblog_openai_api_key';
+
 /**
- * API credentials are accepted only from server configuration.
+ * API credential lookup: wp-config constant, then server environment, then the
+ * key saved by an administrator on the AI Automation page (for hosts where
+ * server configuration cannot be edited).
  */
 function kpopblog_get_openai_api_key() {
 	$key = '';
@@ -58,7 +62,25 @@ function kpopblog_get_openai_api_key() {
 		$environment_key = getenv( 'OPENAI_API_KEY' );
 		$key = false === $environment_key ? '' : (string) $environment_key;
 	}
+	if ( '' === trim( $key ) ) {
+		$key = (string) get_option( KPOPBLOG_OPENAI_KEY_OPTION, '' );
+	}
 	return trim( $key );
+}
+
+function kpopblog_openai_key_source() {
+	if ( defined( 'KPOPBLOG_OPENAI_API_KEY' ) && '' !== trim( (string) KPOPBLOG_OPENAI_API_KEY ) ) { return 'wp-config.php'; }
+	$environment_key = getenv( 'OPENAI_API_KEY' );
+	if ( false !== $environment_key && '' !== trim( (string) $environment_key ) ) { return 'server environment'; }
+	return '' !== (string) get_option( KPOPBLOG_OPENAI_KEY_OPTION, '' ) ? 'WordPress settings' : '';
+}
+
+/** Keep the stored key when the field is submitted empty; "-" removes it. */
+function kpopblog_sanitize_openai_api_key( $value ) {
+	$value = trim( sanitize_text_field( (string) $value ) );
+	if ( '-' === $value ) { return ''; }
+	if ( '' === $value ) { return (string) get_option( KPOPBLOG_OPENAI_KEY_OPTION, '' ); }
+	return preg_match( '/^sk-[A-Za-z0-9_\-]{16,}$/', $value ) ? $value : (string) get_option( KPOPBLOG_OPENAI_KEY_OPTION, '' );
 }
 
 function kpopblog_has_openai_api_key() {

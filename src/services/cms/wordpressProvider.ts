@@ -77,6 +77,7 @@ export const wordpressCmsProvider: CmsProvider = {
       const all = await wpFetch<Article[]>("/articles", {
         per_page: opts.limit ?? 20,
         search: opts.search,
+        artist: opts.artistId,
       });
       let out = all;
       if (opts.category) out = out.filter((a) => a.category?.toLowerCase() === opts.category!.toLowerCase());

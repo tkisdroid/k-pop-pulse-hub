@@ -16,8 +16,18 @@ function Videos() {
   const artists = data.artists;
   const [filter, setFilter] = useState<string>("all");
   const videos = useMemo(
-    () => (filter === "all" ? data.videos : data.videos.filter((v) => v.artistId === filter || v.artistSlug === filter)),
-    [data.videos, filter]
+    () => {
+      if (filter === "all") return data.videos;
+      const artist = data.artists.find((a) => a.id === filter);
+      const keys = new Set([filter, artist?.slug].filter(Boolean));
+      return data.videos.filter((v) => keys.has(v.artistId) || keys.has(v.artistSlug));
+    },
+    [data.videos, data.artists, filter]
+  );
+  // Only offer artist filters that actually have videos.
+  const videoArtists = useMemo(
+    () => artists.filter((a) => data.videos.some((v) => v.artistId === a.id || v.artistId === a.slug || v.artistSlug === a.slug)),
+    [artists, data.videos]
   );
 
   if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading videos…</div>;
@@ -35,7 +45,7 @@ function Videos() {
         >
           All
         </button>
-        {artists.map((a) => (
+        {videoArtists.map((a) => (
           <button
             key={a.id}
             onClick={() => setFilter(a.id)}
