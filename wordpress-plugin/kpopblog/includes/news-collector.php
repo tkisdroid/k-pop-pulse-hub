@@ -369,6 +369,61 @@ function kpopblog_collector_ai_rewrite( array $item ) {
 	return array( 'title' => $title, 'summary' => $summary, 'body' => $body, 'questions' => $questions );
 }
 
+/**
+ * Rewrite already-published extractive briefs into original articles, newest
+ * first. The URL (slug), date, sources, and artist tags stay the same.
+ *
+ * @return array{rewritten:int,failed:int,remaining:int,errors:string[]}
+ */
+function kpopblog_collector_rewrite_existing( $limit, $deadline ) {
+	$out = array( 'rewritten' => 0, 'failed' => 0, 'remaining' => 0, 'errors' => array() );
+	if ( ! function_exists( 'kpopblog_has_openai_api_key' ) || ! kpopblog_has_openai_api_key() ) { return $out; }
+	$query = array(
+		'post_type'   => 'post',
+		'post_status' => 'publish',
+		'numberposts' => max( 1, (int) $limit ),
+		'meta_query'  => array(
+			array( 'key' => 'kb_source', 'value' => 'aggregated' ),
+			array( 'key' => 'kb_ai_rewrite_failed', 'compare' => 'NOT EXISTS' ),
+		),
+	);
+	foreach ( get_posts( $query ) as $post ) {
+		if ( time() > $deadline - 20 ) { break; }
+		$sources = function_exists( 'kpopblog_collector_post_sources' ) ? kpopblog_collector_post_sources( $post->ID ) : array();
+		$url = $sources ? $sources[0]['url'] : (string) get_post_meta( $post->ID, 'kb_source_url', true );
+		$page = '' !== $url ? kpopblog_collector_fetch_page_meta( $url ) : array( 'description' => '', 'lead' => '', 'image' => '' );
+		$item = array(
+			'title'       => (string) get_post_meta( $post->ID, 'kb_source_title', true ) ?: $post->post_title,
+			'summary'     => $post->post_excerpt,
+			'source_text' => kpopblog_collector_plain_text( implode( "\n\n", array_filter( array( $post->post_excerpt, wp_strip_all_tags( $post->post_content ), $page['description'], $page['lead'] ) ) ) ),
+			'artists'     => array_values( array_filter( (array) get_post_meta( $post->ID, 'kb_related_artist_slugs', true ), 'strlen' ) ),
+			'publisher'   => $sources ? $sources[0]['publisher'] : (string) get_post_meta( $post->ID, 'kb_source_publisher', true ),
+		);
+		$ai = kpopblog_collector_ai_rewrite( $item );
+		if ( ! $ai ) {
+			$out['failed']++;
+			$out['errors'][] = isset( $GLOBALS['kpopblog_ai_last_error'] ) ? $GLOBALS['kpopblog_ai_last_error'] : 'unknown';
+			update_post_meta( $post->ID, 'kb_ai_rewrite_failed', gmdate( 'c' ) );
+			continue;
+		}
+		wp_update_post( wp_slash( array(
+			'ID'           => $post->ID,
+			'post_title'   => $ai['title'],
+			'post_excerpt' => $ai['summary'],
+			'post_content' => kpopblog_collector_article_html( $ai['body'] ),
+		) ) );
+		update_post_meta( $post->ID, 'kb_source', 'ai-brief' );
+		update_post_meta( $post->ID, 'kb_ai_model', kpopblog_get_automation_settings()['model'] );
+		if ( '' === (string) get_post_meta( $post->ID, 'kb_source_title', true ) ) {
+			update_post_meta( $post->ID, 'kb_source_title', $item['title'] );
+		}
+		$out['rewritten']++;
+	}
+	$remaining = get_posts( array_merge( $query, array( 'numberposts' => -1, 'fields' => 'ids' ) ) );
+	$out['remaining'] = count( $remaining );
+	return $out;
+}
+
 /* ---------- publishing ---------- */
 
 /**
@@ -818,6 +873,14 @@ function kpopblog_run_news_collector( $trigger = 'scheduled' ) {
 		}
 
 		update_option( 'kpopblog_collector_day', array( 'date' => $day_key, 'count' => $today ), false );
+
+		// Convert a few older extractive briefs into original articles each run.
+		if ( $use_ai && time() < $deadline - 40 ) {
+			$converted = kpopblog_collector_rewrite_existing( $backfill ? 10 : 4, $deadline );
+			$extra['ai'] += $converted['rewritten'];
+			$extra['ai_failed'] += $converted['failed'];
+			foreach ( array_slice( $converted['errors'], 0, 2 ) as $error ) { $log[] = 'AI rewrite of older article skipped: ' . $error; }
+		}
 
 		if ( ! empty( $settings['collect_videos'] ) && time() < $deadline - 10 ) {
 			$extra['videos'] = kpopblog_collector_collect_videos( $settings, $deadline, $log );

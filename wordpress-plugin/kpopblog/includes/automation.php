@@ -167,7 +167,7 @@ function kpopblog_automation_prompt( array $settings ) {
 
 	return implode( "\n", array(
 		'Today is ' . gmdate( 'Y-m-d' ) . ' UTC. Search the live web for verified K-pop developments from the last 72 hours.',
-		'Find material news plus newly announced or materially changed comeback and concert schedules.',
+		'Focus on newly announced or materially changed comeback, album, single, debut, and concert schedules with an exact date. Include material news only when it has no schedule.',
 		$focus,
 		'Return no more than ' . (int) $settings['max_items'] . ' unique items. Return an empty items array when nothing meets the rules.',
 		'Every factual item must have at least one direct HTTPS source URL. Prefer official artist, agency, promoter, venue, chart, and established newsroom sources.',
@@ -493,6 +493,8 @@ function kpopblog_run_automation( $trigger_type = 'manual' ) {
 		foreach ( array_slice( $payload['items'], 0, (int) $settings['max_items'] ) as $raw_item ) {
 			$item = kpopblog_validate_automation_item( $raw_item );
 			if ( is_wp_error( $item ) ) { $counts['skipped']++; continue; }
+			// General news is covered by the RSS news collector; keep this run for schedules.
+			if ( 'news' === $item['kind'] && function_exists( 'kpopblog_get_collector_settings' ) && ! empty( kpopblog_get_collector_settings()['enabled'] ) ) { $counts['skipped']++; continue; }
 			$result = kpopblog_persist_automation_item( $item, $settings, $response_id );
 			if ( is_wp_error( $result ) ) { $counts['skipped']++; continue; }
 			$counts[ $result['state'] ]++;

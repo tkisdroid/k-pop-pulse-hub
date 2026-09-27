@@ -182,6 +182,15 @@ function kpopblog_register_collector_rest_routes() {
 			return rest_ensure_response( $result );
 		},
 	) );
+	register_rest_route( KPOPBLOG_REST_NS, '/admin/collector/rewrite', array(
+		'methods'             => 'POST',
+		'permission_callback' => function () { return current_user_can( 'kb_manage_automation' ); },
+		'args'                => array( 'limit' => array( 'type' => 'integer', 'default' => 5, 'minimum' => 1, 'maximum' => 20 ) ),
+		'callback'            => function ( WP_REST_Request $request ) {
+			if ( function_exists( 'set_time_limit' ) ) { @set_time_limit( 300 ); } // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			return rest_ensure_response( kpopblog_collector_rewrite_existing( (int) $request->get_param( 'limit' ), time() + 240 ) );
+		},
+	) );
 	register_rest_route( KPOPBLOG_REST_NS, '/admin/collector/status', array(
 		'methods'             => 'GET',
 		'permission_callback' => function () { return current_user_can( 'kb_manage_automation' ); },
