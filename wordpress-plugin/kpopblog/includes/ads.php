@@ -93,6 +93,39 @@ function kpopblog_ads_frontend_config() {
 	);
 }
 
+/**
+ * ads.txt lines for the configured publisher. Serving the file from WordPress
+ * means no upload to the web root is needed on any host; a physical ads.txt in
+ * the web root is served by the web server first and takes precedence.
+ */
+function kpopblog_ads_txt_lines() {
+	$settings = kpopblog_get_ads_settings();
+	if ( '' === $settings['publisher_id'] ) { return array(); }
+	return array( 'google.com, ' . substr( $settings['publisher_id'], 3 ) . ', DIRECT, f08c47fec0942fa0' );
+}
+
+function kpopblog_serve_ads_txt() {
+	$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
+	if ( '/ads.txt' !== $path ) { return; }
+	$lines = kpopblog_ads_txt_lines();
+	if ( ! $lines ) { return; }
+	status_header( 200 );
+	header( 'Content-Type: text/plain; charset=utf-8' );
+	header( 'Cache-Control: public, max-age=3600' );
+	echo implode( "\n", $lines ) . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	exit;
+}
+add_action( 'template_redirect', 'kpopblog_serve_ads_txt', 0 );
+
+/** AdSense site-ownership meta tag; it verifies the site without loading any ad code. */
+function kpopblog_adsense_account_meta() {
+	$settings = kpopblog_get_ads_settings();
+	if ( '' !== $settings['publisher_id'] ) {
+		echo '<meta name="google-adsense-account" content="' . esc_attr( $settings['publisher_id'] ) . '" />' . "\n";
+	}
+}
+add_action( 'wp_head', 'kpopblog_adsense_account_meta', 1 );
+
 function kpopblog_register_ads_settings() {
 	register_setting( 'kpopblog_ads_group', KPOPBLOG_ADS_OPTION, array(
 		'type'              => 'array',
@@ -147,7 +180,8 @@ function kpopblog_render_ads_admin_page() {
 				</tr>
 				<tr>
 					<th><label for="kb_ads_publisher">Publisher ID</label></th>
-					<td><input id="kb_ads_publisher" type="text" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[publisher_id]" value="<?php echo esc_attr( $settings['publisher_id'] ); ?>" class="regular-text" placeholder="ca-pub-1234567890123456" pattern="ca-pub-[0-9]{16}"></td>
+					<td><input id="kb_ads_publisher" type="text" name="<?php echo esc_attr( KPOPBLOG_ADS_OPTION ); ?>[publisher_id]" value="<?php echo esc_attr( $settings['publisher_id'] ); ?>" class="regular-text" placeholder="ca-pub-1234567890123456" pattern="ca-pub-[0-9]{16}">
+						<p class="description">The site automatically serves <a href="<?php echo esc_url( home_url( '/ads.txt' ) ); ?>" target="_blank" rel="noopener">/ads.txt</a> and the <code>google-adsense-account</code> verification tag for this ID.</p></td>
 				</tr>
 				<tr>
 					<th><label for="kb_ads_slots">Ad units</label></th>
