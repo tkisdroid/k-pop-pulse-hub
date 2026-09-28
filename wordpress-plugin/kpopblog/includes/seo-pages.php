@@ -185,6 +185,7 @@ function kpopblog_seo_artist_context( $slug ) {
 	$type    = (string) get_post_meta( $artist->ID, 'kb_type', true );
 	$bio     = trim( wp_strip_all_tags( $artist->post_content ) );
 	$image   = kpopblog_artist_image_url( $artist->ID );
+	if ( kpopblog_placeholder_image_url() === $image ) { $image = ''; } // the site's default share image is used instead
 	$url     = home_url( '/artist/' . $slug );
 	$members = get_posts( array( 'post_type' => 'kb_member', 'post_status' => 'publish', 'numberposts' => 30, 'meta_key' => 'kb_group_slug', 'meta_value' => $slug, 'orderby' => 'ID', 'order' => 'ASC' ) );
 	$member_names = array_map( function ( $member ) { return kpopblog_decode_text_entities( get_the_title( $member ) ); }, $members );
@@ -208,9 +209,9 @@ function kpopblog_seo_artist_context( $slug ) {
 		'@id'         => $url . '#artist',
 		'name'        => $name,
 		'url'         => $url,
-		'image'       => $image,
 		'description' => $bio,
 	);
+	if ( '' !== $image ) { $entity['image'] = $image; }
 	if ( '' !== $korean ) { $entity['alternateName'] = $korean; }
 	if ( 'soloist' !== $type ) {
 		$entity['genre'] = 'K-pop';

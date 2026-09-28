@@ -1,23 +1,25 @@
 import { useEffect } from "react";
-import { useRouterState } from "@tanstack/react-router";
 
 /**
  * Global scroll-reveal observer.
  * Any element with [data-reveal] or [data-reveal-children] gets an
- * `.is-visible` class when 12% of it enters the viewport, triggering
+ * `.is-visible` class as soon as it enters the viewport, triggering
  * CSS fade-up transitions defined in styles.css.
+ *
+ * The hidden starting state only applies while <html> carries `kb-reveal`,
+ * which is set here, so content stays visible if this never runs. Elements
+ * are picked up whenever they are added to the DOM (lists usually render
+ * after their data loads, long after the route changed), and any overlap
+ * with the viewport counts: on phones a one-column grid can be many screens
+ * tall, so a percentage threshold would never be reached.
  */
 export function RevealOnScroll() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (typeof IntersectionObserver === "undefined") {
-      document.querySelectorAll<HTMLElement>("[data-reveal], [data-reveal-children]")
-        .forEach((el) => el.classList.add("is-visible"));
-      return;
-    }
+    if (typeof IntersectionObserver === "undefined" || typeof MutationObserver === "undefined") return;
 
+    const root = document.documentElement;
+    const selector = "[data-reveal]:not(.is-visible), [data-reveal-children]:not(.is-visible)";
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -27,26 +29,33 @@ export function RevealOnScroll() {
           }
         }
       },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+      { rootMargin: "0px 0px -24px 0px", threshold: 0 },
     );
 
     const scan = () => {
-      document
-        .querySelectorAll<HTMLElement>("[data-reveal]:not(.is-visible), [data-reveal-children]:not(.is-visible)")
-        .forEach((el) => io.observe(el));
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => io.observe(el));
     };
 
-    // Initial scan + a couple of frames after route renders
+    let frame = 0;
+    const mo = new MutationObserver(() => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        scan();
+      });
+    });
+
+    root.classList.add("kb-reveal");
     scan();
-    const t1 = window.setTimeout(scan, 80);
-    const t2 = window.setTimeout(scan, 280);
+    mo.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      if (frame) window.cancelAnimationFrame(frame);
+      mo.disconnect();
       io.disconnect();
+      root.classList.remove("kb-reveal");
     };
-  }, [pathname]);
+  }, []);
 
   return null;
 }

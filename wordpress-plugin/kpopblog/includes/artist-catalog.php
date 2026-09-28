@@ -263,6 +263,42 @@ function kpopblog_artist_image_url( $artist_id ) {
 	return kpopblog_placeholder_image_url();
 }
 
+/**
+ * Image shown in the app for an artist. Artists without artwork get a generated
+ * cover (gradient plus the artist's name) instead of the generic news artwork.
+ * It is an inline SVG data URI, so use it only in API responses, not in
+ * og:image or schema.org markup.
+ */
+function kpopblog_artist_display_image_url( $artist_id ) {
+	$image = kpopblog_artist_image_url( $artist_id );
+	if ( kpopblog_placeholder_image_url() !== $image ) { return $image; }
+	return kpopblog_artist_cover_data_uri( kpopblog_decode_text_entities( get_the_title( $artist_id ) ), (string) get_post_field( 'post_name', $artist_id ) );
+}
+
+/** 3:4 SVG cover with the name centred, so square, portrait and banner crops all keep it. */
+function kpopblog_artist_cover_data_uri( $name, $seed ) {
+	$hash   = abs( crc32( '' !== $seed ? $seed : $name ) );
+	$hue_a  = $hash % 360;
+	$hue_b  = ( $hue_a + 50 + ( $hash >> 9 ) % 70 ) % 360;
+	$label  = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $name, 'UTF-8' ) : strtoupper( $name );
+	$length = max( 1, function_exists( 'mb_strlen' ) ? mb_strlen( $label, 'UTF-8' ) : strlen( $label ) );
+	$size   = (int) max( 28, min( 92, floor( 680 / $length ) ) ); // bold caps average ~0.7em wide
+	$text   = htmlspecialchars( $label, ENT_QUOTES | ENT_XML1, 'UTF-8' );
+	$svg    = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" width="600" height="800">'
+		. '<defs>'
+		. '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(' . $hue_a . ',70%,38%)"/><stop offset="1" stop-color="hsl(' . $hue_b . ',75%,14%)"/></linearGradient>'
+		. '<radialGradient id="r" cx=".28" cy=".3" r=".75"><stop offset="0" stop-color="hsl(' . $hue_b . ',95%,72%)" stop-opacity=".55"/><stop offset="1" stop-color="hsl(' . $hue_b . ',95%,72%)" stop-opacity="0"/></radialGradient>'
+		. '</defs>'
+		. '<rect width="600" height="800" fill="url(#g)"/><rect width="600" height="800" fill="url(#r)"/>'
+		. '<circle cx="470" cy="610" r="220" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="2"/>'
+		. '<circle cx="470" cy="610" r="150" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="2"/>'
+		. '<circle cx="110" cy="190" r="70" fill="#fff" fill-opacity=".06"/>'
+		. '<text x="300" y="400" text-anchor="middle" dominant-baseline="middle" font-family="\'Space Grotesk\',\'Helvetica Neue\',Arial,sans-serif" font-weight="700" font-size="' . $size . '" letter-spacing="2" fill="#fff">' . $text . '</text>'
+		. '<text x="300" y="' . ( 400 + (int) ( $size * 0.55 ) + 34 ) . '" text-anchor="middle" font-family="\'Helvetica Neue\',Arial,sans-serif" font-size="22" letter-spacing="8" fill="#fff" fill-opacity=".72">K-POP</text>'
+		. '</svg>';
+	return 'data:image/svg+xml;base64,' . base64_encode( $svg );
+}
+
 function kpopblog_get_artist_by_slug( $slug ) {
 	$slug = sanitize_title( (string) $slug );
 	if ( '' === $slug ) { return null; }

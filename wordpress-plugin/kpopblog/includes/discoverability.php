@@ -356,7 +356,8 @@ function kpopblog_render_public_head() {
 		echo '<meta property="article:published_time" content="' . esc_attr( $published ) . '" />' . "\n";
 		echo '<meta property="article:modified_time" content="' . esc_attr( $modified ) . '" />' . "\n";
 	}
-	if ( ! $image ) {
+	// Social networks don't render SVG previews; fall back to the default share image.
+	if ( ! $image || preg_match( '/\.svg(?:\?|$)/i', $image ) ) {
 		$image = KPOPBLOG_URL . 'icons/og-default.jpg';
 	}
 	echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";

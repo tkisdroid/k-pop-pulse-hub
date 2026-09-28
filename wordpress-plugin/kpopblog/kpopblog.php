@@ -3,7 +3,7 @@
  * Plugin Name:       KpopBlog
  * Plugin URI:        https://thekpopblog.com
  * Description:       K-pop publishing and community platform with articles, artists, videos, comebacks, forums, polls, submissions, subscriptions, notifications, advertising, and source-grounded content automation managed from WordPress.
- * Version:           1.6.1
+ * Version:           1.6.2
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            thekpopblog.com
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KPOPBLOG_VERSION', '1.6.1' );
+define( 'KPOPBLOG_VERSION', '1.6.2' );
 define( 'KPOPBLOG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KPOPBLOG_URL', plugin_dir_url( __FILE__ ) );
 define( 'KPOPBLOG_REST_NS', 'kpopblog/v1' );
@@ -155,6 +155,38 @@ function kpopblog_maybe_migrate_collector_content() {
 	}
 }
 add_action( 'init', 'kpopblog_maybe_migrate_collector_content', 42 );
+
+/**
+ * 1.6.2: recurring threads and polls were dated with wp_date(), which follows the
+ * Korean admin locale ("9월 28"). Rewrite those labels in English ("Sep 28",
+ * "September 28" after "on", "of" and "roundup:").
+ */
+function kpopblog_maybe_migrate_english_dates() {
+	if ( get_option( 'kpopblog_english_dates_version' ) === '1.6.2' ) {
+		return;
+	}
+	update_option( 'kpopblog_english_dates_version', '1.6.2', false );
+	global $wpdb;
+	$rows = $wpdb->get_results(
+		"SELECT ID, post_title, post_content FROM {$wpdb->posts}
+		 WHERE post_type IN ('kb_thread','kb_poll') AND ( post_title LIKE '%월%' OR post_content LIKE '%월%' )"
+	);
+	$english = function ( $text ) {
+		return preg_replace_callback( '/(on |of |roundup: )?(\d{1,2})월 (\d{1,2})일?/u', function ( $m ) {
+			$date = gmdate( '' !== $m[1] ? 'F j' : 'M j', gmmktime( 0, 0, 0, (int) $m[2], (int) $m[3], 2000 ) );
+			return $m[1] . $date;
+		}, $text );
+	};
+	foreach ( (array) $rows as $row ) {
+		$title   = $english( $row->post_title );
+		$content = $english( $row->post_content );
+		if ( $title !== $row->post_title || $content !== $row->post_content ) {
+			$wpdb->update( $wpdb->posts, array( 'post_title' => $title, 'post_content' => $content ), array( 'ID' => (int) $row->ID ) );
+			clean_post_cache( (int) $row->ID );
+		}
+	}
+}
+add_action( 'init', 'kpopblog_maybe_migrate_english_dates', 43 );
 
 /**
  * Each build ships new hashed JS/CSS filenames and removes the old ones, so page

@@ -32,21 +32,21 @@ function Artists() {
           {TYPES.map(([k, l]) => <button key={k} onClick={() => setType(k)} className={`shrink-0 px-3 py-1.5 rounded-full text-sm ${type === k ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{l}</button>)}
         </div>
         <div className="flex gap-2">
-          <select value={gen ?? ""} onChange={(e) => setGen(e.target.value ? Number(e.target.value) : null)} className="h-9 px-2 rounded-md bg-background border border-input text-sm">
+          <select value={gen ?? ""} onChange={(e) => setGen(e.target.value ? Number(e.target.value) : null)} aria-label="Generation" className="h-9 px-2 rounded-md bg-background border border-input text-sm shrink-0">
             <option value="">All gens</option>
             {[1, 2, 3, 4, 5].map((g) => <option key={g} value={g}>{g}th gen</option>)}
           </select>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists, agency" className="h-9 px-3 rounded-md bg-background border border-input text-sm" />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search artists, agency" aria-label="Search artists" className="h-9 min-w-0 flex-1 md:w-64 md:flex-none px-3 rounded-md bg-background border border-input text-base md:text-sm" />
         </div>
       </div>
-      <div data-reveal-children className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div data-reveal-children className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {artists.length === 0 && <p className="col-span-full py-16 text-center text-muted-foreground">No published artists yet.</p>}
         {artists.map((a) => (
           <Link key={a.id} to="/artist/$slug" params={{ slug: a.slug }} className="rounded-xl overflow-hidden bg-card border border-border hover:border-primary/40 group">
-            <div className="aspect-[3/4] overflow-hidden"><img src={a.image} alt={a.name} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>
+            <div className="aspect-[3/4] overflow-hidden bg-muted"><img src={a.image} alt={a.name} loading="lazy" decoding="async" width={300} height={400} className="size-full object-cover group-hover:scale-105 transition-transform" /></div>
             <div className="p-3">
-              <div className="font-display font-bold">{a.name}</div>
-              <div className="text-xs text-muted-foreground">{a.agency} · Gen {a.generation}</div>
+              <div className="font-display font-bold truncate">{a.name}</div>
+              <div className="text-xs text-muted-foreground line-clamp-2">{a.agency} · Gen {a.generation}</div>
               <div className="text-xs text-muted-foreground mt-1">{a.followerCount.toLocaleString()} followers</div>
             </div>
           </Link>
