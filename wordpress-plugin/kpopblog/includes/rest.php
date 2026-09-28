@@ -113,7 +113,7 @@ function kpopblog_map_artist( WP_Post $p ) {
 		'status'       => kpopblog_meta( $p->ID, 'kb_status', 'active' ),
 		'nationality'  => kpopblog_meta( $p->ID, 'kb_nationality', 'South Korea' ),
 		'bio'          => wp_strip_all_tags( $p->post_content ),
-		'image'        => function_exists( 'kpopblog_artist_image_url' ) ? kpopblog_artist_image_url( $p->ID ) : kpopblog_thumb_url( $p->ID ),
+		'image'        => function_exists( 'kpopblog_artist_display_image_url' ) ? kpopblog_artist_display_image_url( $p->ID ) : kpopblog_thumb_url( $p->ID ),
 		'followerCount'=> kpopblog_int( get_post_meta( $p->ID, 'kb_follower_count', true ) ),
 		'memberIds'    => array(),
 		'socialLinks'  => (object) ( get_post_meta( $p->ID, 'kb_social_links', true ) ?: array() ),
@@ -145,7 +145,7 @@ function kpopblog_member_image_url( $post_id ) {
 	$group = sanitize_title( (string) kpopblog_meta( $post_id, 'kb_group_slug' ) );
 	if ( ! array_key_exists( $group, $group_images ) ) {
 		$artist = kpopblog_get_artist_by_slug( $group );
-		$group_images[ $group ] = $artist ? kpopblog_artist_image_url( $artist->ID ) : kpopblog_placeholder_image_url();
+		$group_images[ $group ] = $artist ? kpopblog_artist_display_image_url( $artist->ID ) : kpopblog_placeholder_image_url();
 	}
 	return $group_images[ $group ];
 }
@@ -165,7 +165,7 @@ function kpopblog_map_comeback( WP_Post $p ) {
 
 function kpopblog_comeback_artist_image( $post_id ) {
 	$artist = function_exists( 'kpopblog_get_artist_by_slug' ) ? kpopblog_get_artist_by_slug( kpopblog_meta( $post_id, 'kb_artist_slug' ) ) : null;
-	return $artist ? kpopblog_artist_image_url( $artist->ID ) : '';
+	return $artist ? kpopblog_artist_display_image_url( $artist->ID ) : '';
 }
 
 function kpopblog_map_chart( WP_Post $p ) {

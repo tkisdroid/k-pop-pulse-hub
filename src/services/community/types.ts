@@ -33,6 +33,7 @@ export interface CommunityProvider {
   listCategories(): Promise<ForumCategory[]>;
   listThreads(input?: {
     category?: string;
+    artist?: string;
     page?: number;
     perPage?: number;
   }): Promise<Paginated<ForumThread>>;

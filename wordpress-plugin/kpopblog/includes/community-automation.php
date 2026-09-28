@@ -176,7 +176,16 @@ function kpopblog_refresh_artist_hubs( array $published ) {
 
 /** Local date for editorial scheduling (site timezone). */
 function kpopblog_editorial_date( $format = 'Y-m-d', $offset_days = 0 ) {
-	return wp_date( $format, time() + $offset_days * DAY_IN_SECONDS );
+	return kpopblog_en_date( $format, time() + $offset_days * DAY_IN_SECONDS );
+}
+
+/**
+ * Date in the site timezone with English month and day names. wp_date() follows
+ * the admin locale (e.g. "9월 28" on a Korean install), but the site publishes in English.
+ */
+function kpopblog_en_date( $format, $timestamp = null ) {
+	$date = new DateTimeImmutable( '@' . ( null === $timestamp ? time() : (int) $timestamp ) );
+	return $date->setTimezone( wp_timezone() )->format( $format );
 }
 
 /** Run $callback once per $period key; returns whatever it returns (or 0 when already done). */
@@ -203,7 +212,7 @@ function kpopblog_daily_roundup_thread() {
 			) ),
 		) );
 		if ( count( $posts ) < 3 ) { return 0; }
-		$label = wp_date( 'F j', $start->getTimestamp() );
+		$label = kpopblog_en_date( 'F j', $start->getTimestamp() );
 		$lines = array( 'Here is what happened in K-pop on ' . $label . '. Which story matters most to you?', '' );
 		foreach ( $posts as $post ) {
 			$lines[] = '• ' . kpopblog_decode_text_entities( get_the_title( $post ) ) . ' — ' . kpopblog_article_url( $post->ID );
@@ -231,7 +240,7 @@ function kpopblog_weekly_comeback_thread() {
 		$lines = array( 'Releases on the KpopBlog calendar for the coming weeks. Which one are you counting down to?', '' );
 		foreach ( $upcoming as $comeback ) {
 			$release = strtotime( (string) get_post_meta( $comeback->ID, 'kb_release_at', true ) );
-			$lines[] = '• ' . ( $release ? wp_date( 'M j', $release ) . ' — ' : '' ) . get_the_title( $comeback );
+			$lines[] = '• ' . ( $release ? kpopblog_en_date( 'M j', $release ) . ' — ' : '' ) . get_the_title( $comeback );
 		}
 		$lines[] = '';
 		$lines[] = 'Full calendar: ' . home_url( '/comebacks' );
@@ -350,7 +359,7 @@ function kpopblog_maybe_create_weekly_poll() {
 
 	return kpopblog_create_poll(
 		'weekly-fan-poll-' . gmdate( 'Y-m-d' ),
-		'Fan poll: whose news are you following most this week? (' . wp_date( 'M j' ) . ')',
+		'Fan poll: whose news are you following most this week? (' . kpopblog_en_date( 'M j' ) . ')',
 		'These artists made the most headlines on KpopBlog over the past seven days. Vote for the story you are following most closely.',
 		$options,
 		array( 'kb_weekly_poll' => '1' )
@@ -376,7 +385,7 @@ function kpopblog_maybe_create_comeback_poll() {
 		}
 		return kpopblog_create_poll(
 			'most-anticipated-release-' . gmdate( 'Y-m-d' ),
-			'Which upcoming release are you most excited for? (' . wp_date( 'M j' ) . ')',
+			'Which upcoming release are you most excited for? (' . kpopblog_en_date( 'M j' ) . ')',
 			'Releases announced on the KpopBlog comeback calendar. Cast your vote and tell us why in the Comebacks board.',
 			$options,
 			array( 'kb_comeback_poll' => '1' )

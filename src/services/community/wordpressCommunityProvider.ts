@@ -82,6 +82,7 @@ export const wordpressCommunityProvider: CommunityProvider = {
       per_page: String(input.perPage ?? 20),
     });
     if (input.category) query.set("category", input.category);
+    if (input.artist) query.set("artist", input.artist);
     const { data, response } = await request<ForumThread[]>(`/threads?${query}`);
     return pageResult(data, response);
   },
