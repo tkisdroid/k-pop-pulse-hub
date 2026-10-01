@@ -33,6 +33,7 @@ import { KeepExploring } from "@/components/layout/KeepExploring";
 import { ScrollProgress } from "@/components/layout/ScrollProgress";
 import { RevealOnScroll } from "@/components/layout/RevealOnScroll";
 import { ConsentBanner } from "@/components/privacy/ConsentBanner";
+import { TrafficTracker } from "@/components/analytics/TrafficTracker";
 
 function NotFoundComponent() {
   return (
@@ -85,8 +86,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: typeof window !== "undefined" && window.kpopblogConfig?.apiUrl ? [] : [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png?v=2" },
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico?v=2" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg?v=2" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=2" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" },
@@ -199,6 +202,7 @@ function RootComponent() {
               <OfflineBadge />
               <AuthModal />
               <ConsentBanner />
+              <TrafficTracker />
             </AuthModalProvider>
           </AuthProviderShell>
         </I18nProvider>

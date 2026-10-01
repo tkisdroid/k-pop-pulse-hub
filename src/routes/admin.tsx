@@ -34,7 +34,10 @@ function Admin() {
         <div className="mt-6 p-4 rounded-xl bg-card border border-border">
           <h3 className="font-display font-bold mb-2">WordPress sync</h3>
           <p className="text-sm text-muted-foreground">Content is synchronized from the WordPress REST API. Use the K-pop Pulse Hub menu in WordPress administration for full management.</p>
-          {typeof window !== "undefined" && window.kpopblogConfig?.adminUrl && <a href={window.kpopblogConfig.adminUrl} className="mt-3 inline-block text-sm text-primary">Open WordPress administration</a>}
+          {typeof window !== "undefined" && window.kpopblogConfig?.adminUrl && <div className="mt-3 flex flex-wrap gap-4 text-sm text-primary">
+            <a href={window.kpopblogConfig.adminUrl}>Open WordPress administration</a>
+            <a href={window.kpopblogConfig.adminUrl.replace("page=kpopblog-admin", "page=kpopblog-analytics")}>접속자 통계 보기</a>
+          </div>}
         </div>
         <div className="mt-4 p-4 rounded-xl bg-card border border-border">
           <h3 className="font-display font-bold mb-2">Recent articles</h3>

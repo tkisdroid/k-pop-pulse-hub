@@ -28,6 +28,21 @@ WordPress admin (editor UX)
 
 ## Build & install
 
+**접속자 통계** under K-pop Pulse Hub shows today's, 7-day, and 30-day unique
+browser counts and page views, a 30-day daily table, and popular public pages.
+Collection starts after analytics consent and covers cached pages and SPA
+navigation. Browser identifiers expire after 90 days; the database stores salted
+hashes and paths without query strings. No IP addresses or user agents are
+stored. Administrators and known bots are excluded. WP-Cron removes records
+older than 90 days. Historical visits before installation cannot be recovered.
+
+The standalone app and WordPress shell share the packaged KpopBlog icons.
+Versioned icon links refresh browser caches; WordPress admin/login use them as
+a fallback when no custom WordPress Site Icon is configured.
+
+Traffic integration verification on a disposable localhost WordPress install:
+`wp eval-file scripts/wordpress/analytics-smoke.php`.
+
 ```bash
 bash wordpress-plugin/build-plugin.sh   # → wordpress-plugin/kpopblog.zip
 ```

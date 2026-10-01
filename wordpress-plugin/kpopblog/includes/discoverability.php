@@ -691,7 +691,6 @@ function kpopblog_render_manifest() {
 	$brand       = trim( $site_name . $accent_word );
 	$tagline     = ! empty( $design['tagline'] ) ? (string) $design['tagline'] : 'K-pop news, artist profiles, comeback calendar, polls and a global fan community.';
 	$accent      = ! empty( $design['accent_color'] ) ? (string) $design['accent_color'] : '#0b0b10';
-	$icons_base  = KPOPBLOG_URL . 'icons/';
 
 	$manifest = array(
 		'name'             => $brand . ' — Global K-pop newsroom',
@@ -705,8 +704,8 @@ function kpopblog_render_manifest() {
 		'theme_color'      => $accent,
 		'orientation'      => 'portrait',
 		'icons'            => array(
-			array( 'src' => $icons_base . 'icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable' ),
-			array( 'src' => $icons_base . 'icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable' ),
+			array( 'src' => kpopblog_icon_url( 'icon-192.png' ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable' ),
+			array( 'src' => kpopblog_icon_url( 'icon-512.png' ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable' ),
 		),
 	);
 	return (string) wp_json_encode( $manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );

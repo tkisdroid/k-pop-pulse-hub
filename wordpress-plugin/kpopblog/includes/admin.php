@@ -246,6 +246,8 @@ function kpopblog_render_admin_dashboard() {
 				<a class="kb-card" href="<?php echo esc_url( $url ); ?>"><span><?php echo esc_html( $label ); ?></span><strong><?php echo esc_html( number_format_i18n( $value ) ); ?></strong></a>
 			<?php endforeach; ?>
 		</div>
+		<h2>접속자 통계</h2>
+		<p><a class="button button-secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=kpopblog-analytics' ) ); ?>">방문자·조회수·인기 페이지 보기</a></p>
 		<h2>Platform health</h2>
 		<?php foreach ( kpopblog_get_health_checks() as $check ) : ?>
 			<div class="kb-health">

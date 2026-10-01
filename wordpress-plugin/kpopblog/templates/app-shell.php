@@ -50,7 +50,6 @@ $kpopblog_head = kpopblog_strip_foreign_markup( ob_get_clean() );
 $kpopblog_design  = function_exists( 'kpopblog_get_design_settings' ) ? kpopblog_get_design_settings() : array();
 $kpopblog_theme_c = ! empty( $kpopblog_design['accent_color'] ) ? $kpopblog_design['accent_color'] : '#0b0b10';
 $kpopblog_brand   = trim( ( ! empty( $kpopblog_design['site_name'] ) ? $kpopblog_design['site_name'] : 'Kpop' ) . ( isset( $kpopblog_design['accent_word'] ) ? $kpopblog_design['accent_word'] : 'Blog' ) );
-$kpopblog_icons   = KPOPBLOG_URL . 'icons/';
 ?><!DOCTYPE html>
 <html <?php language_attributes(); ?> class="dark">
 <head>
@@ -62,10 +61,10 @@ $kpopblog_icons   = KPOPBLOG_URL . 'icons/';
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="<?php echo esc_attr( $kpopblog_brand ); ?>" />
 <link rel="manifest" href="<?php echo esc_url( home_url( '/manifest.webmanifest' ) ); ?>" />
-<link rel="icon" href="<?php echo esc_url( home_url( '/favicon.ico' ) ); ?>" sizes="48x48" />
-<link rel="icon" type="image/svg+xml" href="<?php echo esc_url( $kpopblog_icons . 'favicon.svg' ); ?>" />
-<link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( $kpopblog_icons . 'favicon-32.png' ); ?>" />
-<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( $kpopblog_icons . 'apple-touch-icon.png' ); ?>" />
+<link rel="icon" type="image/x-icon" href="<?php echo esc_url( kpopblog_icon_url( 'favicon.ico' ) ); ?>" sizes="48x48" />
+<link rel="icon" type="image/svg+xml" href="<?php echo esc_url( kpopblog_icon_url( 'favicon.svg' ) ); ?>" />
+<link rel="icon" type="image/png" sizes="32x32" href="<?php echo esc_url( kpopblog_icon_url( 'favicon-32.png' ) ); ?>" />
+<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( kpopblog_icon_url( 'apple-touch-icon.png' ) ); ?>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
