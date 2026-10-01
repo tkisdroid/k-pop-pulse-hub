@@ -1,3 +1,9 @@
+export const SITE_URL = "https://thekpopblog.com";
+
+export function absoluteUrl(path: string) {
+  return new URL(path, SITE_URL).href;
+}
+
 interface Props {
   title: string;
   description?: string;
@@ -9,11 +15,26 @@ interface Props {
 
 // Returns TanStack head() option shape for routes.
 export function buildHead({ title, description, canonical, ogImage, ogType, jsonLd }: Props) {
+  const empty: {
+    meta: Array<Record<string, string>>;
+    links: Array<Record<string, string>>;
+    scripts: Array<Record<string, string>>;
+  } = { meta: [], links: [], scripts: [] };
+  if (typeof window !== "undefined" && window.kpopblogConfig?.apiUrl) return empty;
+  canonical = canonical ? absoluteUrl(canonical) : undefined;
+  ogImage = absoluteUrl(ogImage || "/og-default.jpg");
+  const path = canonical ? new URL(canonical).pathname : "";
+  const noindex =
+    /^\/(admin|moderation|onboarding|login|signup|forgot-password|submit|bookmarks|cookie-settings|search|newsletter|profile|author|quiz)(?:\/|$)/.test(
+      path,
+    );
   const fullTitle = `${title} — KpopBlog`;
   const desc = description ?? "Global K-pop news, artists, comebacks and fan community.";
   const meta: Array<Record<string, string>> = [
     { title: fullTitle },
     { name: "description", content: desc },
+    { name: "robots", content: noindex ? "noindex, follow" : "max-image-preview:large" },
+    { property: "og:site_name", content: "KpopBlog" },
     { property: "og:title", content: fullTitle },
     { property: "og:description", content: desc },
     { property: "og:type", content: ogType ?? "website" },
@@ -33,7 +54,10 @@ export function buildHead({ title, description, canonical, ogImage, ogType, json
   if (jsonLd) {
     const payloads = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
     for (const p of payloads) {
-      scripts.push({ type: "application/ld+json", children: JSON.stringify(p) });
+      scripts.push({
+        type: "application/ld+json",
+        children: JSON.stringify(p).replace(/</g, "\\u003c"),
+      });
     }
   }
   return { meta, links, scripts };
@@ -47,7 +71,7 @@ export function breadcrumbLd(items: Array<{ name: string; path: string }>) {
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: it.path,
+      item: absoluteUrl(it.path),
     })),
   };
 }

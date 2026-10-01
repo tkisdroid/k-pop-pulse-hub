@@ -26,9 +26,12 @@ export function ForYouSection({ pool }: { pool: Article[] }) {
         <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
           <Shield className="size-8 mx-auto mb-3 text-muted-foreground" />
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Personalization is turned off. Enable it in your profile to get article recommendations based on your reading history and followed artists.
+            Personalization is turned off. Enable it in cookie settings to get article
+            recommendations based on your reading history and followed artists.
           </p>
-          <Button size="sm" asChild><Link to="/profile/me">Go to profile settings</Link></Button>
+          <Button size="sm" asChild>
+            <Link to="/cookie-settings">Go to cookie settings</Link>
+          </Button>
         </div>
       </section>
     );
@@ -52,10 +55,14 @@ export function ForYouSection({ pool }: { pool: Article[] }) {
               : "Follow artists and read more to personalize this feed."}
           </p>
         </div>
-        <Link to="/latest" className="text-sm text-primary hover:underline shrink-0">See all</Link>
+        <Link to="/latest" className="text-sm text-primary hover:underline shrink-0">
+          See all
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {recs.map((a) => <ArticleCard key={a.id} article={a} variant="compact" />)}
+        {recs.map((a) => (
+          <ArticleCard key={a.id} article={a} variant="compact" />
+        ))}
       </div>
     </section>
   );

@@ -2,9 +2,28 @@ import en from "./locales/en";
 import type { LocaleDict } from "./locales/en";
 
 // Create lightweight stubs for non-English locales (real translations later).
-const langs = ["ko","ja","zh-CN","zh-TW","es","pt-BR","id","th","vi","hi","fr","de","tr","ar","ru","fil"] as const;
+const langs = [
+  "ko",
+  "ja",
+  "zh-CN",
+  "zh-TW",
+  "es",
+  "pt-BR",
+  "id",
+  "th",
+  "vi",
+  "hi",
+  "fr",
+  "de",
+  "tr",
+  "ar",
+  "ru",
+  "fil",
+] as const;
 const stubs: Record<string, LocaleDict> = {};
-langs.forEach((l) => { stubs[l] = { ...en }; });
+langs.forEach((l) => {
+  stubs[l] = { ...en };
+});
 
 export const locales = {
   en,

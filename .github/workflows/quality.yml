@@ -1,0 +1,51 @@
+name: Quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local-test-only
+          MYSQL_DATABASE: kpop_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -plocal-test-only"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli
+          tools: wp-cli
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: bash wordpress-plugin/build-plugin.sh
+      - name: PHP syntax
+        run: find wordpress-plugin/kpopblog scripts/wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: WordPress integration
+        env:
+          WP_CLI_PHP_ARGS: '-d display_errors=1'
+        run: |
+          mkdir -p /tmp/kpop-wp
+          wp core download --path=/tmp/kpop-wp --quiet
+          wp config create --path=/tmp/kpop-wp --dbname=kpop_test --dbuser=root --dbpass=local-test-only --dbhost=127.0.0.1:3306 --quiet
+          wp core install --path=/tmp/kpop-wp --url=http://localhost:8099 --title=Kpop-Test --admin_user=localtester --admin_password=local-test-only-strong-password --admin_email=test@example.com --skip-email --quiet
+          ln -s "$GITHUB_WORKSPACE/wordpress-plugin/kpopblog" /tmp/kpop-wp/wp-content/plugins/kpopblog
+          wp plugin activate kpopblog --path=/tmp/kpop-wp --quiet
+          wp eval '$id=wp_insert_post(["post_type"=>"page","post_title"=>"Home","post_status"=>"publish"]);update_post_meta($id,"_wp_page_template","kpopblog-app");update_option("show_on_front","page");update_option("page_on_front",$id);update_option("permalink_structure","/%postname%/");' --path=/tmp/kpop-wp
+          php -S localhost:8099 -t /tmp/kpop-wp >/tmp/kpop-wp-http.log 2>&1 &
+          wp eval-file scripts/wordpress/seo-smoke.php --path=/tmp/kpop-wp
+          wp eval-file scripts/wordpress/analytics-smoke.php --path=/tmp/kpop-wp

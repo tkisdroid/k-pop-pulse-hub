@@ -9,10 +9,15 @@
     "build:dev": "vite build --mode development",
     "build:wordpress": "vite build --config vite.config.wordpress.ts",
     "preview": "vite preview",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "ai:generate": "bun run scripts/ai/generate.ts",
-    "ai:translate": "bun run scripts/ai/translate.ts"
+    "ai:translate": "bun run scripts/ai/translate.ts",
+    "typecheck": "tsc --noEmit",
+    "seo:pages": "node scripts/seo/export-pages.mjs",
+    "check": "npm run typecheck && npm run lint && node scripts/seo/export-pages.mjs --check",
+    "prebuild:wordpress": "npm run seo:pages",
+    "prebuild": "npm run seo:pages"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",

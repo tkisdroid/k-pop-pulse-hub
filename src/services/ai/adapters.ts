@@ -4,21 +4,25 @@
  * from internal IDs / display fields, so changing one never silently
  * breaks the other.
  */
-import type {
-  AiArticle, AiArtist, AiMember, AiComeback, AiForumThread,
-} from "@/schemas/ai";
-import type {
-  Article, Artist, Member, ComebackEvent, ForumThread,
-} from "@/types";
+import type { AiArticle, AiArtist, AiMember, AiComeback, AiForumThread } from "@/schemas/ai";
+import type { Article, Artist, Member, ComebackEvent, ForumThread } from "@/types";
 
 const grad = (a: string, b: string, label: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></linearGradient></defs><rect width='800' height='600' fill='url(%23g)'/><text x='50%' y='50%' fill='white' font-family='sans-serif' font-size='44' font-weight='700' text-anchor='middle' dominant-baseline='middle' opacity='0.85'>${label}</text></svg>`
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></linearGradient></defs><rect width='800' height='600' fill='url(%23g)'/><text x='50%' y='50%' fill='white' font-family='sans-serif' font-size='44' font-weight='700' text-anchor='middle' dominant-baseline='middle' opacity='0.85'>${label}</text></svg>`,
   )}`;
 
-const slugToId = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 60);
+const slugToId = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .slice(0, 60);
 
-export function adaptArticle(a: AiArticle, idx: number, artistSlugToId: Map<string, string>): Article {
+export function adaptArticle(
+  a: AiArticle,
+  idx: number,
+  artistSlugToId: Map<string, string>,
+): Article {
   return {
     id: `ai_art_${slugToId(a.slug)}_${idx}`,
     slug: a.slug,
@@ -82,7 +86,11 @@ export function adaptMember(m: AiMember, artistSlugToId: Map<string, string>): M
   };
 }
 
-export function adaptComeback(c: AiComeback, idx: number, artistSlugToId: Map<string, string>): ComebackEvent {
+export function adaptComeback(
+  c: AiComeback,
+  idx: number,
+  artistSlugToId: Map<string, string>,
+): ComebackEvent {
   return {
     id: `ai_cb_${idx}_${slugToId(c.title)}`,
     artistId: artistSlugToId.get(c.artistSlug) ?? `ar_${slugToId(c.artistSlug)}`,

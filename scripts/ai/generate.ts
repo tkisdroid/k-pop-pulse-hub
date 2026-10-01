@@ -18,9 +18,14 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
-  AiArticleSchema, AiArtistSchema, AiMemberSchema,
-  AiComebackSchema, AiChartSchema, AiForumThreadSchema,
-  AiBundleSchema, type Locale,
+  AiArticleSchema,
+  AiArtistSchema,
+  AiMemberSchema,
+  AiComebackSchema,
+  AiChartSchema,
+  AiForumThreadSchema,
+  AiBundleSchema,
+  type Locale,
 } from "../../src/schemas/ai";
 import { SYSTEM_PROMPT, userPromptFor } from "../../src/services/ai/promptTemplates";
 
@@ -35,8 +40,12 @@ const SCHEMAS = {
 type Kind = keyof typeof SCHEMAS;
 
 const FIELD: Record<Kind, keyof z.infer<typeof AiBundleSchema>> = {
-  article: "articles", artist: "artists", member: "members",
-  comeback: "comebacks", chart: "charts", forum_thread: "forumThreads",
+  article: "articles",
+  artist: "artists",
+  member: "members",
+  comeback: "comebacks",
+  chart: "charts",
+  forum_thread: "forumThreads",
 };
 
 type Provider = "openai" | "gemini";
@@ -59,7 +68,10 @@ async function callOpenAi(prompt: string, system: string, model: string): Promis
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
       response_format: { type: "json_object" },
       temperature: 0.8,
     }),
@@ -100,24 +112,35 @@ async function callAi(provider: Provider, kind: Kind, locale: Locale, model: str
 }
 
 async function main() {
-  const provider = (arg("provider", "gemini") as Provider);
+  const provider = arg("provider", "gemini") as Provider;
   if (provider !== "openai" && provider !== "gemini") {
     throw new Error(`Unknown --provider=${provider}. Use 'openai' or 'gemini'.`);
   }
-  const kind = (arg("kind", "article") as Kind);
+  const kind = arg("kind", "article") as Kind;
   const count = Number(arg("count", "3"));
-  const locale = (arg("locale", "en") as Locale);
+  const locale = arg("locale", "en") as Locale;
   const model = arg("model", DEFAULT_MODEL[provider])!;
 
-  if (!SCHEMAS[kind]) throw new Error(`Unknown --kind=${kind}. Allowed: ${Object.keys(SCHEMAS).join(",")}`);
+  if (!SCHEMAS[kind])
+    throw new Error(`Unknown --kind=${kind}. Allowed: ${Object.keys(SCHEMAS).join(",")}`);
 
   const here = dirname(fileURLToPath(import.meta.url));
   const outPath = join(here, "..", "..", "src", "data", "ai-generated", `${locale}.json`);
   mkdirSync(dirname(outPath), { recursive: true });
 
-  let bundle: z.infer<typeof AiBundleSchema> = existsSync(outPath)
+  const bundle: z.infer<typeof AiBundleSchema> = existsSync(outPath)
     ? AiBundleSchema.parse(JSON.parse(readFileSync(outPath, "utf8")))
-    : { generatedAt: new Date().toISOString(), model: `${provider}/${model}`, locale, articles: [], artists: [], members: [], comebacks: [], charts: [], forumThreads: [] };
+    : {
+        generatedAt: new Date().toISOString(),
+        model: `${provider}/${model}`,
+        locale,
+        articles: [],
+        artists: [],
+        members: [],
+        comebacks: [],
+        charts: [],
+        forumThreads: [],
+      };
 
   console.log(`→ Generating ${count}× ${kind} (${locale}) via ${provider}/${model}`);
   for (let i = 0; i < count; i++) {
@@ -126,7 +149,9 @@ async function main() {
       const parsed = SCHEMAS[kind].parse(raw);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (bundle[FIELD[kind]] as any[]).push(parsed);
-      console.log(`  ✓ [${i + 1}/${count}] ${("slug" in parsed && parsed.slug) || ("title" in parsed && parsed.title) || "ok"}`);
+      console.log(
+        `  ✓ [${i + 1}/${count}] ${("slug" in parsed && parsed.slug) || ("title" in parsed && parsed.title) || "ok"}`,
+      );
     } catch (err) {
       console.error(`  ✗ [${i + 1}/${count}]`, err instanceof Error ? err.message : err);
     }
@@ -139,4 +164,7 @@ async function main() {
   console.log(`✔ wrote ${outPath}`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

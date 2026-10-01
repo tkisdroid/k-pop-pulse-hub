@@ -31,9 +31,10 @@ export const demoCommunityProvider: CommunityProvider = {
     const category = input.category
       ? demoData.categories.find((item) => item.slug === input.category)
       : undefined;
-    const items = (category
-      ? demoData.threads.filter((thread) => thread.categoryId === category.id)
-      : demoData.threads
+    const items = (
+      category
+        ? demoData.threads.filter((thread) => thread.categoryId === category.id)
+        : demoData.threads
     ).filter((thread) => !input.artist || (thread.relatedArtistIds ?? []).includes(input.artist));
     return { items, total: items.length, totalPages: 1 };
   },

@@ -6,7 +6,12 @@ export const moderationProvider = {
   name: "demo",
   listReports: async () => reports,
   report: async (input: Omit<Report, "id" | "status" | "createdAt">) => {
-    const r: Report = { ...input, id: `r_${Date.now()}`, status: "pending", createdAt: new Date().toISOString() };
+    const r: Report = {
+      ...input,
+      id: `r_${Date.now()}`,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
     reports.push(r);
     return r;
   },

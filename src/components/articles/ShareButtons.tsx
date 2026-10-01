@@ -27,7 +27,9 @@ export function ShareButtons({ title, url }: { title: string; url?: string }) {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`)}
+        onClick={() =>
+          open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`)
+        }
         aria-label="Share on X"
       >
         <Twitter className="size-3" /> X

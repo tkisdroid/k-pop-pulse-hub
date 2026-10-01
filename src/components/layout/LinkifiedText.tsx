@@ -29,13 +29,24 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
         router.history.push(url.pathname + url.search + url.hash);
       };
       return (
-        <a key={key} href={url.pathname + url.search + url.hash} onClick={onClick} className="text-primary hover:underline">
+        <a
+          key={key}
+          href={url.pathname + url.search + url.hash}
+          onClick={onClick}
+          className="text-primary hover:underline"
+        >
           {label}
         </a>
       );
     }
     return (
-      <a key={key} href={href} target="_blank" rel="nofollow noopener noreferrer" className="underline decoration-muted-foreground/40">
+      <a
+        key={key}
+        href={href}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        className="underline decoration-muted-foreground/40"
+      >
         {label}
       </a>
     );
@@ -59,7 +70,9 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
           <div key={index}>
             {parts.map((part, partIndex) => {
               if (!/^https?:\/\//.test(part)) return part;
-              const label = isSameSite(part) ? new URL(part).pathname : part.replace(/^https?:\/\/(www\.)?/, "");
+              const label = isSameSite(part)
+                ? new URL(part).pathname
+                : part.replace(/^https?:\/\/(www\.)?/, "");
               return renderLink(part, label, `${index}-${partIndex}`);
             })}
           </div>

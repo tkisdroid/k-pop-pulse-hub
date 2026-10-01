@@ -7,7 +7,13 @@ import { useMemo, useState } from "react";
 import { useRuntimeData } from "@/services/cms/runtimeData";
 
 export const Route = createFileRoute("/videos")({
-  head: () => buildHead({ title: "Videos", canonical: "/videos", description: "Watch real K-pop MVs and performances right inside the site, and join the conversation per artist." }),
+  head: () =>
+    buildHead({
+      title: "Videos",
+      canonical: "/videos",
+      description:
+        "Watch real K-pop MVs and performances right inside the site, and join the conversation per artist.",
+    }),
   component: Videos,
 });
 
@@ -15,27 +21,36 @@ function Videos() {
   const { data, isLoading, error } = useRuntimeData();
   const artists = data.artists;
   const [filter, setFilter] = useState<string>("all");
-  const videos = useMemo(
-    () => {
-      if (filter === "all") return data.videos;
-      const artist = data.artists.find((a) => a.id === filter);
-      const keys = new Set([filter, artist?.slug].filter(Boolean));
-      return data.videos.filter((v) => keys.has(v.artistId) || keys.has(v.artistSlug));
-    },
-    [data.videos, data.artists, filter]
-  );
+  const videos = useMemo(() => {
+    if (filter === "all") return data.videos;
+    const artist = data.artists.find((a) => a.id === filter);
+    const keys = new Set([filter, artist?.slug].filter(Boolean));
+    return data.videos.filter((v) => keys.has(v.artistId) || keys.has(v.artistSlug));
+  }, [data.videos, data.artists, filter]);
   // Only offer artist filters that actually have videos.
   const videoArtists = useMemo(
-    () => artists.filter((a) => data.videos.some((v) => v.artistId === a.id || v.artistId === a.slug || v.artistSlug === a.slug)),
-    [artists, data.videos]
+    () =>
+      artists.filter((a) =>
+        data.videos.some(
+          (v) => v.artistId === a.id || v.artistId === a.slug || v.artistSlug === a.slug,
+        ),
+      ),
+    [artists, data.videos],
   );
 
-  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading videos…</div>;
+  if (isLoading)
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading videos…</div>
+    );
   if (error) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{error}</div>;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <SectionHeader eyebrow="Videos" title="MVs, performances & interviews — watch in-site" />
+      <SectionHeader
+        as="h1"
+        eyebrow="Videos"
+        title="MVs, performances & interviews — watch in-site"
+      />
       <AdSlot slotId="videos-top" variant="leaderboard" />
 
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-4">
@@ -58,7 +73,9 @@ function Videos() {
 
       <div data-reveal-children className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {videos.map((v) => {
-          const artist = data.artists.find((a) => a.id === v.artistId || a.slug === v.artistId || a.slug === v.artistSlug);
+          const artist = data.artists.find(
+            (a) => a.id === v.artistId || a.slug === v.artistId || a.slug === v.artistSlug,
+          );
           return (
             <Link
               key={v.id}
@@ -67,21 +84,35 @@ function Videos() {
               className="rounded-xl overflow-hidden bg-card border border-border group"
             >
               <div className="aspect-video relative">
-                <img src={v.thumbnail} alt={v.title} className="size-full object-cover" loading="lazy" />
+                <img
+                  src={v.thumbnail}
+                  alt={v.title}
+                  className="size-full object-cover"
+                  loading="lazy"
+                />
                 <div className="absolute inset-0 grid place-items-center bg-black/30 group-hover:bg-black/50 transition">
                   <Play className="size-12 text-white" />
                 </div>
-                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">{v.duration}</div>
+                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">
+                  {v.duration}
+                </div>
               </div>
               <div className="p-3">
-                <div className="text-xs text-primary uppercase">{v.category}{artist ? ` · ${artist.name}` : ""}</div>
+                <div className="text-xs text-primary uppercase">
+                  {v.category}
+                  {artist ? ` · ${artist.name}` : ""}
+                </div>
                 <div className="font-semibold text-sm line-clamp-2">{v.title}</div>
               </div>
             </Link>
           );
         })}
       </div>
-      {videos.length === 0 && <div className="rounded-xl border border-dashed border-border p-10 text-center text-muted-foreground">No published videos yet.</div>}
+      {videos.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border p-10 text-center text-muted-foreground">
+          No published videos yet.
+        </div>
+      )}
     </div>
   );
 }

@@ -174,7 +174,14 @@ function CategoryPage() {
             >
               <div className="font-semibold">{thread.title}</div>
               <div className="text-xs text-muted-foreground">
-                {[thread.flair, thread.replies ? `${thread.replies} replies` : null, thread.views ? `${thread.views} views` : null, new Date(thread.lastActivityAt || thread.createdAt).toLocaleDateString()].filter(Boolean).join(" · ")}
+                {[
+                  thread.flair,
+                  thread.replies ? `${thread.replies} replies` : null,
+                  thread.views ? `${thread.views} views` : null,
+                  new Date(thread.lastActivityAt || thread.createdAt).toLocaleDateString(),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </div>
             </Link>
           ))}

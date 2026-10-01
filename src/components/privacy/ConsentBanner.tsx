@@ -13,7 +13,11 @@ export function ConsentBanner() {
   });
 
   if (preferences) return null;
-  const adsMode = typeof window !== "undefined" ? (window as typeof window & { kpopblogConfig?: { ads?: { consentMode?: string } } }).kpopblogConfig?.ads?.consentMode : undefined;
+  const adsMode =
+    typeof window !== "undefined"
+      ? (window as typeof window & { kpopblogConfig?: { ads?: { consentMode?: string } } })
+          .kpopblogConfig?.ads?.consentMode
+      : undefined;
   const bannerCopy =
     adsMode === "optout" || adsMode === "google"
       ? "Essential storage keeps the site working; analytics and personalization are optional. Ads from Google AdSense keep KpopBlog free. Choose “Reject optional” to stop personalized ads."
@@ -28,9 +32,7 @@ export function ConsentBanner() {
       <h2 id="consent-title" className="font-display text-lg font-bold">
         Your privacy choices
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {bannerCopy}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{bannerCopy}</p>
 
       {customizing && (
         <fieldset className="mt-4 grid gap-2 sm:grid-cols-2">

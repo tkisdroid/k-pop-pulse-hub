@@ -87,7 +87,7 @@ function buildRuntimeData(bundle: WordPressRuntimeBundle): DemoData {
     categories: bundle.categories,
     comments: [],
     users: [],
-  } as DemoData;
+  };
 }
 
 export function useRuntimeData() {

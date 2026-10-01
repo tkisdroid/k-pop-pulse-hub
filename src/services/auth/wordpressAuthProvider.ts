@@ -18,7 +18,7 @@ function getApiBase(): string {
   if (typeof window !== "undefined" && window.kpopblogConfig?.apiUrl) {
     return window.kpopblogConfig.apiUrl.replace(/\/$/, "");
   }
-  const envUrl = (import.meta as any).env?.VITE_WORDPRESS_API_URL as string | undefined;
+  const envUrl = import.meta.env?.VITE_WORDPRESS_API_URL as string | undefined;
   return (envUrl ?? "").replace(/\/$/, "");
 }
 

@@ -30,5 +30,7 @@ if (container) {
     </StrictMode>,
   );
 } else {
-  console.error("[kpopblog] #kpopblog-root not found in the page — check that the [kpopblog] shortcode or app-shell template rendered it.");
+  console.error(
+    "[kpopblog] #kpopblog-root not found in the page — check that the [kpopblog] shortcode or app-shell template rendered it.",
+  );
 }

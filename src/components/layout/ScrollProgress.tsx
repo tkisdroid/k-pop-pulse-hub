@@ -30,7 +30,11 @@ export function ScrollProgress() {
     <div className="fixed top-0 inset-x-0 z-50 h-[3px] pointer-events-none">
       <div
         className="h-full gradient-neon origin-left transition-[width] duration-150 ease-out"
-        style={{ width: `${pct}%`, boxShadow: pct > 1 ? "0 0 12px color-mix(in oklab, var(--neon-pink) 60%, transparent)" : undefined }}
+        style={{
+          width: `${pct}%`,
+          boxShadow:
+            pct > 1 ? "0 0 12px color-mix(in oklab, var(--neon-pink) 60%, transparent)" : undefined,
+        }}
       />
     </div>
   );

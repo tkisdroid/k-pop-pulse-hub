@@ -7,7 +7,9 @@ export const artistProvider = {
     if (opts?.generation) out = out.filter((a) => a.generation === opts.generation);
     if (opts?.search) {
       const q = opts.search.toLowerCase();
-      out = out.filter((a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q));
+      out = out.filter(
+        (a) => a.name.toLowerCase().includes(q) || a.agency.toLowerCase().includes(q),
+      );
     }
     return out;
   },

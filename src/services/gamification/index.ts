@@ -40,12 +40,48 @@ export interface GamificationStats {
 }
 
 export const BADGES: BadgeDef[] = [
-  { id: "first-read", label: "First Read", description: "Read your first article", emoji: "📰", earn: (s) => s.articlesRead >= 1 },
-  { id: "chatty", label: "Chatty", description: "Posted 10 comments", emoji: "💬", earn: (s) => s.commentsPosted >= 10 },
-  { id: "pollster", label: "Pollster", description: "Voted in 5 polls", emoji: "🗳️", earn: (s) => s.pollsVoted >= 5 },
-  { id: "loyal", label: "Loyal", description: "Following 3+ artists", emoji: "💖", earn: (s) => s.artistsFollowed >= 3 },
-  { id: "streak-7", label: "7-day Streak", description: "Visited 7 days in a row", emoji: "🔥", earn: (s) => s.streakDays >= 7 },
-  { id: "centurion", label: "Centurion", description: "Earned 100+ points", emoji: "🏆", earn: (s) => s.points >= 100 },
+  {
+    id: "first-read",
+    label: "First Read",
+    description: "Read your first article",
+    emoji: "📰",
+    earn: (s) => s.articlesRead >= 1,
+  },
+  {
+    id: "chatty",
+    label: "Chatty",
+    description: "Posted 10 comments",
+    emoji: "💬",
+    earn: (s) => s.commentsPosted >= 10,
+  },
+  {
+    id: "pollster",
+    label: "Pollster",
+    description: "Voted in 5 polls",
+    emoji: "🗳️",
+    earn: (s) => s.pollsVoted >= 5,
+  },
+  {
+    id: "loyal",
+    label: "Loyal",
+    description: "Following 3+ artists",
+    emoji: "💖",
+    earn: (s) => s.artistsFollowed >= 3,
+  },
+  {
+    id: "streak-7",
+    label: "7-day Streak",
+    description: "Visited 7 days in a row",
+    emoji: "🔥",
+    earn: (s) => s.streakDays >= 7,
+  },
+  {
+    id: "centurion",
+    label: "Centurion",
+    description: "Earned 100+ points",
+    emoji: "🏆",
+    earn: (s) => s.points >= 100,
+  },
 ];
 
 const KEY = "kpopblog:gamification";
@@ -66,7 +102,14 @@ type ActivityListener = (a: ActivityEntry[]) => void;
 const activityListeners = new Set<ActivityListener>();
 
 function defaults(): GamificationStats {
-  return { points: 0, articlesRead: 0, commentsPosted: 0, pollsVoted: 0, artistsFollowed: 0, streakDays: 1 };
+  return {
+    points: 0,
+    articlesRead: 0,
+    commentsPosted: 0,
+    pollsVoted: 0,
+    artistsFollowed: 0,
+    streakDays: 1,
+  };
 }
 
 function read(): GamificationStats {
@@ -144,7 +187,10 @@ export const gamification = {
     const current = this.levelOf(points);
     const next = LEVELS.find((l) => l.minPoints > points) ?? null;
     if (!next) return { current, next, pct: 100 };
-    const pct = Math.min(100, ((points - current.minPoints) / (next.minPoints - current.minPoints)) * 100);
+    const pct = Math.min(
+      100,
+      ((points - current.minPoints) / (next.minPoints - current.minPoints)) * 100,
+    );
     return { current, next, pct };
   },
   earnedBadges(): BadgeDef[] {
@@ -152,4 +198,3 @@ export const gamification = {
     return BADGES.filter((b) => b.earn(s));
   },
 };
-

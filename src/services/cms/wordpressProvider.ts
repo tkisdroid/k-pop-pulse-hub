@@ -14,9 +14,12 @@ declare global {
   interface Window {
     kpopblogConfig?: {
       apiUrl?: string;
+      seoPath?: string;
+      seo?: import("@/components/layout/WordPressSeo").Metadata;
       nonce?: string;
       locale?: string;
       registrationEnabled?: boolean;
+      moderation?: { enabled?: boolean; threshold?: number; defaultReason?: string };
       adminUrl?: string;
       branding?: {
         siteName?: string;
@@ -33,11 +36,14 @@ function getApiBase(): string {
   if (typeof window !== "undefined" && window.kpopblogConfig?.apiUrl) {
     return window.kpopblogConfig.apiUrl.replace(/\/$/, "");
   }
-  const envUrl = (import.meta as any).env?.VITE_WORDPRESS_API_URL as string | undefined;
+  const envUrl = import.meta.env?.VITE_WORDPRESS_API_URL as string | undefined;
   return (envUrl ?? "").replace(/\/$/, "");
 }
 
-async function wpFetch<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+async function wpFetch<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+): Promise<T> {
   const base = getApiBase();
   if (!base) throw new Error("WordPress API URL not configured");
   const url = new URL(`${base}${path}`);
@@ -56,14 +62,26 @@ async function wpFetch<T>(path: string, params?: Record<string, string | number 
 async function wpPost<T>(path: string, body: unknown): Promise<T> {
   const base = getApiBase();
   if (!base) throw new Error("WordPress API URL not configured");
-  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
   if (typeof window !== "undefined" && window.kpopblogConfig?.nonce) {
     headers["X-WP-Nonce"] = window.kpopblogConfig.nonce;
   }
-  const res = await fetch(`${base}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  const res = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     let msg = `WP ${res.status}`;
-    try { const j = await res.json(); msg = (j?.message as string) ?? msg; } catch { /* noop */ }
+    try {
+      const j = await res.json();
+      msg = (j?.message as string) ?? msg;
+    } catch {
+      /* noop */
+    }
     throw new Error(msg);
   }
   return (await res.json()) as T;
@@ -80,9 +98,11 @@ export const wordpressCmsProvider: CmsProvider = {
         artist: opts.artistId,
       });
       let out = all;
-      if (opts.category) out = out.filter((a) => a.category?.toLowerCase() === opts.category!.toLowerCase());
+      if (opts.category)
+        out = out.filter((a) => a.category?.toLowerCase() === opts.category!.toLowerCase());
       if (opts.tag) out = out.filter((a) => a.tags?.includes(opts.tag!));
-      if (opts.author) out = out.filter((a) => a.author?.toLowerCase().replace(/\s+/g, "-") === opts.author);
+      if (opts.author)
+        out = out.filter((a) => a.author?.toLowerCase().replace(/\s+/g, "-") === opts.author);
       if (opts.artistId) out = out.filter((a) => a.relatedArtistIds?.includes(opts.artistId!));
       return out;
     } catch (err) {
@@ -102,13 +122,20 @@ export const wordpressCmsProvider: CmsProvider = {
   async getRelated(article, limit = 4) {
     const all = await this.listArticles({ limit: 50 });
     return all
-      .filter((a) => a.id !== article.id && a.relatedArtistIds.some((id) => article.relatedArtistIds.includes(id)))
+      .filter(
+        (a) =>
+          a.id !== article.id &&
+          a.relatedArtistIds.some((id) => article.relatedArtistIds.includes(id)),
+      )
       .slice(0, limit);
   },
 
   async postComment(slug, body, parentId) {
     try {
-      const r = await wpPost<{ id: string; item?: Comment; pending: boolean }>(`/articles/${encodeURIComponent(slug)}/comments`, { body, parentId });
+      const r = await wpPost<{ id: string; item?: Comment; pending: boolean }>(
+        `/articles/${encodeURIComponent(slug)}/comments`,
+        { body, parentId },
+      );
       return { ok: true, id: r.id, item: r.item, pending: r.pending };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
@@ -122,7 +149,10 @@ export const wordpressCmsProvider: CmsProvider = {
   },
   async postVideoComment(slug, body) {
     try {
-      const response = await wpPost<{ item: Comment; pending: boolean }>(`/videos/${encodeURIComponent(slug)}/comments`, { body });
+      const response = await wpPost<{ item: Comment; pending: boolean }>(
+        `/videos/${encodeURIComponent(slug)}/comments`,
+        { body },
+      );
       return { ok: true, item: response.item, pending: response.pending };
     } catch (error) {
       return { ok: false, error: (error as Error).message };
@@ -138,7 +168,10 @@ export const wordpressCmsProvider: CmsProvider = {
   },
   async toggleFollowArtist(slug) {
     try {
-      const r = await wpPost<{ following: boolean; followerCount: number }>(`/artists/${encodeURIComponent(slug)}/follow`, {});
+      const r = await wpPost<{ following: boolean; followerCount: number }>(
+        `/artists/${encodeURIComponent(slug)}/follow`,
+        {},
+      );
       return { ok: true, ...r };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
@@ -147,6 +180,8 @@ export const wordpressCmsProvider: CmsProvider = {
   async recordEngagement(slug, kind) {
     try {
       await wpPost(`/articles/${encodeURIComponent(slug)}/engage`, { kind });
-    } catch { /* fire-and-forget */ }
+    } catch {
+      /* fire-and-forget */
+    }
   },
 };

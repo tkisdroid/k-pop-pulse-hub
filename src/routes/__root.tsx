@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { WordPressSeo } from "@/components/layout/WordPressSeo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -15,14 +16,11 @@ import { localNotifications } from "@/services/notifications/local";
 import { applyBranding } from "@/services/cms/branding";
 import { OfflineBadge } from "@/components/layout/OfflineBadge";
 
-
-
-
 import appCss from "../styles.css?url";
-import { ThemeProvider } from "@/hooks/useTheme";
-import { I18nProvider } from "@/hooks/useI18n";
-import { AuthProviderShell } from "@/hooks/useAuth";
-import { AuthModalProvider } from "@/hooks/useAuthModal";
+import { ThemeProvider } from "@/hooks/useTheme-provider";
+import { I18nProvider } from "@/hooks/useI18n-provider";
+import { AuthProviderShell } from "@/hooks/useAuth-provider";
+import { AuthModalProvider } from "@/hooks/useAuthModal-provider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
@@ -41,7 +39,12 @@ function NotFoundComponent() {
       <div className="text-center max-w-md">
         <h1 className="font-display text-7xl font-bold text-gradient">404</h1>
         <p className="mt-3 text-muted-foreground">This page slipped past the editorial desk.</p>
-        <Link to="/" className="mt-6 inline-block px-4 py-2 rounded-md bg-primary text-primary-foreground">Go home</Link>
+        <Link
+          to="/"
+          className="mt-6 inline-block px-4 py-2 rounded-md bg-primary text-primary-foreground"
+        >
+          Go home
+        </Link>
       </div>
     </div>
   );
@@ -55,75 +58,120 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       <div className="text-center max-w-md">
         <h1 className="font-display text-2xl font-bold">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        <button onClick={() => { router.invalidate(); reset(); }} className="mt-4 px-4 py-2 rounded-md bg-primary text-primary-foreground">Try again</button>
+        <button
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
+          className="mt-4 px-4 py-2 rounded-md bg-primary text-primary-foreground"
+        >
+          Try again
+        </button>
       </div>
     </div>
   );
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "KpopBlog — Your global K-pop newsroom & fan community" },
-      { name: "description", content: "K-pop news, artist profiles, comeback calendar, polls and a global fan community." },
-      { property: "og:site_name", content: "KpopBlog" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "theme-color", content: "#0b0b10" },
-      { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "KpopBlog" },
-      { property: "og:title", content: "KpopBlog — Your global K-pop newsroom & fan community" },
-      { name: "twitter:title", content: "KpopBlog — Your global K-pop newsroom & fan community" },
-      { property: "og:description", content: "K-pop news, artist profiles, comeback calendar, polls and a global fan community." },
-      { name: "twitter:description", content: "K-pop news, artist profiles, comeback calendar, polls and a global fan community." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6721dee1-7db1-470d-9b4a-9b64bee83dce/id-preview-c52c7d88--3e7e127a-4cbd-416b-a231-b65744f0784c.lovable.app-1779623625548.png" },
-    ],
-    links: typeof window !== "undefined" && window.kpopblogConfig?.apiUrl ? [] : [
-      { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png?v=2" },
-      { rel: "icon", type: "image/x-icon", href: "/favicon.ico?v=2" },
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg?v=2" },
-      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=2" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" },
-      { rel: "alternate", type: "application/rss+xml", title: "KpopBlog — Latest news", href: "/rss.xml" },
-      { rel: "sitemap", type: "application/xml", href: "/sitemap.xml" },
-
-    ],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: "KpopBlog",
-          url: "/",
-          description: "Global K-pop news and fan community.",
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: "KpopBlog",
-          url: "/",
-          potentialAction: {
-            "@type": "SearchAction",
-            target: "/search?q={search_term_string}",
-            "query-input": "required name=search_term_string",
-          },
-        }),
-      },
-    ],
-  }),
+  head: () =>
+    typeof window !== "undefined" && window.kpopblogConfig?.apiUrl
+      ? {}
+      : {
+          meta: [
+            { charSet: "utf-8" },
+            { name: "viewport", content: "width=device-width, initial-scale=1" },
+            { title: "KpopBlog — Your global K-pop newsroom & fan community" },
+            {
+              name: "description",
+              content:
+                "K-pop news, artist profiles, comeback calendar, polls and a global fan community.",
+            },
+            { property: "og:site_name", content: "KpopBlog" },
+            { property: "og:type", content: "website" },
+            { name: "twitter:card", content: "summary_large_image" },
+            { name: "theme-color", content: "#0b0b10" },
+            { name: "mobile-web-app-capable", content: "yes" },
+            { name: "apple-mobile-web-app-capable", content: "yes" },
+            { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+            { name: "apple-mobile-web-app-title", content: "KpopBlog" },
+            {
+              property: "og:title",
+              content: "KpopBlog — Your global K-pop newsroom & fan community",
+            },
+            {
+              name: "twitter:title",
+              content: "KpopBlog — Your global K-pop newsroom & fan community",
+            },
+            {
+              property: "og:description",
+              content:
+                "K-pop news, artist profiles, comeback calendar, polls and a global fan community.",
+            },
+            {
+              name: "twitter:description",
+              content:
+                "K-pop news, artist profiles, comeback calendar, polls and a global fan community.",
+            },
+            {
+              property: "og:image",
+              content: "https://thekpopblog.com/og-default.jpg",
+            },
+            {
+              name: "twitter:image",
+              content: "https://thekpopblog.com/og-default.jpg",
+            },
+          ],
+          links:
+            typeof window !== "undefined" && window.kpopblogConfig?.apiUrl
+              ? []
+              : [
+                  { rel: "stylesheet", href: appCss },
+                  { rel: "manifest", href: "/manifest.webmanifest" },
+                  { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png?v=2" },
+                  { rel: "icon", type: "image/x-icon", href: "/favicon.ico?v=2" },
+                  { rel: "icon", type: "image/svg+xml", href: "/favicon.svg?v=2" },
+                  { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=2" },
+                  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+                  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
+                  {
+                    rel: "stylesheet",
+                    href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
+                  },
+                  {
+                    rel: "alternate",
+                    type: "application/rss+xml",
+                    title: "KpopBlog — Latest news",
+                    href: "/rss.xml",
+                  },
+                  { rel: "sitemap", type: "application/xml", href: "/sitemap.xml" },
+                ],
+          scripts: [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: "KpopBlog",
+                url: "https://thekpopblog.com/",
+                description: "Global K-pop news and fan community.",
+              }),
+            },
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "KpopBlog",
+                url: "https://thekpopblog.com/",
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: "https://thekpopblog.com/search?q={search_term_string}",
+                  "query-input": "required name=search_term_string",
+                },
+              }),
+            },
+          ],
+        },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -147,8 +195,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
   }
   return (
     <html lang="en" className="dark">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
@@ -172,8 +225,6 @@ function RootComponent() {
     registerPwa();
     localNotifications.hydrate();
   }, [queryClient]);
-
-
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -203,6 +254,7 @@ function RootComponent() {
               <AuthModal />
               <ConsentBanner />
               <TrafficTracker />
+              <WordPressSeo />
             </AuthModalProvider>
           </AuthProviderShell>
         </I18nProvider>

@@ -38,7 +38,12 @@ function Onboarding() {
     setSaving(true);
     setError(null);
     try {
-      await communityProvider.updateProfile({ displayName: user.displayName, bio: user.bio, country: country.trim(), language: lang });
+      await communityProvider.updateProfile({
+        displayName: user.displayName,
+        bio: user.bio,
+        country: country.trim(),
+        language: lang,
+      });
       const existing = new Set(user.followedArtists);
       for (const artistId of followed) {
         const artist = data.artists.find((item) => item.id === artistId);
@@ -60,20 +65,52 @@ function Onboarding() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <div className="flex gap-1 mb-6">{STEPS.map((s, i) => <div key={s} className={`flex-1 h-1 rounded-full ${i <= step ? "gradient-neon" : "bg-muted"}`} />)}</div>
+      <div className="flex gap-1 mb-6">
+        {STEPS.map((s, i) => (
+          <div
+            key={s}
+            className={`flex-1 h-1 rounded-full ${i <= step ? "gradient-neon" : "bg-muted"}`}
+          />
+        ))}
+      </div>
       <h1 className="font-display text-3xl font-bold mb-1">{STEPS[step]}</h1>
       <div className="mt-4 p-4 rounded-xl bg-card border border-border">
         {step === 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {Object.entries(localeMeta).map(([k, m]) => <button key={k} onClick={() => setLang(k)} className={`p-2 rounded-md text-sm ${lang === k ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{m.label}</button>)}
+            {Object.entries(localeMeta).map(([k, m]) => (
+              <button
+                key={k}
+                onClick={() => setLang(k)}
+                className={`p-2 rounded-md text-sm ${lang === k ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
         )}
-        {step === 1 && <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country / region" className="w-full h-10 px-3 rounded-md bg-background border border-input" />}
+        {step === 1 && (
+          <input
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            placeholder="Country / region"
+            className="w-full h-10 px-3 rounded-md bg-background border border-input"
+          />
+        )}
         {step === 2 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {data.artists.map((a) => {
               const on = followed.includes(a.id);
-              return <button key={a.id} onClick={() => setFollowed(on ? followed.filter((x) => x !== a.id) : [...followed, a.id])} className={`p-2 rounded-md text-sm ${on ? "bg-primary text-primary-foreground" : "bg-accent"}`}>{a.name}</button>;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() =>
+                    setFollowed(on ? followed.filter((x) => x !== a.id) : [...followed, a.id])
+                  }
+                  className={`p-2 rounded-md text-sm ${on ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+                >
+                  {a.name}
+                </button>
+              );
             })}
           </div>
         )}
@@ -86,19 +123,49 @@ function Onboarding() {
               <li>Label rumors and provide sources</li>
               <li>No impersonation, spam, or scam links</li>
             </ul>
-            <label className="flex items-center gap-2 mt-3"><input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> I agree to the community guidelines</label>
+            <label className="flex items-center gap-2 mt-3">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />{" "}
+              I agree to the community guidelines
+            </label>
           </div>
         )}
         {step === 4 && (
           <div className="space-y-2 text-sm">
-            {(["breaking", "comebacks"] as const).map((k) => <label key={k} className="flex items-center justify-between p-2 rounded bg-accent"><span className="capitalize">{k}</span><input type="checkbox" checked={notif[k]} onChange={(e) => setNotif({ ...notif, [k]: e.target.checked })} /></label>)}
+            {(["breaking", "comebacks"] as const).map((k) => (
+              <label key={k} className="flex items-center justify-between p-2 rounded bg-accent">
+                <span className="capitalize">{k}</span>
+                <input
+                  type="checkbox"
+                  checked={notif[k]}
+                  onChange={(e) => setNotif({ ...notif, [k]: e.target.checked })}
+                />
+              </label>
+            ))}
           </div>
         )}
       </div>
-      {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <div className="mt-6 flex justify-between">
-        <Button variant="outline" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Back</Button>
-        {step < STEPS.length - 1 ? <Button onClick={() => setStep((s) => s + 1)} disabled={step === 3 && !agreed}>Next</Button> : <Button onClick={() => void finish()} disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />} Finish</Button>}
+        <Button variant="outline" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
+          Back
+        </Button>
+        {step < STEPS.length - 1 ? (
+          <Button onClick={() => setStep((s) => s + 1)} disabled={step === 3 && !agreed}>
+            Next
+          </Button>
+        ) : (
+          <Button onClick={() => void finish()} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Finish
+          </Button>
+        )}
       </div>
     </div>
   );

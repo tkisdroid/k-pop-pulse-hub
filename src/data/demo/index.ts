@@ -1,4 +1,19 @@
-import type { Artist, Member, Article, ForumCategory, ForumThread, ForumPost, ComebackEvent, Poll, User, CommunityPost, Badge, Comment, Notification } from "@/types";
+import type {
+  Artist,
+  Member,
+  Article,
+  ForumCategory,
+  ForumThread,
+  ForumPost,
+  ComebackEvent,
+  Poll,
+  User,
+  CommunityPost,
+  Badge,
+  Comment,
+  Notification,
+  Video,
+} from "@/types";
 
 // Stylized, copyright-safe concept art per artist (no real likenesses).
 import imgBts from "@/assets/artists/bts.jpg";
@@ -41,11 +56,10 @@ const artistImageBySlug: Record<string, string> = {
 // (members, generic comeback covers, author avatars, etc.).
 const grad = (a: string, b: string, label: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></linearGradient></defs><rect width='800' height='600' fill='url(%23g)'/><text x='50%' y='50%' fill='white' font-family='sans-serif' font-size='56' font-weight='800' text-anchor='middle' dominant-baseline='middle' opacity='0.92'>${label}</text></svg>`
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='${a}'/><stop offset='1' stop-color='${b}'/></linearGradient></defs><rect width='800' height='600' fill='url(%23g)'/><text x='50%' y='50%' fill='white' font-family='sans-serif' font-size='56' font-weight='800' text-anchor='middle' dominant-baseline='middle' opacity='0.92'>${label}</text></svg>`,
   )}`;
 
 export const placeholderImg = grad;
-
 
 // ---------- Real artists ----------
 type ArtistSeed = [
@@ -64,66 +78,267 @@ type ArtistSeed = [
 ];
 
 const artistSeeds: ArtistSeed[] = [
-  ["bts", "BTS", "방탄소년단", "boy_group", "BIGHIT MUSIC (HYBE)", "2013-06-13", 3, "ARMY", "#7B68EE", "#3A1F8E", 75_000_000,
-    "Seven-member group whose genre-spanning catalog and global advocacy made them the first K-pop act to top the Billboard 200 and headline UN events."],
-  ["blackpink", "BLACKPINK", "블랙핑크", "girl_group", "YG Entertainment", "2016-08-08", 3, "BLINK", "#FF1493", "#000000", 56_000_000,
-    "Four-member group that broke records as the first K-pop girl group to headline Coachella and tour stadiums worldwide."],
-  ["newjeans", "NewJeans", "뉴진스", "girl_group", "ADOR", "2022-07-22", 4, "Bunnies", "#87CEEB", "#1E3A8A", 12_500_000,
-    "Five-member group that redefined Y2K nostalgia in 4th generation K-pop with viral debut tracks 'Attention' and 'Hype Boy'."],
-  ["le-sserafim", "LE SSERAFIM", "르세라핌", "girl_group", "Source Music (HYBE)", "2022-05-02", 4, "FEARNOT", "#6B5B95", "#1A1147", 9_800_000,
-    "Five-member group whose name is an anagram of 'I'm Fearless,' known for confident anthems like 'Antifragile' and 'EASY'."],
-  ["aespa", "aespa", "에스파", "girl_group", "SM Entertainment", "2020-11-17", 4, "MY", "#00E5FF", "#0A2540", 15_200_000,
-    "Four-member group built around a hybrid metaverse concept, with hits 'Next Level,' 'Spicy,' and 'Supernova.'"],
-  ["ive", "IVE", "아이브", "girl_group", "Starship Entertainment", "2021-12-01", 4, "DIVE", "#4B0082", "#FFD700", 11_400_000,
-    "Six-member group that debuted with 'ELEVEN' and dominated 2022–2024 charts via 'LOVE DIVE,' 'After LIKE,' and 'I AM.'"],
-  ["stray-kids", "Stray Kids", "스트레이 키즈", "boy_group", "JYP Entertainment", "2018-03-25", 4, "STAY", "#DC143C", "#1A1A1A", 22_000_000,
-    "Self-producing eight-member group that scored five consecutive No. 1 debuts on the Billboard 200."],
-  ["twice", "TWICE", "트와이스", "girl_group", "JYP Entertainment", "2015-10-20", 3, "ONCE", "#FF69B4", "#FF8C00", 18_700_000,
-    "Nine-member group whose discography from 'TT' to 'I CAN'T STOP ME' set the template for late-2010s K-pop pop."],
-  ["seventeen", "SEVENTEEN", "세븐틴", "boy_group", "PLEDIS Entertainment (HYBE)", "2015-05-26", 3, "CARAT", "#FFB6C1", "#FFFFFF", 20_300_000,
-    "Self-producing 13-member group split into vocal, hip-hop, and performance units; broke first-week sales records with 'FML' and '17 IS RIGHT HERE.'"],
-  ["itzy", "ITZY", "있지", "girl_group", "JYP Entertainment", "2019-02-12", 4, "MIDZY", "#FF4500", "#2E0066", 9_200_000,
-    "Five-member group that debuted with 'DALLA DALLA' and built a catalog around self-love anthems."],
-  ["riize", "RIIZE", "라이즈", "boy_group", "SM Entertainment", "2023-09-04", 5, "BRIIZE", "#FFD700", "#0A1F44", 4_500_000,
-    "Seven-member group blending emo-pop and R&B; debuted with 'Get A Guitar' and 'Memories.'"],
-  ["enhypen", "ENHYPEN", "엔하이픈", "boy_group", "BELIFT LAB (HYBE)", "2020-11-30", 4, "ENGENE", "#B22222", "#0A0A0A", 11_800_000,
-    "Seven-member group formed via 'I-LAND,' with anthems 'Bite Me,' 'Sweet Venom' and 'XO (Only If You Say Yes).'"],
-  ["iu", "IU", "아이유", "soloist", "EDAM Entertainment", "2008-09-18", 2, "UAENA", "#E91E63", "#4A0033", 28_400_000,
-    "Singer-songwriter and actress widely regarded as Korea's 'nation's little sister'; record-holding solo concert artist."],
-  ["txt", "TOMORROW X TOGETHER", "투모로우바이투게더", "boy_group", "BIGHIT MUSIC (HYBE)", "2019-03-04", 4, "MOA", "#87CEFA", "#1E3A8A", 14_900_000,
-    "Five-member coming-of-age concept group; 'Sugar Rush Ride,' 'Chasing That Feeling' and 'Deja Vu' became global hits."],
-  ["gidle", "(G)I-DLE", "(여자)아이들", "girl_group", "CUBE Entertainment", "2018-05-02", 4, "NEVERLAND", "#C71585", "#2D0033", 10_100_000,
-    "Self-producing five-member group; 'TOMBOY,' 'Queencard' and 'Super Lady' defined their 2022–2024 run."],
-  ["zerobaseone", "ZEROBASEONE", "제로베이스원", "boy_group", "WAKEONE", "2023-07-10", 5, "ZEROSE", "#1E90FF", "#0A0033", 5_600_000,
-    "Nine-member group formed through 'Boys Planet'; debuted with the million-seller 'YOUTH IN THE SHADE.'"],
+  [
+    "bts",
+    "BTS",
+    "방탄소년단",
+    "boy_group",
+    "BIGHIT MUSIC (HYBE)",
+    "2013-06-13",
+    3,
+    "ARMY",
+    "#7B68EE",
+    "#3A1F8E",
+    75_000_000,
+    "Seven-member group whose genre-spanning catalog and global advocacy made them the first K-pop act to top the Billboard 200 and headline UN events.",
+  ],
+  [
+    "blackpink",
+    "BLACKPINK",
+    "블랙핑크",
+    "girl_group",
+    "YG Entertainment",
+    "2016-08-08",
+    3,
+    "BLINK",
+    "#FF1493",
+    "#000000",
+    56_000_000,
+    "Four-member group that broke records as the first K-pop girl group to headline Coachella and tour stadiums worldwide.",
+  ],
+  [
+    "newjeans",
+    "NewJeans",
+    "뉴진스",
+    "girl_group",
+    "ADOR",
+    "2022-07-22",
+    4,
+    "Bunnies",
+    "#87CEEB",
+    "#1E3A8A",
+    12_500_000,
+    "Five-member group that redefined Y2K nostalgia in 4th generation K-pop with viral debut tracks 'Attention' and 'Hype Boy'.",
+  ],
+  [
+    "le-sserafim",
+    "LE SSERAFIM",
+    "르세라핌",
+    "girl_group",
+    "Source Music (HYBE)",
+    "2022-05-02",
+    4,
+    "FEARNOT",
+    "#6B5B95",
+    "#1A1147",
+    9_800_000,
+    "Five-member group whose name is an anagram of 'I'm Fearless,' known for confident anthems like 'Antifragile' and 'EASY'.",
+  ],
+  [
+    "aespa",
+    "aespa",
+    "에스파",
+    "girl_group",
+    "SM Entertainment",
+    "2020-11-17",
+    4,
+    "MY",
+    "#00E5FF",
+    "#0A2540",
+    15_200_000,
+    "Four-member group built around a hybrid metaverse concept, with hits 'Next Level,' 'Spicy,' and 'Supernova.'",
+  ],
+  [
+    "ive",
+    "IVE",
+    "아이브",
+    "girl_group",
+    "Starship Entertainment",
+    "2021-12-01",
+    4,
+    "DIVE",
+    "#4B0082",
+    "#FFD700",
+    11_400_000,
+    "Six-member group that debuted with 'ELEVEN' and dominated 2022–2024 charts via 'LOVE DIVE,' 'After LIKE,' and 'I AM.'",
+  ],
+  [
+    "stray-kids",
+    "Stray Kids",
+    "스트레이 키즈",
+    "boy_group",
+    "JYP Entertainment",
+    "2018-03-25",
+    4,
+    "STAY",
+    "#DC143C",
+    "#1A1A1A",
+    22_000_000,
+    "Self-producing eight-member group that scored five consecutive No. 1 debuts on the Billboard 200.",
+  ],
+  [
+    "twice",
+    "TWICE",
+    "트와이스",
+    "girl_group",
+    "JYP Entertainment",
+    "2015-10-20",
+    3,
+    "ONCE",
+    "#FF69B4",
+    "#FF8C00",
+    18_700_000,
+    "Nine-member group whose discography from 'TT' to 'I CAN'T STOP ME' set the template for late-2010s K-pop pop.",
+  ],
+  [
+    "seventeen",
+    "SEVENTEEN",
+    "세븐틴",
+    "boy_group",
+    "PLEDIS Entertainment (HYBE)",
+    "2015-05-26",
+    3,
+    "CARAT",
+    "#FFB6C1",
+    "#FFFFFF",
+    20_300_000,
+    "Self-producing 13-member group split into vocal, hip-hop, and performance units; broke first-week sales records with 'FML' and '17 IS RIGHT HERE.'",
+  ],
+  [
+    "itzy",
+    "ITZY",
+    "있지",
+    "girl_group",
+    "JYP Entertainment",
+    "2019-02-12",
+    4,
+    "MIDZY",
+    "#FF4500",
+    "#2E0066",
+    9_200_000,
+    "Five-member group that debuted with 'DALLA DALLA' and built a catalog around self-love anthems.",
+  ],
+  [
+    "riize",
+    "RIIZE",
+    "라이즈",
+    "boy_group",
+    "SM Entertainment",
+    "2023-09-04",
+    5,
+    "BRIIZE",
+    "#FFD700",
+    "#0A1F44",
+    4_500_000,
+    "Seven-member group blending emo-pop and R&B; debuted with 'Get A Guitar' and 'Memories.'",
+  ],
+  [
+    "enhypen",
+    "ENHYPEN",
+    "엔하이픈",
+    "boy_group",
+    "BELIFT LAB (HYBE)",
+    "2020-11-30",
+    4,
+    "ENGENE",
+    "#B22222",
+    "#0A0A0A",
+    11_800_000,
+    "Seven-member group formed via 'I-LAND,' with anthems 'Bite Me,' 'Sweet Venom' and 'XO (Only If You Say Yes).'",
+  ],
+  [
+    "iu",
+    "IU",
+    "아이유",
+    "soloist",
+    "EDAM Entertainment",
+    "2008-09-18",
+    2,
+    "UAENA",
+    "#E91E63",
+    "#4A0033",
+    28_400_000,
+    "Singer-songwriter and actress widely regarded as Korea's 'nation's little sister'; record-holding solo concert artist.",
+  ],
+  [
+    "txt",
+    "TOMORROW X TOGETHER",
+    "투모로우바이투게더",
+    "boy_group",
+    "BIGHIT MUSIC (HYBE)",
+    "2019-03-04",
+    4,
+    "MOA",
+    "#87CEFA",
+    "#1E3A8A",
+    14_900_000,
+    "Five-member coming-of-age concept group; 'Sugar Rush Ride,' 'Chasing That Feeling' and 'Deja Vu' became global hits.",
+  ],
+  [
+    "gidle",
+    "(G)I-DLE",
+    "(여자)아이들",
+    "girl_group",
+    "CUBE Entertainment",
+    "2018-05-02",
+    4,
+    "NEVERLAND",
+    "#C71585",
+    "#2D0033",
+    10_100_000,
+    "Self-producing five-member group; 'TOMBOY,' 'Queencard' and 'Super Lady' defined their 2022–2024 run.",
+  ],
+  [
+    "zerobaseone",
+    "ZEROBASEONE",
+    "제로베이스원",
+    "boy_group",
+    "WAKEONE",
+    "2023-07-10",
+    5,
+    "ZEROSE",
+    "#1E90FF",
+    "#0A0033",
+    5_600_000,
+    "Nine-member group formed through 'Boys Planet'; debuted with the million-seller 'YOUTH IN THE SHADE.'",
+  ],
 ];
 
-const artistsData: Artist[] = artistSeeds.map(([slug, name, korean, type, agency, debut, generation, fandom, c1, c2, followers, bio], i) => ({
-  id: `ar_${i + 1}`,
-  slug,
-  name,
-  koreanName: korean,
-  type,
-  agency,
-  debutDate: debut,
-  fandomName: fandom,
-  generation,
-  status: "active",
-  nationality: "South Korea",
-  bio,
-  image: artistImageBySlug[slug] ?? grad(c1, c2, name),
-  followerCount: followers,
-  memberIds: [],
-  socialLinks: {
-    official: `https://${slug.replace(/-/g, "")}.official.example`,
-    youtube: `https://youtube.com/@${slug.replace(/-/g, "")}`,
-    instagram: `https://instagram.com/${slug.replace(/-/g, "")}`,
-    x: `https://x.com/${slug.replace(/-/g, "")}`,
-  },
-}));
+const artistsData: Artist[] = artistSeeds.map(
+  ([slug, name, korean, type, agency, debut, generation, fandom, c1, c2, followers, bio], i) => ({
+    id: `ar_${i + 1}`,
+    slug,
+    name,
+    koreanName: korean,
+    type,
+    agency,
+    debutDate: debut,
+    fandomName: fandom,
+    generation,
+    status: "active",
+    nationality: "South Korea",
+    bio,
+    image: artistImageBySlug[slug] ?? grad(c1, c2, name),
+    followerCount: followers,
+    memberIds: [],
+    socialLinks: {
+      official: `https://${slug.replace(/-/g, "")}.official.example`,
+      youtube: `https://youtube.com/@${slug.replace(/-/g, "")}`,
+      instagram: `https://instagram.com/${slug.replace(/-/g, "")}`,
+      x: `https://x.com/${slug.replace(/-/g, "")}`,
+    },
+  }),
+);
 
 // ---------- Real members ----------
-type MemberSeed = [stage: string, korean: string, birthday: string, nationality: string, position: string[], mbti?: string];
+type MemberSeed = [
+  stage: string,
+  korean: string,
+  birthday: string,
+  nationality: string,
+  position: string[],
+  mbti?: string,
+];
 
 const memberRoster: Record<string, MemberSeed[]> = {
   bts: [
@@ -138,8 +353,22 @@ const memberRoster: Record<string, MemberSeed[]> = {
   blackpink: [
     ["Jisoo", "김지수", "1995-01-03", "Korean", ["Vocalist", "Visual"], "ISFP"],
     ["Jennie", "제니", "1996-01-16", "Korean", ["Main Rapper", "Lead Vocalist"], "ENFP"],
-    ["Rosé", "박채영", "1997-02-11", "New Zealander–Korean", ["Main Vocalist", "Lead Dancer"], "ESFP"],
-    ["Lisa", "ลลิษา มโนบาล", "1997-03-27", "Thai", ["Main Dancer", "Lead Rapper", "Maknae"], "ENFP"],
+    [
+      "Rosé",
+      "박채영",
+      "1997-02-11",
+      "New Zealander–Korean",
+      ["Main Vocalist", "Lead Dancer"],
+      "ESFP",
+    ],
+    [
+      "Lisa",
+      "ลลิษา มโนบาล",
+      "1997-03-27",
+      "Thai",
+      ["Main Dancer", "Lead Rapper", "Maknae"],
+      "ENFP",
+    ],
   ],
   newjeans: [
     ["Minji", "김민지", "2004-05-07", "Korean", ["Leader", "Vocalist"], "INFJ"],
@@ -275,7 +504,11 @@ artistsData.forEach((artist) => {
       position,
       mbti,
       image: grad("#1a1040", "#ff6b9d", stage),
-      facts: [`Member of ${artist.name}`, `Position: ${position.join(", ")}`, `Debut: ${new Date(artist.debutDate).toLocaleDateString()}`],
+      facts: [
+        `Member of ${artist.name}`,
+        `Position: ${position.join(", ")}`,
+        `Debut: ${new Date(artist.debutDate).toLocaleDateString()}`,
+      ],
     });
     artist.memberIds.push(id);
   });
@@ -322,7 +555,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "BTS reunite as a full group for first time since military service concluded",
     subtitle: "All seven members complete mandatory enlistment and confirm 2026 group projects.",
-    excerpt: "With Suga's discharge in June 2025, BTS officially reunited as a seven-member group for the first time in nearly three years — and HYBE has now confirmed group activities are underway.",
+    excerpt:
+      "With Suga's discharge in June 2025, BTS officially reunited as a seven-member group for the first time in nearly three years — and HYBE has now confirmed group activities are underway.",
     body: "<p>After Jin became the first member discharged from mandatory military service in <strong>June 2024</strong>, the remaining members of BTS — J-Hope, RM, V, Jimin, Jungkook and Suga — completed their enlistment periods on a rolling schedule that wrapped up in mid-2025.</p><h2>What's next</h2><p>HYBE has confirmed full-group activities for 2026, including new music and a world tour. The group's last full studio album was 'Proof' (2022) before the members entered service one by one.</p><h2>Solo runs continue</h2><p>Each member built a substantial solo catalog during the hiatus: Jimin's 'FACE' and 'MUSE,' Jungkook's 'GOLDEN,' Suga's Agust D trilogy concluding with 'D-DAY,' V's 'Layover,' RM's 'Right Place, Wrong Person,' J-Hope's 'HOPE ON THE STREET' and Jin's 'Happy.'</p><blockquote>\"We promised ARMY we'd come back together, and we're keeping that promise.\"</blockquote>",
     category: "Music",
     tags: ["bts", "comeback", "hybe", "military"],
@@ -336,7 +570,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "BLACKPINK announce 'DEADLINE' world tour with first stadium dates in Seoul",
     subtitle: "Group renews with YG for group activities while solo contracts remain separate.",
-    excerpt: "BLACKPINK return to the stage with the 'DEADLINE' tour, opening at Seoul's Goyang Stadium before a multi-continent run.",
+    excerpt:
+      "BLACKPINK return to the stage with the 'DEADLINE' tour, opening at Seoul's Goyang Stadium before a multi-continent run.",
     body: "<p>YG Entertainment confirmed BLACKPINK's reunion tour, titled <strong>'DEADLINE,'</strong> with opening shows at Goyang Stadium in July 2025 followed by stops across North America, Europe and Asia.</p><h2>The group-vs-solo split</h2><p>All four members — Jisoo, Jennie, Rosé and Lisa — renewed for group activities only. Jisoo launched BLISSOO, Jennie founded ODD ATELIER, Rosé signed with Atlantic Records, and Lisa launched LLOUD.</p><h2>New music</h2><p>The tour is expected to coincide with the group's first new music since 'BORN PINK' (2022).</p>",
     category: "Tour",
     tags: ["blackpink", "tour", "yg"],
@@ -349,8 +584,10 @@ const articleSeeds: ArticleSeed[] = [
   },
   {
     title: "NewJeans–ADOR dispute: the timeline so far",
-    subtitle: "From Min Hee-jin's removal to contract termination claims and ongoing court hearings.",
-    excerpt: "A breakdown of every major development in the dispute between NewJeans and ADOR, from spring 2024 through the latest court rulings.",
+    subtitle:
+      "From Min Hee-jin's removal to contract termination claims and ongoing court hearings.",
+    excerpt:
+      "A breakdown of every major development in the dispute between NewJeans and ADOR, from spring 2024 through the latest court rulings.",
     body: "<p>The conflict between NewJeans and ADOR — a HYBE sublabel — escalated when CEO <strong>Min Hee-jin</strong> was removed in August 2024. The members held a public press conference in November 2024 declaring their exclusive contracts terminated.</p><h2>Court status</h2><p>Seoul courts have since issued multiple injunctions ordering the members to honor their contracts while the broader case proceeds. The members briefly performed independently under the name 'NJZ' before pausing activities.</p><h2>What fans should know</h2><p>Bunnies have organized peaceful support actions globally. The legal process is expected to continue throughout 2026.</p>",
     category: "Business",
     tags: ["newjeans", "ador", "hybe", "industry"],
@@ -362,9 +599,11 @@ const articleSeeds: ArticleSeed[] = [
     readingTime: 8,
   },
   {
-    title: "aespa's 'Supernova' becomes longest-running No. 1 by a girl group on Circle Digital Chart",
+    title:
+      "aespa's 'Supernova' becomes longest-running No. 1 by a girl group on Circle Digital Chart",
     subtitle: "The lead single from 'Armageddon' continues its multi-month chart run.",
-    excerpt: "aespa's 'Supernova' has cemented its place in K-pop history, becoming the longest-running No. 1 by a girl group on Korea's Circle Digital Chart.",
+    excerpt:
+      "aespa's 'Supernova' has cemented its place in K-pop history, becoming the longest-running No. 1 by a girl group on Korea's Circle Digital Chart.",
     body: "<p>Released in May 2024 as the pre-release single from <strong>'Armageddon,'</strong> 'Supernova' has dominated Korean streaming and download charts well into 2025, eventually breaking Brave Girls' 'Rollin'' record for longest girl-group chart reign.</p><h2>Tour update</h2><p>The group's 'Synk: Parallel Line' world tour — their largest production to date — wrapped its first leg in late 2024 and continues with additional dates announced for 2026.</p>",
     category: "Charts",
     tags: ["aespa", "sm", "charts"],
@@ -378,7 +617,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "Stray Kids extend Billboard 200 streak with sixth consecutive No. 1 album",
     subtitle: "The self-producing octet continues a record unprecedented for any K-pop act.",
-    excerpt: "Stray Kids have now charted six consecutive studio releases at No. 1 on the Billboard 200 — a streak no other K-pop group has matched.",
+    excerpt:
+      "Stray Kids have now charted six consecutive studio releases at No. 1 on the Billboard 200 — a streak no other K-pop group has matched.",
     body: "<p>From <strong>'ODDINARY'</strong> (2022) through their latest release, Stray Kids have debuted at No. 1 on the Billboard 200 every time — a streak that includes 'MAXIDENT,' '5-STAR,' 'ROCK-STAR,' 'ATE' and the most recent project.</p><h2>Touring engine</h2><p>The 'dominATE' world tour has played stadiums across the US, Europe, Japan and Latin America, including back-to-back nights at Citi Field, Tokyo Dome and Estadio Vélez Sarsfield.</p>",
     category: "Charts",
     tags: ["stray-kids", "jyp", "billboard"],
@@ -391,8 +631,10 @@ const articleSeeds: ArticleSeed[] = [
   },
   {
     title: "LE SSERAFIM's 'EASY' era closes with confirmed first headlining world tour",
-    subtitle: "Source Music details an expanded global itinerary built around 'EASY,' 'CRAZY' and 'HOT.'",
-    excerpt: "Source Music has confirmed LE SSERAFIM's first headlining world tour, with stops across Asia, North America and Europe.",
+    subtitle:
+      "Source Music details an expanded global itinerary built around 'EASY,' 'CRAZY' and 'HOT.'",
+    excerpt:
+      "Source Music has confirmed LE SSERAFIM's first headlining world tour, with stops across Asia, North America and Europe.",
     body: "<p>The 'EASY' mini-album cycle marked a creative turning point for LE SSERAFIM, swapping the maximalist concepts of <strong>'UNFORGIVEN'</strong> for stripped-back, smoky production. Follow-up singles 'CRAZY' and 'HOT' reinforced the group's pivot to a sleeker sound.</p><h2>Tour details</h2><p>The tour opens in Seoul before traveling to Tokyo, Singapore, Los Angeles, New York, London and Paris. Presale begins for FEARNOT membership holders before general onsale.</p>",
     category: "Tour",
     tags: ["le-sserafim", "hybe", "tour"],
@@ -406,7 +648,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "IVE confirm full-group return after solo and acting projects",
     subtitle: "Starship sets release window after Wonyoung, Yujin and Liz solo activities.",
-    excerpt: "After a spread of solo activities — including Wonyoung's first single and Yujin and Liz's acting projects — IVE return as a full group.",
+    excerpt:
+      "After a spread of solo activities — including Wonyoung's first single and Yujin and Liz's acting projects — IVE return as a full group.",
     body: "<p>Following <strong>'IVE SWITCH'</strong> and 'IVE EMPATHY,' IVE took a brief group hiatus to allow members to pursue solo projects. Wonyoung released her digital single, while Yujin and Liz took on acting roles.</p><h2>What to expect</h2><p>Starship has confirmed the full-group release window and a domestic fan-concert series, with international dates to follow.</p>",
     category: "Comeback",
     tags: ["ive", "starship", "comeback"],
@@ -420,7 +663,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "TWICE break Spotify record as longest-charting K-pop girl group",
     subtitle: "Nine years in, 'TT,' 'Fancy' and 'Feel Special' continue to gain new listeners.",
-    excerpt: "TWICE have surpassed every other K-pop girl group on Spotify for cumulative monthly listeners across their full discography.",
+    excerpt:
+      "TWICE have surpassed every other K-pop girl group on Spotify for cumulative monthly listeners across their full discography.",
     body: "<p>TWICE's catalog — anchored by <strong>'TT,' 'Fancy,' 'Feel Special'</strong> and the more recent 'SET ME FREE' and 'ONE SPARK' — has built a remarkably durable audience on Spotify, with the group passing key milestone listener counts across 2025.</p><h2>Tour and sub-units</h2><p>The 'READY TO BE' world tour wrapped one of the highest-grossing runs ever by a K-pop girl group, and sub-units MISAMO, IM NAYEON and JIHYO continue to release solo material.</p>",
     category: "Charts",
     tags: ["twice", "jyp", "spotify"],
@@ -434,7 +678,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "SEVENTEEN's '17 IS RIGHT HERE' surpasses 5 million copies sold worldwide",
     subtitle: "The 13-member group's best-of compilation becomes one of K-pop's biggest sellers.",
-    excerpt: "SEVENTEEN's 'BEST ALBUM 17 IS RIGHT HERE' has crossed 5 million units globally, cementing the group's position as one of K-pop's top-selling acts.",
+    excerpt:
+      "SEVENTEEN's 'BEST ALBUM 17 IS RIGHT HERE' has crossed 5 million units globally, cementing the group's position as one of K-pop's top-selling acts.",
     body: "<p>SEVENTEEN's best-of compilation <strong>'17 IS RIGHT HERE'</strong> — anchored by 'MAESTRO' and 'LALALI' — has continued to sell through 2024–2025, joining 'FML' and 'SEVENTEENTH HEAVEN' in the group's million-seller streak.</p><h2>Member activities</h2><p>The Hip-Hop and Vocal units have released solo and unit material, including Woozi's solo work and Hoshi x Woozi's HxW unit project.</p>",
     category: "Sales",
     tags: ["seventeen", "hybe", "pledis"],
@@ -447,8 +692,10 @@ const articleSeeds: ArticleSeed[] = [
   },
   {
     title: "IU sells out HER world tour with stadium dates in Seoul, LA and London",
-    subtitle: "The 'nation's little sister' returns to the global stage with her largest tour to date.",
-    excerpt: "Lee Ji-eun (IU)'s 'HER' world tour has sold out across multiple continents, including her largest-ever Seoul date at Seoul World Cup Stadium.",
+    subtitle:
+      "The 'nation's little sister' returns to the global stage with her largest tour to date.",
+    excerpt:
+      "Lee Ji-eun (IU)'s 'HER' world tour has sold out across multiple continents, including her largest-ever Seoul date at Seoul World Cup Stadium.",
     body: "<p>IU continues to expand her live footprint, with the <strong>'HER'</strong> world tour selling out venues across Asia, North America and Europe. The Seoul opener was held at Seoul World Cup Stadium — making her the first Korean female solo artist to headline the venue.</p><h2>Discography note</h2><p>Tour set draws from across her catalog — 'Palette,' 'Blueming,' 'LILAC,' 'strawberry moon,' 'Love wins all,' 'Shopper' and the recent mini-album.</p>",
     category: "Tour",
     tags: ["iu", "solo", "tour"],
@@ -462,7 +709,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "TOMORROW X TOGETHER chart globally with 'minisode 3: TOMORROW'",
     subtitle: "The fifth Korean mini-album debuts at No. 2 on the Billboard 200.",
-    excerpt: "TXT's 'minisode 3: TOMORROW' continues the group's run of Billboard 200 top-five debuts, anchored by lead single 'Deja Vu.'",
+    excerpt:
+      "TXT's 'minisode 3: TOMORROW' continues the group's run of Billboard 200 top-five debuts, anchored by lead single 'Deja Vu.'",
     body: "<p>TOMORROW X TOGETHER continued their streak of high Billboard 200 debuts with the mini-album <strong>'minisode 3: TOMORROW,'</strong> led by single 'Deja Vu.' The group also released the Japanese album 'Star Chaser' and continue the 'ACT: PROMISE' world tour.</p>",
     category: "Charts",
     tags: ["txt", "hybe", "billboard"],
@@ -476,7 +724,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "(G)I-DLE's 'Super Lady' becomes one of 2024's most-streamed K-pop b-sides",
     subtitle: "Soyeon's self-produced anthem extends the group's PMA run.",
-    excerpt: "Self-producing leader Soyeon continues to write hits for (G)I-DLE, with 'Super Lady' joining 'TOMBOY' and 'Queencard' in the group's PMA catalog.",
+    excerpt:
+      "Self-producing leader Soyeon continues to write hits for (G)I-DLE, with 'Super Lady' joining 'TOMBOY' and 'Queencard' in the group's PMA catalog.",
     body: "<p>(G)I-DLE's <strong>'Super Lady'</strong> — written and produced by leader Soyeon — became one of the most-streamed K-pop b-sides of 2024 and a Perfect All-Kill on Korean charts. The group's most recent project explores a darker, R&B-leaning sound.</p>",
     category: "Music",
     tags: ["gidle", "cube", "self-producing"],
@@ -490,7 +739,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "RIIZE's 'Boom Boom Bass' goes viral, propelling 'RIIZING' to million-seller status",
     subtitle: "SM's new boy group reaches their first million-seller within a year of debut.",
-    excerpt: "RIIZE's first mini-album 'RIIZING' crossed one million copies sold, driven by the viral chorus of 'Boom Boom Bass.'",
+    excerpt:
+      "RIIZE's first mini-album 'RIIZING' crossed one million copies sold, driven by the viral chorus of 'Boom Boom Bass.'",
     body: "<p>SM's youngest boy group <strong>RIIZE</strong> reached million-seller status with the mini-album 'RIIZING,' which compiled their pre-release singles ('Get A Guitar,' 'Talk Saxy,' 'Impossible,' 'Love 119') with new lead 'Boom Boom Bass.'</p><h2>Member update</h2><p>Following SM's mid-2024 announcement, RIIZE continues as a six-member group, with the recent return of member Seunghan in 2025.</p>",
     category: "Music",
     tags: ["riize", "sm", "debut"],
@@ -504,7 +754,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "ENHYPEN's 'ROMANCE : UNTOLD' becomes their biggest first-week seller",
     subtitle: "The second studio album crosses 2.7 million copies in its opening week.",
-    excerpt: "ENHYPEN's second studio album 'ROMANCE : UNTOLD' opened with a career-best sales week, debuting at No. 2 on the Billboard 200.",
+    excerpt:
+      "ENHYPEN's second studio album 'ROMANCE : UNTOLD' opened with a career-best sales week, debuting at No. 2 on the Billboard 200.",
     body: "<p>ENHYPEN's second studio album <strong>'ROMANCE : UNTOLD'</strong> — led by single 'XO (Only If You Say Yes)' — opened with the group's biggest sales week to date and earned a Billboard 200 No. 2 debut.</p><h2>WALK THE LINE</h2><p>The 'WALK THE LINE' world tour added stadium dates after multiple sellouts.</p>",
     category: "Sales",
     tags: ["enhypen", "hybe", "belift"],
@@ -518,7 +769,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "ITZY renew with JYP and confirm full-group activities continue",
     subtitle: "All five members signed group-activity renewals while exploring individual paths.",
-    excerpt: "ITZY have signed renewals with JYP Entertainment for group activities, with members free to negotiate solo deals separately.",
+    excerpt:
+      "ITZY have signed renewals with JYP Entertainment for group activities, with members free to negotiate solo deals separately.",
     body: "<p>JYP confirmed that all five ITZY members renewed their group-activity contracts. The group celebrated by releasing the mini-album <strong>'GOLD,'</strong> a return to a brighter, dance-pop sound after the 'BORN TO BE' era.</p>",
     category: "Business",
     tags: ["itzy", "jyp", "contract"],
@@ -532,7 +784,8 @@ const articleSeeds: ArticleSeed[] = [
   {
     title: "ZEROBASEONE wrap final activities ahead of contract conclusion",
     subtitle: "WAKEONE confirms the project group's final album and farewell concerts.",
-    excerpt: "Project group ZEROBASEONE, formed via Mnet's 'Boys Planet,' is preparing its final activities ahead of contract expiration.",
+    excerpt:
+      "Project group ZEROBASEONE, formed via Mnet's 'Boys Planet,' is preparing its final activities ahead of contract expiration.",
     body: "<p>As a project group with a defined contract length, <strong>ZEROBASEONE</strong> are preparing for their final activities. WAKEONE has confirmed a farewell album and concert series; individual members are expected to debut in new groups or as soloists thereafter.</p>",
     category: "Business",
     tags: ["zerobaseone", "wakeone", "project-group"],
@@ -549,7 +802,11 @@ const articlesData: Article[] = articleSeeds.map((s, i) => {
   const artist = artistsData.find((a) => a.slug === s.artistSlug)!;
   return {
     id: `art_${i + 1}`,
-    slug: s.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80),
+    slug: s.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80),
     title: s.title,
     subtitle: s.subtitle,
     excerpt: s.excerpt,
@@ -574,18 +831,102 @@ const articlesData: Article[] = articleSeeds.map((s, i) => {
 
 // ---------- Users ----------
 const usersData: User[] = [
-  { id: "u_1", username: "armybunny", displayName: "ARMY Bunny", email: "member@kpopblog.test", role: "member", trustLevel: 2, points: 320, badges: ["b_1", "b_2"], followedArtists: ["ar_1", "ar_3"], createdAt: new Date(Date.now() - 90 * 86400000).toISOString(), avatar: grad("#7B68EE", "#FF1493", "A"), country: "US", language: "en" },
-  { id: "u_2", username: "blinkmod", displayName: "BLINK Mod", email: "mod@kpopblog.test", role: "moderator", trustLevel: 4, points: 1840, badges: ["b_1", "b_5", "b_8"], followedArtists: ["ar_2"], createdAt: new Date(Date.now() - 365 * 86400000).toISOString(), avatar: grad("#FF1493", "#000000", "B"), country: "PH", language: "en" },
-  { id: "u_3", username: "stay4skz", displayName: "STAY Editor", email: "editor@kpopblog.test", role: "editor", trustLevel: 4, points: 2400, badges: ["b_1", "b_4"], followedArtists: ["ar_7"], createdAt: new Date(Date.now() - 540 * 86400000).toISOString(), avatar: grad("#DC143C", "#1A1A1A", "S"), country: "KR", language: "ko" },
-  { id: "u_4", username: "kpopblog_admin", displayName: "Editorial Admin", email: "admin@kpopblog.test", role: "admin", trustLevel: 5, points: 8200, badges: ["b_1", "b_5", "b_7", "b_8"], followedArtists: ["ar_1", "ar_2", "ar_5"], createdAt: new Date(Date.now() - 720 * 86400000).toISOString(), avatar: grad("#a06bff", "#ff6b9d", "K"), country: "KR", language: "en" },
-  { id: "u_5", username: "mybyaespa", displayName: "MY Forever", email: "my@kpopblog.test", role: "trusted_member", trustLevel: 3, points: 720, badges: ["b_2", "b_3"], followedArtists: ["ar_5"], createdAt: new Date(Date.now() - 200 * 86400000).toISOString(), avatar: grad("#00E5FF", "#0A2540", "M"), country: "JP", language: "ja" },
+  {
+    id: "u_1",
+    username: "armybunny",
+    displayName: "ARMY Bunny",
+    email: "member@kpopblog.test",
+    role: "member",
+    trustLevel: 2,
+    points: 320,
+    badges: ["b_1", "b_2"],
+    followedArtists: ["ar_1", "ar_3"],
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+    avatar: grad("#7B68EE", "#FF1493", "A"),
+    country: "US",
+    language: "en",
+  },
+  {
+    id: "u_2",
+    username: "blinkmod",
+    displayName: "BLINK Mod",
+    email: "mod@kpopblog.test",
+    role: "moderator",
+    trustLevel: 4,
+    points: 1840,
+    badges: ["b_1", "b_5", "b_8"],
+    followedArtists: ["ar_2"],
+    createdAt: new Date(Date.now() - 365 * 86400000).toISOString(),
+    avatar: grad("#FF1493", "#000000", "B"),
+    country: "PH",
+    language: "en",
+  },
+  {
+    id: "u_3",
+    username: "stay4skz",
+    displayName: "STAY Editor",
+    email: "editor@kpopblog.test",
+    role: "editor",
+    trustLevel: 4,
+    points: 2400,
+    badges: ["b_1", "b_4"],
+    followedArtists: ["ar_7"],
+    createdAt: new Date(Date.now() - 540 * 86400000).toISOString(),
+    avatar: grad("#DC143C", "#1A1A1A", "S"),
+    country: "KR",
+    language: "ko",
+  },
+  {
+    id: "u_4",
+    username: "kpopblog_admin",
+    displayName: "Editorial Admin",
+    email: "admin@kpopblog.test",
+    role: "admin",
+    trustLevel: 5,
+    points: 8200,
+    badges: ["b_1", "b_5", "b_7", "b_8"],
+    followedArtists: ["ar_1", "ar_2", "ar_5"],
+    createdAt: new Date(Date.now() - 720 * 86400000).toISOString(),
+    avatar: grad("#a06bff", "#ff6b9d", "K"),
+    country: "KR",
+    language: "en",
+  },
+  {
+    id: "u_5",
+    username: "mybyaespa",
+    displayName: "MY Forever",
+    email: "my@kpopblog.test",
+    role: "trusted_member",
+    trustLevel: 3,
+    points: 720,
+    badges: ["b_2", "b_3"],
+    followedArtists: ["ar_5"],
+    createdAt: new Date(Date.now() - 200 * 86400000).toISOString(),
+    avatar: grad("#00E5FF", "#0A2540", "M"),
+    country: "JP",
+    language: "ja",
+  },
 ];
 
 // ---------- Forum threads ----------
 const threadsData: ForumThread[] = [
-  ["BTS full-group reunion: what we hope to hear on the comeback album", "cat_2", "ar_1", "Megathread", true],
+  [
+    "BTS full-group reunion: what we hope to hear on the comeback album",
+    "cat_2",
+    "ar_1",
+    "Megathread",
+    true,
+  ],
   ["BLACKPINK DEADLINE tour: ticket lottery results & swap thread", "cat_5", "ar_2", "Help"],
-  ["NewJeans / ADOR situation — please cite sources only", "cat_3", "ar_3", "News", true, false, true],
+  [
+    "NewJeans / ADOR situation — please cite sources only",
+    "cat_3",
+    "ar_3",
+    "News",
+    true,
+    false,
+    true,
+  ],
   ["aespa Supernova chart longevity — how did we get here?", "cat_1", "ar_5", "Analysis"],
   ["Stray Kids dominATE tour reaction: Seoul Night 1", "cat_5", "ar_7", "Concert"],
   ["LE SSERAFIM 'CRAZY' choreography breakdown", "cat_1", "ar_4", "Analysis"],
@@ -599,10 +940,23 @@ const threadsData: ForumThread[] = [
   ["ENHYPEN ROMANCE : UNTOLD listening party recap", "cat_2", "ar_12", "Discussion"],
   ["Weekly: Which 5th gen group are you watching closest?", "cat_1", "ar_11", "Weekly", true],
 ].map((row, i) => {
-  const [title, categoryId, authorId, flair, pinned, locked, official, rumor] = row as [string, string, string, string, boolean?, boolean?, boolean?, boolean?];
+  const [title, categoryId, authorId, flair, pinned, locked, official, rumor] = row as [
+    string,
+    string,
+    string,
+    string,
+    boolean?,
+    boolean?,
+    boolean?,
+    boolean?,
+  ];
   return {
     id: `th_${i + 1}`,
-    slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70),
+    slug: title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 70),
     categoryId,
     title,
     body: "Welcome to this discussion. Please keep it civil, cite sources for news, and tag spoilers where appropriate.",
@@ -642,16 +996,70 @@ threadsData.forEach((t) => {
 
 // ---------- Comebacks (real-world style upcoming events) ----------
 const comebacksData: ComebackEvent[] = [
-  ["ar_1", "BTS — Group comeback album", "album", 21, "First full-group studio album since 'Proof' (2022)."],
-  ["ar_2", "BLACKPINK — DEADLINE Tour Seoul", "concert", 5, "Opening night of the 2025–2026 world tour at Goyang Stadium."],
-  ["ar_5", "aespa — Synk: Parallel Line Asia Leg", "concert", 14, "Second leg of the world tour with new Tokyo Dome dates."],
-  ["ar_7", "Stray Kids — dominATE Final Leg", "concert", 9, "Final dominATE world-tour shows in Europe."],
-  ["ar_4", "LE SSERAFIM — Headlining World Tour Seoul", "concert", 28, "First headlining world tour kickoff in Seoul."],
-  ["ar_6", "IVE — Full-group return", "album", 19, "Comeback after solo activities by Wonyoung, Yujin and Liz."],
+  [
+    "ar_1",
+    "BTS — Group comeback album",
+    "album",
+    21,
+    "First full-group studio album since 'Proof' (2022).",
+  ],
+  [
+    "ar_2",
+    "BLACKPINK — DEADLINE Tour Seoul",
+    "concert",
+    5,
+    "Opening night of the 2025–2026 world tour at Goyang Stadium.",
+  ],
+  [
+    "ar_5",
+    "aespa — Synk: Parallel Line Asia Leg",
+    "concert",
+    14,
+    "Second leg of the world tour with new Tokyo Dome dates.",
+  ],
+  [
+    "ar_7",
+    "Stray Kids — dominATE Final Leg",
+    "concert",
+    9,
+    "Final dominATE world-tour shows in Europe.",
+  ],
+  [
+    "ar_4",
+    "LE SSERAFIM — Headlining World Tour Seoul",
+    "concert",
+    28,
+    "First headlining world tour kickoff in Seoul.",
+  ],
+  [
+    "ar_6",
+    "IVE — Full-group return",
+    "album",
+    19,
+    "Comeback after solo activities by Wonyoung, Yujin and Liz.",
+  ],
   ["ar_13", "IU — HER World Tour London", "concert", 34, "London date of the HER world tour."],
-  ["ar_11", "RIIZE — New mini-album", "album", 12, "Follow-up to 'RIIZING' featuring the full seven-member lineup."],
-  ["ar_14", "TXT — ACT : PROMISE encore concerts", "concert", 42, "Encore dates added after global tour sellouts."],
-  ["ar_12", "ENHYPEN — WALK THE LINE Final Encore", "concert", 7, "Final encore concert of the WALK THE LINE world tour."],
+  [
+    "ar_11",
+    "RIIZE — New mini-album",
+    "album",
+    12,
+    "Follow-up to 'RIIZING' featuring the full seven-member lineup.",
+  ],
+  [
+    "ar_14",
+    "TXT — ACT : PROMISE encore concerts",
+    "concert",
+    42,
+    "Encore dates added after global tour sellouts.",
+  ],
+  [
+    "ar_12",
+    "ENHYPEN — WALK THE LINE Final Encore",
+    "concert",
+    7,
+    "Final encore concert of the WALK THE LINE world tour.",
+  ],
 ].map(([artistId, title, type, days, description], i) => ({
   id: `cb_${i + 1}`,
   artistId: artistId as string,
@@ -666,7 +1074,9 @@ const comebacksData: ComebackEvent[] = [
 // ---------- Polls ----------
 const pollsData: Poll[] = [
   {
-    id: "po_1", slug: "best-comeback-2026-q2", title: "Best comeback of 2026 so far?",
+    id: "po_1",
+    slug: "best-comeback-2026-q2",
+    title: "Best comeback of 2026 so far?",
     options: [
       { id: "o1", label: "BTS — full-group reunion", votes: 28_400 },
       { id: "o2", label: "BLACKPINK — DEADLINE", votes: 24_900 },
@@ -676,7 +1086,9 @@ const pollsData: Poll[] = [
     totalVotes: 88_200,
   },
   {
-    id: "po_2", slug: "most-anticipated-tour", title: "Which tour are you most hyped for?",
+    id: "po_2",
+    slug: "most-anticipated-tour",
+    title: "Which tour are you most hyped for?",
     options: [
       { id: "o1", label: "BLACKPINK DEADLINE", votes: 14_300 },
       { id: "o2", label: "IU HER World Tour", votes: 11_900 },
@@ -686,7 +1098,9 @@ const pollsData: Poll[] = [
     totalVotes: 42_800,
   },
   {
-    id: "po_3", slug: "song-of-the-week", title: "Song of the week?",
+    id: "po_3",
+    slug: "song-of-the-week",
+    title: "Song of the week?",
     options: [
       { id: "o1", label: "aespa — Supernova", votes: 8_400 },
       { id: "o2", label: "ENHYPEN — XO (Only If You Say Yes)", votes: 6_700 },
@@ -696,7 +1110,9 @@ const pollsData: Poll[] = [
     totalVotes: 26_200,
   },
   {
-    id: "po_4", slug: "favorite-generation", title: "Favorite K-pop generation?",
+    id: "po_4",
+    slug: "favorite-generation",
+    title: "Favorite K-pop generation?",
     options: [
       { id: "o1", label: "2nd gen (TVXQ, Girls' Generation, BIGBANG)", votes: 11_300 },
       { id: "o2", label: "3rd gen (BTS, BLACKPINK, TWICE, SEVENTEEN)", votes: 19_700 },
@@ -706,7 +1122,9 @@ const pollsData: Poll[] = [
     totalVotes: 62_300,
   },
   {
-    id: "po_5", slug: "best-debut-2023-2024", title: "Best debut of 2023–2024?",
+    id: "po_5",
+    slug: "best-debut-2023-2024",
+    title: "Best debut of 2023–2024?",
     options: [
       { id: "o1", label: "RIIZE (SM)", votes: 6_900 },
       { id: "o2", label: "ZEROBASEONE (WAKEONE)", votes: 5_800 },
@@ -743,14 +1161,62 @@ const communityWallData: CommunityPost[] = communityWallBodies.map((body, i) => 
 
 // ---------- Badges ----------
 const badgesData: Badge[] = [
-  { id: "b_1", name: "First Post", description: "Made your first contribution", icon: "✨", color: "#ff6b9d" },
-  { id: "b_2", name: "Comeback Watcher", description: "Tracked 5+ comebacks", icon: "🎵", color: "#6b8eff" },
-  { id: "b_3", name: "Translation Helper", description: "Helped translate fan posts", icon: "🌐", color: "#6bd4ff" },
-  { id: "b_4", name: "Artist Expert", description: "Deep knowledge of a specific artist", icon: "🎤", color: "#a06bff" },
-  { id: "b_5", name: "Trusted Fan", description: "Reached trust level 4", icon: "🛡️", color: "#6bffb8" },
-  { id: "b_6", name: "Helpful Reporter", description: "Filed accurate reports", icon: "🚨", color: "#ff6b6b" },
-  { id: "b_7", name: "Poll Voter", description: "Voted in 10+ polls", icon: "🗳️", color: "#ffd56b" },
-  { id: "b_8", name: "Community Builder", description: "Started discussions that grew", icon: "🌟", color: "#ff3060" },
+  {
+    id: "b_1",
+    name: "First Post",
+    description: "Made your first contribution",
+    icon: "✨",
+    color: "#ff6b9d",
+  },
+  {
+    id: "b_2",
+    name: "Comeback Watcher",
+    description: "Tracked 5+ comebacks",
+    icon: "🎵",
+    color: "#6b8eff",
+  },
+  {
+    id: "b_3",
+    name: "Translation Helper",
+    description: "Helped translate fan posts",
+    icon: "🌐",
+    color: "#6bd4ff",
+  },
+  {
+    id: "b_4",
+    name: "Artist Expert",
+    description: "Deep knowledge of a specific artist",
+    icon: "🎤",
+    color: "#a06bff",
+  },
+  {
+    id: "b_5",
+    name: "Trusted Fan",
+    description: "Reached trust level 4",
+    icon: "🛡️",
+    color: "#6bffb8",
+  },
+  {
+    id: "b_6",
+    name: "Helpful Reporter",
+    description: "Filed accurate reports",
+    icon: "🚨",
+    color: "#ff6b6b",
+  },
+  {
+    id: "b_7",
+    name: "Poll Voter",
+    description: "Voted in 10+ polls",
+    icon: "🗳️",
+    color: "#ffd56b",
+  },
+  {
+    id: "b_8",
+    name: "Community Builder",
+    description: "Started discussions that grew",
+    icon: "🌟",
+    color: "#ff3060",
+  },
 ];
 
 // ---------- Comments ----------
@@ -769,19 +1235,52 @@ const commentsData: Comment[] = articlesData.flatMap((a) =>
     body,
     reactions: 4 + i * 2,
     createdAt: new Date(Date.now() - i * 600000).toISOString(),
-  }))
+  })),
 );
 
 // ---------- Notifications ----------
 const notificationsData: Notification[] = [
-  { id: "n_1", userId: "u_1", type: "reply", body: "BLINK Mod replied to your BTS reunion thread", url: `/thread/${threadsData[0].slug}`, read: false, createdAt: new Date().toISOString() },
-  { id: "n_2", userId: "u_1", type: "comeback", body: "BLACKPINK DEADLINE Seoul opens in 5 days", url: "/comebacks", read: false, createdAt: new Date().toISOString() },
-  { id: "n_3", userId: "u_1", type: "follow", body: "MY Forever followed you", read: true, createdAt: new Date().toISOString() },
-  { id: "n_4", userId: "u_1", type: "mention", body: "New: aespa 'Supernova' breaks Circle chart record", url: `/news/${articlesData[3].slug}`, read: false, createdAt: new Date().toISOString() },
+  {
+    id: "n_1",
+    userId: "u_1",
+    type: "reply",
+    body: "BLINK Mod replied to your BTS reunion thread",
+    url: `/thread/${threadsData[0].slug}`,
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "n_2",
+    userId: "u_1",
+    type: "comeback",
+    body: "BLACKPINK DEADLINE Seoul opens in 5 days",
+    url: "/comebacks",
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "n_3",
+    userId: "u_1",
+    type: "follow",
+    body: "MY Forever followed you",
+    read: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "n_4",
+    userId: "u_1",
+    type: "mention",
+    body: "New: aespa 'Supernova' breaks Circle chart record",
+    url: `/news/${articlesData[3].slug}`,
+    read: false,
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 // ---------- Videos (real YouTube IDs so they can be embedded in-site) ----------
-const videoSeeds: Array<[slug: string, title: string, category: string, youtubeId: string, duration: string]> = [
+const videoSeeds: Array<
+  [slug: string, title: string, category: string, youtubeId: string, duration: string]
+> = [
   ["bts", "BTS — 'Dynamite' Official MV", "MV", "gdZLi9oWNZg", "3:43"],
   ["bts", "BTS — 'Butter' Official MV", "MV", "WMweEpGlu_U", "3:55"],
   ["bts", "BTS — 'Boy With Luv' feat. Halsey", "MV", "XsX3ATc3FbA", "3:50"],
@@ -827,7 +1326,7 @@ const videoSeeds: Array<[slug: string, title: string, category: string, youtubeI
   ["zerobaseone", "ZEROBASEONE — 'CRUSH' MV", "MV", "ddPbsGy26IM", "3:16"],
 ];
 
-const videosData = videoSeeds.map(([slug, title, category, youtubeId, duration], i) => {
+const videosData: Video[] = videoSeeds.map(([slug, title, category, youtubeId, duration], i) => {
   const a = artistsData.find((x) => x.slug === slug)!;
   return {
     id: `v_${i + 1}`,

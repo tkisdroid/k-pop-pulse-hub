@@ -14,6 +14,15 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react-vendor";
+          },
+        },
+      },
+    },
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
@@ -78,7 +87,8 @@ export default defineConfig({
             {
               urlPattern: ({ url }) =>
                 url.hostname.endsWith(".supabase.co") &&
-                (url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/storage/v1/object/public/")),
+                (url.pathname.startsWith("/rest/v1/") ||
+                  url.pathname.startsWith("/storage/v1/object/public/")),
               handler: "NetworkFirst",
               options: {
                 cacheName: "supabase-read",
@@ -87,7 +97,6 @@ export default defineConfig({
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
-
           ],
         },
       }),

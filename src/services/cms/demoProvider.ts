@@ -17,13 +17,17 @@ export const demoCmsProvider: CmsProvider = {
   name: "demo",
   async listArticles(opts = {}) {
     let out = await mergedArticles();
-    if (opts.category) out = out.filter((a) => a.category.toLowerCase() === opts.category!.toLowerCase());
+    if (opts.category)
+      out = out.filter((a) => a.category.toLowerCase() === opts.category!.toLowerCase());
     if (opts.tag) out = out.filter((a) => a.tags.includes(opts.tag!));
-    if (opts.author) out = out.filter((a) => a.author.toLowerCase().replace(/\s+/g, "-") === opts.author);
+    if (opts.author)
+      out = out.filter((a) => a.author.toLowerCase().replace(/\s+/g, "-") === opts.author);
     if (opts.artistId) out = out.filter((a) => a.relatedArtistIds.includes(opts.artistId!));
     if (opts.search) {
       const q = opts.search.toLowerCase();
-      out = out.filter((a) => a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q));
+      out = out.filter(
+        (a) => a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q),
+      );
     }
     if (opts.limit) out = out.slice(0, opts.limit);
     return out;
@@ -35,7 +39,11 @@ export const demoCmsProvider: CmsProvider = {
   async getRelated(article, limit = 4) {
     const all = await mergedArticles();
     return all
-      .filter((a) => a.id !== article.id && a.relatedArtistIds.some((id) => article.relatedArtistIds.includes(id)))
+      .filter(
+        (a) =>
+          a.id !== article.id &&
+          a.relatedArtistIds.some((id) => article.relatedArtistIds.includes(id)),
+      )
       .slice(0, limit);
   },
 };
