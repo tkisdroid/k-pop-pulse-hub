@@ -22,6 +22,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 const KPOPBLOG_APP_TEMPLATE = 'kpopblog-app';
 
+/** Versioned icon URLs refresh browser/CDN caches on plugin upgrades. */
+function kpopblog_icon_url( $filename ) {
+	return add_query_arg( 'ver', KPOPBLOG_VERSION, KPOPBLOG_URL . 'icons/' . $filename );
+}
+
+// WordPress admin, login, and theme pages need a fallback too. Respect custom site icons.
+add_filter( 'get_site_icon_url', function ( $url, $size ) {
+	return $url ? $url : kpopblog_icon_url( $size >= 180 ? ( $size >= 512 ? 'icon-512.png' : 'apple-touch-icon.png' ) : 'favicon-32.png' );
+}, 10, 2 );
+
 function kpopblog_register_page_template( $templates ) {
 	$templates[ KPOPBLOG_APP_TEMPLATE ] = 'KpopBlog App (full page)';
 	return $templates;

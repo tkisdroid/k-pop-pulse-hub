@@ -7,7 +7,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-const KPOPBLOG_SCHEMA_VERSION = '1.4.0';
+const KPOPBLOG_SCHEMA_VERSION = '1.5.0';
 
 /**
  * Create or update plugin-owned tables and capabilities.
@@ -133,6 +133,18 @@ function kpopblog_install_or_upgrade() {
 	dbDelta( $notification_jobs_sql );
 	dbDelta( $automation_runs_sql );
 	dbDelta( $automation_items_sql );
+	dbDelta( "CREATE TABLE {$wpdb->prefix}kb_traffic (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		event_hash char(64) NOT NULL,
+		visitor_hash char(64) NOT NULL,
+		visit_date date NOT NULL,
+		path varchar(500) NOT NULL,
+		created_at datetime NOT NULL,
+		PRIMARY KEY  (id),
+		UNIQUE KEY event_hash (event_hash),
+		KEY date_visitor (visit_date,visitor_hash),
+		KEY created_at (created_at)
+	) {$charset_collate};" );
 	if ( function_exists( 'kpopblog_migrate_legacy_newsletter_tokens' ) ) {
 		kpopblog_migrate_legacy_newsletter_tokens();
 	}
