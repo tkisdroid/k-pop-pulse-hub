@@ -75,7 +75,10 @@ function logicalPlacement(slotId: string) {
 }
 
 /** Whether ads may load under the configured consent mode, and whether they must be non-personalized. */
-function adConsent(ads: AdsConfig | undefined, preferences: ReturnType<typeof useConsent>["preferences"]) {
+function adConsent(
+  ads: AdsConfig | undefined,
+  preferences: ReturnType<typeof useConsent>["preferences"],
+) {
   if (!ads) return { allowed: false, nonPersonalized: false };
   if (ads.consentMode === "google") return { allowed: true, nonPersonalized: false };
   if (ads.consentMode === "optout") {
@@ -87,10 +90,14 @@ function adConsent(ads: AdsConfig | undefined, preferences: ReturnType<typeof us
 
 function ensureAdSenseScript(publisherId: string, nonPersonalized = false) {
   const id = "kpopblog-app-adsense-runtime";
-  const adsWindow = window as AdSenseWindow & { adsbygoogle?: { requestNonPersonalizedAds?: number } };
+  const adsWindow = window as AdSenseWindow & {
+    adsbygoogle?: { requestNonPersonalizedAds?: number };
+  };
   if (nonPersonalized) {
     adsWindow.adsbygoogle = adsWindow.adsbygoogle ?? [];
-    (adsWindow.adsbygoogle as unknown as { requestNonPersonalizedAds?: number }).requestNonPersonalizedAds = 1;
+    (
+      adsWindow.adsbygoogle as unknown as { requestNonPersonalizedAds?: number }
+    ).requestNonPersonalizedAds = 1;
   }
   if (document.getElementById(id)) return;
   const script = document.createElement("script");
@@ -182,7 +189,11 @@ export function AutoAdsLoader() {
   const ads = config?.ads;
   const consent = adConsent(ads, preferences);
   const allowed = Boolean(
-    config?.apiUrl && ads?.enabled && ads.autoAds && /^ca-pub-\d{16}$/.test(ads.publisherId) && consent.allowed,
+    config?.apiUrl &&
+    ads?.enabled &&
+    ads.autoAds &&
+    /^ca-pub-\d{16}$/.test(ads.publisherId) &&
+    consent.allowed,
   );
   useEffect(() => {
     if (allowed && ads) ensureAdSenseScript(ads.publisherId, consent.nonPersonalized);

@@ -1,14 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { locales, localeMeta, type LocaleCode } from "@/i18n";
-
-interface I18nCtx {
-  lang: LocaleCode;
-  setLang: (l: LocaleCode) => void;
-  t: (key: string) => string;
-  rtl: boolean;
-}
-
-const Ctx = createContext<I18nCtx | null>(null);
+import { Ctx } from "./useI18n";
 const KEY = "kpopblog.lang";
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -22,13 +14,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLangState(l);
     if (typeof window !== "undefined") localStorage.setItem(KEY, l as string);
   }, []);
-  const t = useCallback((key: string) => (locales[lang] as Record<string, string>)[key] ?? (locales.en as Record<string, string>)[key] ?? key, [lang]);
+  const t = useCallback(
+    (key: string) =>
+      (locales[lang] as Record<string, string>)[key] ??
+      (locales.en as Record<string, string>)[key] ??
+      key,
+    [lang],
+  );
   const rtl = !!localeMeta[lang as string]?.rtl;
   return <Ctx.Provider value={{ lang, setLang, t, rtl }}>{children}</Ctx.Provider>;
-}
-
-export function useI18n() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useI18n outside provider");
-  return v;
 }

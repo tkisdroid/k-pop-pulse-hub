@@ -16,7 +16,8 @@ import { useEffect } from "react";
 export function RevealOnScroll() {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (typeof IntersectionObserver === "undefined" || typeof MutationObserver === "undefined") return;
+    if (typeof IntersectionObserver === "undefined" || typeof MutationObserver === "undefined")
+      return;
 
     const root = document.documentElement;
     const selector = "[data-reveal]:not(.is-visible), [data-reveal-children]:not(.is-visible)";

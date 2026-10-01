@@ -47,7 +47,7 @@ function ForumIndex() {
   return (
     <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 lg:grid-cols-3">
       <div className="lg:col-span-2">
-        <SectionHeader eyebrow="Forum" title="Categories" />
+        <SectionHeader as="h1" eyebrow="Forum" title="K-pop Fan Forum" />
         <AdSlot slotId="forum-top" variant="leaderboard" />
         {error && (
           <div
@@ -83,7 +83,12 @@ function ForumIndex() {
                   </div>
                   <p className="text-sm text-muted-foreground">{category.description}</p>
                   <div className="mt-3 text-xs text-muted-foreground">
-                    {[`${category.threadCount} threads`, category.postCount ? `${category.postCount} replies` : null].filter(Boolean).join(" · ")}
+                    {[
+                      `${category.threadCount} threads`,
+                      category.postCount ? `${category.postCount} replies` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 </Link>
               ))}
@@ -119,7 +124,13 @@ function ForumIndex() {
                   </div>
                   <div className="font-semibold">{thread.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    {[thread.flair, thread.replies ? `${thread.replies} replies` : null, thread.views ? `${thread.views} views` : null].filter(Boolean).join(" · ") || "New discussion"}
+                    {[
+                      thread.flair,
+                      thread.replies ? `${thread.replies} replies` : null,
+                      thread.views ? `${thread.views} views` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "New discussion"}
                   </div>
                 </Link>
               ))}

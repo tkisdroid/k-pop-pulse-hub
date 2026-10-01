@@ -466,6 +466,7 @@ echo wp_json_encode( array(
         if ($response.Content -match '(?i)<script\b[^>]*\bid\s*=\s*["'']review-injected') { throw "Stored article data injected a script element for $agent." }
         $jsonLdMatch = [regex]::Match($response.Content, $jsonLdPattern)
         try { $jsonLd = $jsonLdMatch.Groups[3].Value | ConvertFrom-Json -DateKind String -ErrorAction Stop } catch { throw "Article JSON-LD is not valid JSON for $agent." }
+        if ($jsonLd.'@graph') { $jsonLd = @($jsonLd.'@graph' | Where-Object { $_.'@type' -eq 'NewsArticle' })[0] }
         if ([string]$jsonLd.'@type' -ne 'NewsArticle' -or [string]$jsonLd.headline -ne [string]$fixtureResult.article_title) {
             throw "Article JSON-LD identity is incorrect for $agent."
         }
@@ -533,11 +534,12 @@ echo wp_json_encode( array( 'output' => $output ) );
 
     $comebacks = Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/comebacks" -Headers @{ 'User-Agent' = 'Claude-SearchBot' } -TimeoutSec 30
     if ($comebacks.Content -notmatch '<section[^>]+data-kpopblog-fallback="comebacks"') {
-        throw 'Comeback calendar is missing semantic fallback content or Event JSON-LD.'
+        throw 'Comeback calendar is missing semantic fallback content or release JSON-LD.'
     }
     $comebackJsonMatches = [regex]::Matches($comebacks.Content, $jsonLdPattern)
     if ($comebackJsonMatches.Count -ne 1) { throw 'Comeback calendar must have exactly one JSON-LD script.' }
     try { $comebackJson = $comebackJsonMatches[0].Groups[3].Value | ConvertFrom-Json -DateKind String -ErrorAction Stop } catch { throw 'Comeback JSON-LD is not valid JSON.' }
+    if ($comebackJson.'@graph') { $comebackJson = @($comebackJson.'@graph' | Where-Object { $_.'@type' -eq 'CollectionPage' })[0] }
     $eventItems = @($comebackJson.mainEntity.itemListElement)
     $eventUrls = @($eventItems | ForEach-Object { [string]$_.item.url })
     foreach ($scheduleId in @($temporaryScheduleId, $secondaryScheduleId)) {

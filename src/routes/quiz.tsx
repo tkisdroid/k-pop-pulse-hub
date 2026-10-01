@@ -18,11 +18,31 @@ export const Route = createFileRoute("/quiz")({
 });
 
 const FANDOM_NICKS = [
-  "ARMYforever", "BLINKbias", "ONCEinabluemoon", "MOAvibes", "MIDZYqueen",
-  "STAYday", "ATINYwave", "ENGENEgo", "CARATfine", "NCTzenLove",
-  "BUDDYfan", "MYstical", "FEARLESSone", "BUNNIESxoxo", "TWSpark",
-  "Ribbit99", "DalpangE", "MelodySeoul", "BiasWrecker", "MaknaeLine",
-  "BoraHae", "VisualKing", "K-popDad", "StanLife", "VocalQueen",
+  "ARMYforever",
+  "BLINKbias",
+  "ONCEinabluemoon",
+  "MOAvibes",
+  "MIDZYqueen",
+  "STAYday",
+  "ATINYwave",
+  "ENGENEgo",
+  "CARATfine",
+  "NCTzenLove",
+  "BUDDYfan",
+  "MYstical",
+  "FEARLESSone",
+  "BUNNIESxoxo",
+  "TWSpark",
+  "Ribbit99",
+  "DalpangE",
+  "MelodySeoul",
+  "BiasWrecker",
+  "MaknaeLine",
+  "BoraHae",
+  "VisualKing",
+  "K-popDad",
+  "StanLife",
+  "VocalQueen",
 ];
 
 interface RankRow {
@@ -47,7 +67,7 @@ function seededLeaderboard(date: string, total: number, you?: RankRow): RankRow[
     const h = hashStr(`${date}:${name}`);
     // bias toward 3-5 correct to feel realistic
     const r = (h % 1000) / 1000;
-    const score = r < 0.55 ? total : r < 0.8 ? total - 1 : r < 0.93 ? total - 2 : (h % (total + 1));
+    const score = r < 0.55 ? total : r < 0.8 ? total - 1 : r < 0.93 ? total - 2 : h % (total + 1);
     const streak = (h >> 7) % 21;
     return { name, score, total, streak };
   });
@@ -63,7 +83,9 @@ function computeStreak(history: QuizHistoryEntry[]): number {
   let streak = 0;
   const today = new Date();
   for (let i = 0; ; i++) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    const d = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i),
+    );
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     const found = sorted.find((h) => h.date === key);
     if (!found) break;
@@ -74,12 +96,12 @@ function computeStreak(history: QuizHistoryEntry[]): number {
 
 function QuizPage() {
   const [history, setHistory] = useState<QuizHistoryEntry[]>(() => quiz.history());
-  const [tick, setTick] = useState(0);
+  const [state, setState] = useState(() => quiz.state());
 
   useEffect(() => {
     const unsub = quiz.subscribe(() => {
       setHistory(quiz.history());
-      setTick((t) => t + 1);
+      setState(quiz.state());
     });
     return () => {
       unsub();
@@ -88,7 +110,6 @@ function QuizPage() {
 
   const total = quiz.questionsPerDay;
   const today = quiz.todayKey();
-  const state = useMemo(() => quiz.state(), [tick]);
 
   const totalGames = history.length;
   const totalCorrect = history.reduce((acc, h) => acc + h.score, 0);
@@ -100,7 +121,7 @@ function QuizPage() {
     state.completedAt && state.score !== undefined
       ? { name: "You", score: state.score, total, streak, isYou: true }
       : undefined;
-  const leaderboard = useMemo(() => seededLeaderboard(today, total, yourRow), [today, total, yourRow]);
+  const leaderboard = seededLeaderboard(today, total, yourRow);
   const yourRank = leaderboard.findIndex((r) => r.isYou) + 1;
 
   // 30-day calendar grid
@@ -122,10 +143,13 @@ function QuizPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-10">
       <header className="space-y-2">
-        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Home</Link>
+        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+          ← Home
+        </Link>
         <h1 className="font-display text-3xl md:text-4xl font-bold">Daily K-pop Quiz</h1>
         <p className="text-muted-foreground max-w-2xl">
-          A new 5-question challenge drops every day at 00:00 UTC. Play, track your streak, and climb the global leaderboard.
+          A new 5-question challenge drops every day at 00:00 UTC. Play, track your streak, and
+          climb the global leaderboard.
         </p>
       </header>
 
@@ -133,10 +157,26 @@ function QuizPage() {
         <div className="space-y-6">
           {/* Stats */}
           <div className="grid gap-3 sm:grid-cols-4">
-            <StatCard icon={<Flame className="size-4" />} label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
-            <StatCard icon={<Trophy className="size-4" />} label="Best score" value={`${bestScore}/${total}`} />
-            <StatCard icon={<TrendingUp className="size-4" />} label="Accuracy" value={`${accuracy}%`} />
-            <StatCard icon={<Medal className="size-4" />} label="Games played" value={`${totalGames}`} />
+            <StatCard
+              icon={<Flame className="size-4" />}
+              label="Streak"
+              value={`${streak} day${streak === 1 ? "" : "s"}`}
+            />
+            <StatCard
+              icon={<Trophy className="size-4" />}
+              label="Best score"
+              value={`${bestScore}/${total}`}
+            />
+            <StatCard
+              icon={<TrendingUp className="size-4" />}
+              label="Accuracy"
+              value={`${accuracy}%`}
+            />
+            <StatCard
+              icon={<Medal className="size-4" />}
+              label="Games played"
+              value={`${totalGames}`}
+            />
           </div>
 
           {/* History calendar */}
@@ -147,7 +187,11 @@ function QuizPage() {
                 {calendarDays.map((d) => {
                   const score = d.entry?.score;
                   const intensity =
-                    score === undefined ? 0 : score === total ? 5 : Math.max(1, Math.round((score / total) * 4));
+                    score === undefined
+                      ? 0
+                      : score === total
+                        ? 5
+                        : Math.max(1, Math.round((score / total) * 4));
                   return (
                     <div
                       key={d.key}
@@ -205,7 +249,11 @@ function QuizPage() {
                     <div>
                       <div className="font-medium">{h.date}</div>
                       <div className="text-xs text-muted-foreground">
-                        {h.score === h.total ? "Perfect score" : h.score >= Math.ceil(h.total / 2) ? "Nice work" : "Keep practicing"}
+                        {h.score === h.total
+                          ? "Perfect score"
+                          : h.score >= Math.ceil(h.total / 2)
+                            ? "Nice work"
+                            : "Keep practicing"}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -242,7 +290,8 @@ function QuizPage() {
                 <div className="px-4 py-2 text-xs bg-primary/5 border-b border-border flex items-center gap-2">
                   <Crown className="size-3.5 text-primary" />
                   <span>
-                    Your rank: <span className="font-semibold text-foreground">#{yourRank}</span> · {yourRow.score}/{total}
+                    Your rank: <span className="font-semibold text-foreground">#{yourRank}</span> ·{" "}
+                    {yourRow.score}/{total}
                   </span>
                 </div>
               )}
@@ -268,9 +317,13 @@ function QuizPage() {
                       >
                         {rank}
                       </span>
-                      <span className={cn("flex-1 truncate font-medium", row.isYou && "text-primary")}>
+                      <span
+                        className={cn("flex-1 truncate font-medium", row.isYou && "text-primary")}
+                      >
                         {row.name}
-                        {row.isYou && <span className="ml-1 text-[10px] uppercase tracking-wide">you</span>}
+                        {row.isYou && (
+                          <span className="ml-1 text-[10px] uppercase tracking-wide">you</span>
+                        )}
                       </span>
                       {row.streak > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">

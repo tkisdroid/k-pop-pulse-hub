@@ -14,8 +14,22 @@ import { fileURLToPath } from "node:url";
 import { AiBundleSchema, LocaleSchema, type Locale } from "../../src/schemas/ai";
 
 const ALL_LOCALES: Locale[] = [
-  "ko", "ja", "zh-CN", "zh-TW", "es", "pt-BR", "fr", "de",
-  "ru", "id", "th", "vi", "fil", "hi", "ar", "tr",
+  "ko",
+  "ja",
+  "zh-CN",
+  "zh-TW",
+  "es",
+  "pt-BR",
+  "fr",
+  "de",
+  "ru",
+  "id",
+  "th",
+  "vi",
+  "fil",
+  "hi",
+  "ar",
+  "tr",
 ];
 
 type Provider = "openai" | "gemini";
@@ -27,9 +41,24 @@ const DEFAULT_MODEL: Record<Provider, string> = {
 const SYSTEM = `You translate K-pop editorial copy. Preserve markdown, slugs, URLs, hashtags, numbers and dates EXACTLY. Output ONLY the translated text, no commentary, no quotes.`;
 
 const TEXT_FIELDS = new Set([
-  "title", "subtitle", "excerpt", "content", "bio", "description",
-  "body", "name", "fullName", "fandomName", "agency", "nationality",
-  "stageName", "position", "facts", "tags", "flair", "trackTitle",
+  "title",
+  "subtitle",
+  "excerpt",
+  "content",
+  "bio",
+  "description",
+  "body",
+  "name",
+  "fullName",
+  "fandomName",
+  "agency",
+  "nationality",
+  "stageName",
+  "position",
+  "facts",
+  "tags",
+  "flair",
+  "trackTitle",
 ]);
 
 function arg(name: string, fallback?: string) {
@@ -101,7 +130,7 @@ async function deepTranslate(
 }
 
 async function main() {
-  const provider = (arg("provider", "gemini") as Provider);
+  const provider = arg("provider", "gemini") as Provider;
   if (provider !== "openai" && provider !== "gemini") {
     throw new Error(`Unknown --provider=${provider}. Use 'openai' or 'gemini'.`);
   }
@@ -112,8 +141,10 @@ async function main() {
   if (!existsSync(srcPath)) throw new Error(`Missing ${srcPath}. Run ai:generate first.`);
   const source = AiBundleSchema.parse(JSON.parse(readFileSync(srcPath, "utf8")));
 
-  const requested = (arg("locales", ALL_LOCALES.join(","))!)
-    .split(",").map((s) => s.trim()).filter(Boolean)
+  const requested = arg("locales", ALL_LOCALES.join(","))!
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
     .map((s) => LocaleSchema.parse(s)) as Locale[];
 
   const translate = (t: string, target: Locale) =>
@@ -135,4 +166,7 @@ async function main() {
   }
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

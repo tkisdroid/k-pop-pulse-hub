@@ -38,7 +38,10 @@ export function LocalTime({ value, mode = "datetime", className }: Props) {
 
   const date = toDate(value);
   return (
-    <time dateTime={Number.isNaN(date.getTime()) ? undefined : date.toISOString()} className={className}>
+    <time
+      dateTime={Number.isNaN(date.getTime()) ? undefined : date.toISOString()}
+      className={className}
+    >
       {text}
     </time>
   );

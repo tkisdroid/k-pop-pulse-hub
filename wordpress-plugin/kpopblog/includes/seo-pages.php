@@ -56,7 +56,7 @@ function kpopblog_seo_publisher() {
 
 /** Latest published articles. */
 function kpopblog_seo_latest_articles( $limit ) {
-	return get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => $limit, 'has_password' => false ) );
+	return get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => $limit, 'has_password' => false ) );
 }
 
 /**
@@ -70,7 +70,7 @@ function kpopblog_seo_page_context( $path ) {
 
 	if ( '/' === $path ) {
 		$latest = kpopblog_seo_latest_articles( 20 );
-		$threads = get_posts( array( 'post_type' => 'kb_thread', 'post_status' => 'publish', 'numberposts' => 10, 'orderby' => 'modified' ) );
+		$threads = get_posts( array( 'post_type' => 'kb_thread', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 10, 'orderby' => 'modified' ) );
 		$description = 'K-pop news, comeback schedules, artist profiles, and a fan community. Updated daily with the latest from ' . implode( ', ', array_slice( kpopblog_artist_names_for_slugs( wp_list_pluck( array_slice( kpopblog_get_artist_matchers(), 0, 6 ), 'slug' ) ), 0, 6 ) ) . ', and more.';
 		$html = '<section data-kpopblog-fallback="home"><h1>' . esc_html( $site . ( '' !== $tagline ? ' — ' . $tagline : '' ) ) . '</h1><p>' . esc_html( $description ) . '</p>'
 			. '<h2>Latest K-pop news</h2>' . kpopblog_seo_link_list( $latest, '/news/', true )
@@ -124,7 +124,7 @@ function kpopblog_seo_page_context( $path ) {
 	}
 
 	if ( '/artists' === $path ) {
-		$artists = get_posts( array( 'post_type' => 'kb_artist', 'post_status' => 'publish', 'numberposts' => 200, 'orderby' => 'title', 'order' => 'ASC' ) );
+		$artists = get_posts( array( 'post_type' => 'kb_artist', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 200, 'orderby' => 'title', 'order' => 'ASC' ) );
 		return array(
 			'kind'        => 'page',
 			'title'       => 'K-pop Artists: Profiles, Members & News — ' . $site,
@@ -150,7 +150,7 @@ function kpopblog_seo_page_context( $path ) {
 		return kpopblog_seo_forum_context( isset( $m[1] ) ? sanitize_title( rawurldecode( $m[1] ) ) : '' );
 	}
 	if ( preg_match( '#^/polls/([^/]+)$#', $path, $m ) ) {
-		$polls = get_posts( array( 'post_type' => 'kb_poll', 'name' => sanitize_title( rawurldecode( $m[1] ) ), 'post_status' => 'publish', 'numberposts' => 1 ) );
+		$polls = get_posts( array( 'post_type' => 'kb_poll', 'name' => sanitize_title( rawurldecode( $m[1] ) ), 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 1 ) );
 		if ( ! $polls ) { return array( 'kind' => 'missing_article' ); }
 		$poll = $polls[0];
 		$options = array();
@@ -169,13 +169,13 @@ function kpopblog_seo_page_context( $path ) {
 			'html'        => '<article data-kpopblog-fallback="poll"><h1>' . esc_html( $title ) . '</h1><p>' . esc_html( kpopblog_seo_text( $poll->post_content, 500 ) ) . '</p><ul><li>' . implode( '</li><li>', array_map( 'esc_html', $options ) ) . '</li></ul></article>',
 		);
 	}
-	return null;
+	return kpopblog_seo_extra_context( $path );
 }
 
 /** Artist page: MusicGroup/Person entity plus an FAQ answer engines can quote. */
 function kpopblog_seo_artist_context( $slug ) {
 	$artist = kpopblog_get_artist_by_slug( $slug );
-	if ( ! $artist ) { return array( 'kind' => 'missing_article' ); }
+	if ( ! $artist || '' !== $artist->post_password ) { return array( 'kind' => 'missing_article' ); }
 	$site    = kpopblog_seo_site_name();
 	$name    = kpopblog_decode_text_entities( get_the_title( $artist ) );
 	$korean  = (string) get_post_meta( $artist->ID, 'kb_korean_name', true );
@@ -187,10 +187,10 @@ function kpopblog_seo_artist_context( $slug ) {
 	$image   = kpopblog_artist_image_url( $artist->ID );
 	if ( kpopblog_placeholder_image_url() === $image ) { $image = ''; } // the site's default share image is used instead
 	$url     = home_url( '/artist/' . $slug );
-	$members = get_posts( array( 'post_type' => 'kb_member', 'post_status' => 'publish', 'numberposts' => 30, 'meta_key' => 'kb_group_slug', 'meta_value' => $slug, 'orderby' => 'ID', 'order' => 'ASC' ) );
+	$members = get_posts( array( 'post_type' => 'kb_member', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 30, 'meta_key' => 'kb_group_slug', 'meta_value' => $slug, 'orderby' => 'ID', 'order' => 'ASC' ) );
 	$member_names = array_map( function ( $member ) { return kpopblog_decode_text_entities( get_the_title( $member ) ); }, $members );
-	$news = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => 10, 'meta_query' => array( array( 'key' => 'kb_related_artist_slugs', 'value' => '"' . $slug . '"', 'compare' => 'LIKE' ) ) ) );
-	$next = get_posts( array( 'post_type' => 'kb_comeback', 'post_status' => 'publish', 'numberposts' => 3, 'meta_key' => 'kb_release_at', 'orderby' => 'meta_value', 'order' => 'ASC', 'meta_query' => array( 'relation' => 'AND', array( 'key' => 'kb_artist_slug', 'value' => $slug ), array( 'key' => 'kb_release_at', 'value' => gmdate( 'Y-m-d' ), 'compare' => '>=' ) ) ) );
+	$news = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 10, 'meta_query' => array( array( 'key' => 'kb_related_artist_slugs', 'value' => '"' . $slug . '"', 'compare' => 'LIKE' ) ) ) );
+	$next = get_posts( array( 'post_type' => 'kb_comeback', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 3, 'meta_key' => 'kb_release_at', 'orderby' => 'meta_value', 'order' => 'ASC', 'meta_query' => array( 'relation' => 'AND', array( 'key' => 'kb_artist_slug', 'value' => $slug ), array( 'key' => 'kb_release_at', 'value' => gmdate( 'Y-m-d' ), 'compare' => '>=' ) ) ) );
 	$debut_text = '' !== $debut && strtotime( $debut ) ? gmdate( 'F j, Y', strtotime( $debut ) ) : '';
 
 	$faq = array();
@@ -257,7 +257,7 @@ function kpopblog_seo_artist_context( $slug ) {
 
 /** Forum thread: DiscussionForumPosting with its approved replies. */
 function kpopblog_seo_thread_context( $slug ) {
-	$threads = get_posts( array( 'post_type' => 'kb_thread', 'name' => $slug, 'post_status' => 'publish', 'numberposts' => 1 ) );
+	$threads = get_posts( array( 'post_type' => 'kb_thread', 'name' => $slug, 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 1 ) );
 	if ( ! $threads ) { return array( 'kind' => 'missing_article' ); }
 	$thread = $threads[0];
 	$site   = kpopblog_seo_site_name();
@@ -307,7 +307,7 @@ function kpopblog_seo_thread_context( $slug ) {
 /** Forum index or board: list of threads. */
 function kpopblog_seo_forum_context( $board ) {
 	$site = kpopblog_seo_site_name();
-	$args = array( 'post_type' => 'kb_thread', 'post_status' => 'publish', 'numberposts' => 30, 'orderby' => 'modified' );
+	$args = array( 'post_type' => 'kb_thread', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 30, 'orderby' => 'modified' );
 	$name = 'K-pop Fan Forum';
 	$description = 'Join K-pop fans discussing comebacks, concerts, news, fandoms, fashion, merch, and fan art.';
 	if ( '' !== $board ) {
@@ -334,7 +334,7 @@ function kpopblog_seo_forum_context( $board ) {
 /** Video page: VideoObject pointing at the official YouTube upload. */
 function kpopblog_seo_video_context( $video_id ) {
 	$video = get_post( $video_id );
-	if ( ! $video || 'kb_video' !== $video->post_type || 'publish' !== $video->post_status ) { return array( 'kind' => 'missing_article' ); }
+	if ( ! $video || 'kb_video' !== $video->post_type || 'publish' !== $video->post_status || '' !== $video->post_password ) { return array( 'kind' => 'missing_article' ); }
 	$youtube = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) get_post_meta( $video->ID, 'kb_youtube_id', true ) );
 	$title = kpopblog_decode_text_entities( get_the_title( $video ) );
 	$description = kpopblog_seo_text( '' !== trim( $video->post_content ) ? $video->post_content : $title, 300 );
@@ -350,7 +350,6 @@ function kpopblog_seo_video_context( $video_id ) {
 	);
 	if ( '' !== $youtube ) {
 		$json['embedUrl'] = 'https://www.youtube.com/embed/' . $youtube;
-		$json['contentUrl'] = 'https://www.youtube.com/watch?v=' . $youtube;
 	}
 	return array(
 		'kind'        => 'page',
@@ -368,7 +367,7 @@ function kpopblog_seo_video_context( $video_id ) {
 
 /** Articles published in the last 48 hours, in Google News sitemap format. */
 function kpopblog_render_news_sitemap() {
-	$posts = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => 1000, 'date_query' => array( array( 'after' => '48 hours ago' ) ) ) );
+	$posts = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'has_password' => false, 'numberposts' => 1000, 'has_password' => false, 'date_query' => array( array( 'after' => '48 hours ago' ) ) ) );
 	$site = kpopblog_seo_site_name();
 	$out = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">' . "\n";
 	foreach ( $posts as $post ) {

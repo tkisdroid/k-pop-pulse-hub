@@ -16,7 +16,8 @@ const CONSENT_KEY = "kpopblog:personalization:consent";
 const VIEW_LIMIT = 100;
 
 function read(): Signals {
-  if (typeof localStorage === "undefined") return { followedArtists: [], likedTags: {}, viewedArticleIds: [] };
+  if (typeof localStorage === "undefined")
+    return { followedArtists: [], likedTags: {}, viewedArticleIds: [] };
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) ?? "{}");
     return {
@@ -77,7 +78,10 @@ export const personalization = {
   recordView(article: Pick<Article, "id" | "tags">) {
     if (!hasConsent()) return;
     const s = read();
-    s.viewedArticleIds = [article.id, ...s.viewedArticleIds.filter((x) => x !== article.id)].slice(0, VIEW_LIMIT);
+    s.viewedArticleIds = [article.id, ...s.viewedArticleIds.filter((x) => x !== article.id)].slice(
+      0,
+      VIEW_LIMIT,
+    );
     for (const t of article.tags ?? []) s.likedTags[t] = (s.likedTags[t] ?? 0) + 1;
     write(s);
   },
@@ -88,7 +92,8 @@ export const personalization = {
     let score = 0;
     if (s.viewedArticleIds.includes(article.id)) return -1;
     // Followed-artist match is the strongest signal (weighted per match).
-    const matchedFollows = article.relatedArtistIds?.filter((id) => s.followedArtists.includes(id)).length ?? 0;
+    const matchedFollows =
+      article.relatedArtistIds?.filter((id) => s.followedArtists.includes(id)).length ?? 0;
     score += matchedFollows * 12;
     // Tag affinity, capped to avoid runaway from a single hot tag.
     for (const t of article.tags ?? []) score += Math.min(s.likedTags[t] ?? 0, 10) * 1.5;

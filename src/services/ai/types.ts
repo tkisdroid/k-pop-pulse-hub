@@ -11,16 +11,16 @@
  * UI code should ONLY depend on this interface, never the concrete provider.
  */
 import type {
-  AiArticle, AiArtist, AiMember, AiComeback, AiChart, AiForumThread, Locale,
+  AiArticle,
+  AiArtist,
+  AiMember,
+  AiComeback,
+  AiChart,
+  AiForumThread,
+  Locale,
 } from "@/schemas/ai";
 
-export type AiContentKind =
-  | "article"
-  | "artist"
-  | "member"
-  | "comeback"
-  | "chart"
-  | "forum_thread";
+export type AiContentKind = "article" | "artist" | "member" | "comeback" | "chart" | "forum_thread";
 
 export interface AiGenerateOptions {
   locale?: Locale;

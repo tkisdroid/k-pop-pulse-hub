@@ -16,11 +16,15 @@ export function setupQueryPersistence(queryClient: QueryClient) {
   if (typeof window === "undefined" || typeof localStorage === "undefined") return;
 
   const isInIframe = (() => {
-    try { return window.self !== window.top; } catch { return true; }
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
   })();
   const host = window.location.hostname;
   const isPreviewHost = host.includes("id-preview--") || host.includes("lovableproject.com");
-  const isDev = (import.meta as any).env?.DEV === true;
+  const isDev = import.meta.env?.DEV === true;
   if (isInIframe || isPreviewHost || isDev) return;
 
   // gcTime must exceed maxAge so persisted entries aren't dropped on hydration.
@@ -42,8 +46,8 @@ export function setupQueryPersistence(queryClient: QueryClient) {
     buster: CACHE_BUSTER,
     dehydrateOptions: {
       shouldDehydrateQuery: (q) =>
-        q.state.status === "success" && (q.state.data == null || JSON.stringify(q.state.data).length < 200_000),
+        q.state.status === "success" &&
+        (q.state.data == null || JSON.stringify(q.state.data).length < 200_000),
     },
   });
 }
-

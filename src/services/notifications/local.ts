@@ -45,7 +45,9 @@ function write(list: Reminder[]) {
   localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
   try {
     window.dispatchEvent(new CustomEvent("reminders:changed"));
-  } catch {}
+  } catch {
+    // Storage was updated; notification is best effort outside browser contexts.
+  }
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -58,7 +60,8 @@ function fireTime(r: Reminder): number {
 
 async function ensurePermission(): Promise<NotificationPermission> {
   if (typeof Notification === "undefined") return "denied";
-  if (Notification.permission === "granted" || Notification.permission === "denied") return Notification.permission;
+  if (Notification.permission === "granted" || Notification.permission === "denied")
+    return Notification.permission;
   try {
     return await Notification.requestPermission();
   } catch {
@@ -127,7 +130,9 @@ export const localNotifications = {
   async requestPermission() {
     return ensurePermission();
   },
-  async add(r: Omit<Reminder, "createdAt"> & { createdAt?: string }): Promise<{ ok: boolean; reason?: string }> {
+  async add(
+    r: Omit<Reminder, "createdAt"> & { createdAt?: string },
+  ): Promise<{ ok: boolean; reason?: string }> {
     const perm = await ensurePermission();
     if (perm !== "granted") return { ok: false, reason: perm };
     const list = read().filter((x) => x.id !== r.id);

@@ -26,26 +26,166 @@ export interface QuizState {
 }
 
 const QUESTIONS: QuizQuestion[] = [
-  { id: "q1", category: "Groups", question: "Which group released 'Dynamite' in 2020?", options: ["BTS", "EXO", "NCT", "Stray Kids"], answer: 0, explanation: "BTS released their first all-English single 'Dynamite' in August 2020." },
-  { id: "q2", category: "Groups", question: "BLACKPINK debuted in what year?", options: ["2014", "2015", "2016", "2017"], answer: 2, explanation: "BLACKPINK debuted under YG Entertainment in August 2016." },
-  { id: "q3", category: "Members", question: "Who is the leader of TWICE?", options: ["Nayeon", "Jihyo", "Mina", "Sana"], answer: 1, explanation: "Jihyo has been the leader of TWICE since debut." },
-  { id: "q4", category: "Agencies", question: "Which agency manages NewJeans?", options: ["JYP", "SM", "ADOR (HYBE)", "YG"], answer: 2, explanation: "NewJeans is under ADOR, a sub-label of HYBE." },
-  { id: "q5", category: "Songs", question: "Which song is by aespa?", options: ["Next Level", "Cupid", "Ditto", "Tomboy"], answer: 0, explanation: "'Next Level' is one of aespa's signature hits." },
-  { id: "q6", category: "History", question: "Which group is known as the 'Nation's Girl Group' from the 2nd generation?", options: ["Girls' Generation", "f(x)", "2NE1", "T-ara"], answer: 0, explanation: "Girls' Generation (SNSD) earned the 'Nation's Girl Group' title." },
-  { id: "q7", category: "Members", question: "Which BTS member was born in 1992?", options: ["RM", "Jin", "Suga", "J-Hope"], answer: 1, explanation: "Jin is the oldest member of BTS, born December 4, 1992." },
-  { id: "q8", category: "Groups", question: "Stray Kids belongs to which agency?", options: ["JYP", "HYBE", "SM", "Starship"], answer: 0, explanation: "Stray Kids debuted under JYP Entertainment in 2018." },
-  { id: "q9", category: "Songs", question: "'Pink Venom' is a song by which group?", options: ["TWICE", "BLACKPINK", "ITZY", "IVE"], answer: 1, explanation: "'Pink Venom' was the pre-release single from BORN PINK (2022)." },
-  { id: "q10", category: "Members", question: "Who is the youngest member (maknae) of BLACKPINK?", options: ["Jisoo", "Jennie", "Rosé", "Lisa"], answer: 3, explanation: "Lisa, born March 27, 1997, is the maknae of BLACKPINK." },
-  { id: "q11", category: "Groups", question: "How many members does SEVENTEEN have?", options: ["11", "13", "15", "17"], answer: 1, explanation: "SEVENTEEN has 13 members across 3 units." },
-  { id: "q12", category: "Songs", question: "Which song made IVE go viral globally in 2023?", options: ["Love Dive", "After Like", "I AM", "Eleven"], answer: 2, explanation: "'I AM' from the album I've IVE took the group to new heights." },
-  { id: "q13", category: "Agencies", question: "Which is one of the 'Big 4' K-pop agencies?", options: ["Starship", "Cube", "HYBE", "FNC"], answer: 2, explanation: "The current Big 4 are typically SM, YG, JYP, and HYBE." },
-  { id: "q14", category: "History", question: "What year did 'Gangnam Style' by PSY release?", options: ["2010", "2011", "2012", "2013"], answer: 2, explanation: "'Gangnam Style' was released in July 2012." },
-  { id: "q15", category: "Members", question: "Karina is the leader of which group?", options: ["IVE", "aespa", "(G)I-DLE", "LE SSERAFIM"], answer: 1, explanation: "Karina leads aespa, debuted under SM in 2020." },
-  { id: "q16", category: "Groups", question: "LE SSERAFIM debuted under which label?", options: ["ADOR", "Source Music (HYBE)", "JYP", "SM"], answer: 1, explanation: "LE SSERAFIM debuted under Source Music, a HYBE label, in 2022." },
-  { id: "q17", category: "Songs", question: "'God's Menu' is by which group?", options: ["ATEEZ", "Stray Kids", "TXT", "ENHYPEN"], answer: 1, explanation: "'God's Menu' (神메뉴) is one of Stray Kids' biggest hits." },
-  { id: "q18", category: "Fandoms", question: "What is the official fandom name of BTS?", options: ["MOA", "ARMY", "ONCE", "BLINK"], answer: 1, explanation: "BTS's fandom is called ARMY since 2013." },
-  { id: "q19", category: "Fandoms", question: "TWICE's fandom is called?", options: ["ONCE", "BLINK", "MIDZY", "MY"], answer: 0, explanation: "TWICE fans are called ONCE." },
-  { id: "q20", category: "Songs", question: "'Cupid' is a hit single by which group?", options: ["FIFTY FIFTY", "STAYC", "Kep1er", "NMIXX"], answer: 0, explanation: "FIFTY FIFTY's 'Cupid' became a global viral hit in 2023." },
+  {
+    id: "q1",
+    category: "Groups",
+    question: "Which group released 'Dynamite' in 2020?",
+    options: ["BTS", "EXO", "NCT", "Stray Kids"],
+    answer: 0,
+    explanation: "BTS released their first all-English single 'Dynamite' in August 2020.",
+  },
+  {
+    id: "q2",
+    category: "Groups",
+    question: "BLACKPINK debuted in what year?",
+    options: ["2014", "2015", "2016", "2017"],
+    answer: 2,
+    explanation: "BLACKPINK debuted under YG Entertainment in August 2016.",
+  },
+  {
+    id: "q3",
+    category: "Members",
+    question: "Who is the leader of TWICE?",
+    options: ["Nayeon", "Jihyo", "Mina", "Sana"],
+    answer: 1,
+    explanation: "Jihyo has been the leader of TWICE since debut.",
+  },
+  {
+    id: "q4",
+    category: "Agencies",
+    question: "Which agency manages NewJeans?",
+    options: ["JYP", "SM", "ADOR (HYBE)", "YG"],
+    answer: 2,
+    explanation: "NewJeans is under ADOR, a sub-label of HYBE.",
+  },
+  {
+    id: "q5",
+    category: "Songs",
+    question: "Which song is by aespa?",
+    options: ["Next Level", "Cupid", "Ditto", "Tomboy"],
+    answer: 0,
+    explanation: "'Next Level' is one of aespa's signature hits.",
+  },
+  {
+    id: "q6",
+    category: "History",
+    question: "Which group is known as the 'Nation's Girl Group' from the 2nd generation?",
+    options: ["Girls' Generation", "f(x)", "2NE1", "T-ara"],
+    answer: 0,
+    explanation: "Girls' Generation (SNSD) earned the 'Nation's Girl Group' title.",
+  },
+  {
+    id: "q7",
+    category: "Members",
+    question: "Which BTS member was born in 1992?",
+    options: ["RM", "Jin", "Suga", "J-Hope"],
+    answer: 1,
+    explanation: "Jin is the oldest member of BTS, born December 4, 1992.",
+  },
+  {
+    id: "q8",
+    category: "Groups",
+    question: "Stray Kids belongs to which agency?",
+    options: ["JYP", "HYBE", "SM", "Starship"],
+    answer: 0,
+    explanation: "Stray Kids debuted under JYP Entertainment in 2018.",
+  },
+  {
+    id: "q9",
+    category: "Songs",
+    question: "'Pink Venom' is a song by which group?",
+    options: ["TWICE", "BLACKPINK", "ITZY", "IVE"],
+    answer: 1,
+    explanation: "'Pink Venom' was the pre-release single from BORN PINK (2022).",
+  },
+  {
+    id: "q10",
+    category: "Members",
+    question: "Who is the youngest member (maknae) of BLACKPINK?",
+    options: ["Jisoo", "Jennie", "Rosé", "Lisa"],
+    answer: 3,
+    explanation: "Lisa, born March 27, 1997, is the maknae of BLACKPINK.",
+  },
+  {
+    id: "q11",
+    category: "Groups",
+    question: "How many members does SEVENTEEN have?",
+    options: ["11", "13", "15", "17"],
+    answer: 1,
+    explanation: "SEVENTEEN has 13 members across 3 units.",
+  },
+  {
+    id: "q12",
+    category: "Songs",
+    question: "Which song made IVE go viral globally in 2023?",
+    options: ["Love Dive", "After Like", "I AM", "Eleven"],
+    answer: 2,
+    explanation: "'I AM' from the album I've IVE took the group to new heights.",
+  },
+  {
+    id: "q13",
+    category: "Agencies",
+    question: "Which is one of the 'Big 4' K-pop agencies?",
+    options: ["Starship", "Cube", "HYBE", "FNC"],
+    answer: 2,
+    explanation: "The current Big 4 are typically SM, YG, JYP, and HYBE.",
+  },
+  {
+    id: "q14",
+    category: "History",
+    question: "What year did 'Gangnam Style' by PSY release?",
+    options: ["2010", "2011", "2012", "2013"],
+    answer: 2,
+    explanation: "'Gangnam Style' was released in July 2012.",
+  },
+  {
+    id: "q15",
+    category: "Members",
+    question: "Karina is the leader of which group?",
+    options: ["IVE", "aespa", "(G)I-DLE", "LE SSERAFIM"],
+    answer: 1,
+    explanation: "Karina leads aespa, debuted under SM in 2020.",
+  },
+  {
+    id: "q16",
+    category: "Groups",
+    question: "LE SSERAFIM debuted under which label?",
+    options: ["ADOR", "Source Music (HYBE)", "JYP", "SM"],
+    answer: 1,
+    explanation: "LE SSERAFIM debuted under Source Music, a HYBE label, in 2022.",
+  },
+  {
+    id: "q17",
+    category: "Songs",
+    question: "'God's Menu' is by which group?",
+    options: ["ATEEZ", "Stray Kids", "TXT", "ENHYPEN"],
+    answer: 1,
+    explanation: "'God's Menu' (神메뉴) is one of Stray Kids' biggest hits.",
+  },
+  {
+    id: "q18",
+    category: "Fandoms",
+    question: "What is the official fandom name of BTS?",
+    options: ["MOA", "ARMY", "ONCE", "BLINK"],
+    answer: 1,
+    explanation: "BTS's fandom is called ARMY since 2013.",
+  },
+  {
+    id: "q19",
+    category: "Fandoms",
+    question: "TWICE's fandom is called?",
+    options: ["ONCE", "BLINK", "MIDZY", "MY"],
+    answer: 0,
+    explanation: "TWICE fans are called ONCE.",
+  },
+  {
+    id: "q20",
+    category: "Songs",
+    question: "'Cupid' is a hit single by which group?",
+    options: ["FIFTY FIFTY", "STAYC", "Kep1er", "NMIXX"],
+    answer: 0,
+    explanation: "FIFTY FIFTY's 'Cupid' became a global viral hit in 2023.",
+  },
 ];
 
 const QUESTIONS_PER_DAY = 5;
@@ -158,8 +298,10 @@ export const quiz = {
       const score = answers.reduce<number>((acc, a, i) => acc + (a === qs[i].answer ? 1 : 0), 0);
       next.completedAt = new Date().toISOString();
       next.score = score;
-      const points = score * POINTS_PER_CORRECT + (score === QUESTIONS_PER_DAY ? POINTS_BONUS_PERFECT : 0);
-      if (points > 0) gamification.award(points, "points", `Daily quiz: ${score}/${QUESTIONS_PER_DAY}`);
+      const points =
+        score * POINTS_PER_CORRECT + (score === QUESTIONS_PER_DAY ? POINTS_BONUS_PERFECT : 0);
+      if (points > 0)
+        gamification.award(points, "points", `Daily quiz: ${score}/${QUESTIONS_PER_DAY}`);
       appendHistory({ date: next.date, score, total: QUESTIONS_PER_DAY });
     }
     writeState(next);

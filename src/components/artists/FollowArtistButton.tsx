@@ -7,7 +7,15 @@ import { useAuthModal } from "@/hooks/useAuthModal";
 import { cmsProvider } from "@/services/cms";
 import type { Artist } from "@/types";
 
-export function FollowArtistButton({ artist, size = "default", variant = "default" }: { artist: Artist; size?: "sm" | "default"; variant?: "default" | "secondary" | "outline" }) {
+export function FollowArtistButton({
+  artist,
+  size = "default",
+  variant = "default",
+}: {
+  artist: Artist;
+  size?: "sm" | "default";
+  variant?: "default" | "secondary" | "outline";
+}) {
   const { user } = useAuth();
   const { show } = useAuthModal();
   const [following, setFollowing] = useState(false);
@@ -35,8 +43,16 @@ export function FollowArtistButton({ artist, size = "default", variant = "defaul
   }
 
   return (
-    <Button type="button" size={size} variant={following ? "secondary" : variant} disabled={saving} aria-pressed={following} onClick={() => void toggle()}>
-      {saving && <Loader2 className="size-3 animate-spin" />}{following ? "Following" : "Follow"}
+    <Button
+      type="button"
+      size={size}
+      variant={following ? "secondary" : variant}
+      disabled={saving}
+      aria-pressed={following}
+      onClick={() => void toggle()}
+    >
+      {saving && <Loader2 className="size-3 animate-spin" />}
+      {following ? "Following" : "Follow"}
     </Button>
   );
 }

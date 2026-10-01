@@ -3,10 +3,20 @@ import type { AuthProvider } from "./demoAuthProvider";
 export const supabaseAuthProvider: AuthProvider = {
   name: "supabase",
   getCurrentUser: () => null,
-  async signIn() { throw new Error("Supabase auth not configured"); },
-  async signInDemo() { throw new Error("Supabase auth not configured"); },
-  async signUp() { throw new Error("Supabase auth not configured"); },
-  async signInWithProvider(p) { return { pending: true, message: `${p} OAuth requires Supabase credentials.` }; },
+  async signIn() {
+    throw new Error("Supabase auth not configured");
+  },
+  async signInDemo() {
+    throw new Error("Supabase auth not configured");
+  },
+  async signUp() {
+    throw new Error("Supabase auth not configured");
+  },
+  async signInWithProvider(p) {
+    return { pending: true, message: `${p} OAuth requires Supabase credentials.` };
+  },
   async signOut() {},
-  onChange() { return () => {}; },
+  onChange() {
+    return () => {};
+  },
 };

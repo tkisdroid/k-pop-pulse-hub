@@ -26,7 +26,8 @@ export function useProseLightbox(containerRef: React.RefObject<HTMLElement | nul
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setIndex(null);
       if (e.key === "ArrowRight") setIndex((i) => (i === null ? null : (i + 1) % images.length));
-      if (e.key === "ArrowLeft") setIndex((i) => (i === null ? null : (i - 1 + images.length) % images.length));
+      if (e.key === "ArrowLeft")
+        setIndex((i) => (i === null ? null : (i - 1 + images.length) % images.length));
     }
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -46,7 +47,10 @@ export function useProseLightbox(containerRef: React.RefObject<HTMLElement | nul
         onClick={() => setIndex(null)}
       >
         <button
-          onClick={(e) => { e.stopPropagation(); setIndex(null); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIndex(null);
+          }}
           className="absolute top-4 right-4 size-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
           aria-label="Close"
         >
@@ -55,14 +59,20 @@ export function useProseLightbox(containerRef: React.RefObject<HTMLElement | nul
         {images.length > 1 && (
           <>
             <button
-              onClick={(e) => { e.stopPropagation(); setIndex((i) => (i === null ? null : (i - 1 + images.length) % images.length)); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIndex((i) => (i === null ? null : (i - 1 + images.length) % images.length));
+              }}
               className="absolute left-4 size-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
               aria-label="Previous"
             >
               <ChevronLeft className="size-5" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); setIndex((i) => (i === null ? null : (i + 1) % images.length)); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIndex((i) => (i === null ? null : (i + 1) % images.length));
+              }}
               className="absolute right-4 size-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
               aria-label="Next"
             >

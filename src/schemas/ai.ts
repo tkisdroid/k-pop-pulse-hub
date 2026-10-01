@@ -17,8 +17,23 @@ import { z } from "zod";
 /* ------------------------------------------------------------------ */
 
 export const LocaleSchema = z.enum([
-  "en", "ko", "ja", "zh-CN", "zh-TW", "es", "pt-BR", "fr", "de",
-  "ru", "id", "th", "vi", "fil", "hi", "ar", "tr",
+  "en",
+  "ko",
+  "ja",
+  "zh-CN",
+  "zh-TW",
+  "es",
+  "pt-BR",
+  "fr",
+  "de",
+  "ru",
+  "id",
+  "th",
+  "vi",
+  "fil",
+  "hi",
+  "ar",
+  "tr",
 ]);
 export type Locale = z.infer<typeof LocaleSchema>;
 
@@ -48,8 +63,15 @@ export const AiArticleSchema = z.object({
   /** Markdown body. 500–6000 chars; renderers must sanitize. */
   content: z.string().min(500).max(6000),
   category: z.enum([
-    "news", "comeback", "interview", "review", "opinion",
-    "chart", "behind", "global", "rumor",
+    "news",
+    "comeback",
+    "interview",
+    "review",
+    "opinion",
+    "chart",
+    "behind",
+    "global",
+    "rumor",
   ]),
   tags: z.array(z.string().min(1).max(40)).min(1).max(12),
   relatedArtistSlugs: z.array(SlugSchema).max(8).default([]),
@@ -89,7 +111,10 @@ export const AiMemberSchema = z.object({
   nationality: z.string().min(2).max(60),
   groupSlug: SlugSchema,
   position: z.array(z.string().min(1).max(40)).min(1).max(5),
-  mbti: z.string().regex(/^[IE][NS][TF][JP]$/).optional(),
+  mbti: z
+    .string()
+    .regex(/^[IE][NS][TF][JP]$/)
+    .optional(),
   facts: z.array(z.string().min(10).max(220)).min(3).max(10),
 });
 export type AiMember = z.infer<typeof AiMemberSchema>;

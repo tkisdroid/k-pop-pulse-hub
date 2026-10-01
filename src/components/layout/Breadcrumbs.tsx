@@ -38,7 +38,9 @@ const LABELS: Record<string, string> = {
 const HIDE_PREFIXES = ["/login", "/signup", "/onboarding", "/admin", "/moderation"];
 
 function humanize(slug: string) {
-  return decodeURIComponent(slug).replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  return decodeURIComponent(slug)
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 export function Breadcrumbs() {
@@ -48,19 +50,20 @@ export function Breadcrumbs() {
 
   const resolveLabel = (prevSeg: string | undefined, seg: string) => {
     if (LABELS[seg]) return LABELS[seg];
-    const match = prevSeg === "artist"
-      ? data.artists.find((item) => item.slug === seg)?.name
-      : prevSeg === "member"
-        ? data.members.find((item) => item.slug === seg)?.stageName
-        : prevSeg === "news"
-          ? data.articles.find((item) => item.slug === seg)?.title
-          : prevSeg === "watch"
-            ? data.videos.find((item) => item.id === seg || item.slug === seg)?.title
-            : prevSeg === "polls"
-              ? data.polls.find((item) => item.slug === seg)?.title
-              : prevSeg === "thread"
-                ? data.threads.find((item) => item.slug === seg)?.title
-                : undefined;
+    const match =
+      prevSeg === "artist"
+        ? data.artists.find((item) => item.slug === seg)?.name
+        : prevSeg === "member"
+          ? data.members.find((item) => item.slug === seg)?.stageName
+          : prevSeg === "news"
+            ? data.articles.find((item) => item.slug === seg)?.title
+            : prevSeg === "watch"
+              ? data.videos.find((item) => item.id === seg || item.slug === seg)?.title
+              : prevSeg === "polls"
+                ? data.polls.find((item) => item.slug === seg)?.title
+                : prevSeg === "thread"
+                  ? data.threads.find((item) => item.slug === seg)?.title
+                  : undefined;
     return match ? (match.length > 48 ? `${match.slice(0, 45)}…` : match) : humanize(seg);
   };
 
@@ -72,7 +75,10 @@ export function Breadcrumbs() {
   });
 
   return (
-    <nav aria-label="Breadcrumb" className="mx-auto max-w-7xl px-4 w-full pt-3 text-xs text-muted-foreground">
+    <nav
+      aria-label="Breadcrumb"
+      className="mx-auto max-w-7xl px-4 w-full pt-3 text-xs text-muted-foreground"
+    >
       <ol className="flex items-center gap-1.5 flex-wrap">
         <li className="flex items-center gap-1.5">
           <Link to="/" className="inline-flex items-center gap-1 hover:text-foreground transition">
@@ -85,7 +91,9 @@ export function Breadcrumbs() {
             {i === crumbs.length - 1 ? (
               <span className="text-foreground/90 truncate max-w-[60vw]">{c.label}</span>
             ) : (
-              <Link to={c.href} className="hover:text-foreground transition truncate max-w-[40vw]">{c.label}</Link>
+              <Link to={c.href} className="hover:text-foreground transition truncate max-w-[40vw]">
+                {c.label}
+              </Link>
             )}
           </li>
         ))}

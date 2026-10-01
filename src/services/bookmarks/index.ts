@@ -20,7 +20,9 @@ function write(list: Bookmark[]) {
   localStorage.setItem(KEY, JSON.stringify(list));
   try {
     window.dispatchEvent(new CustomEvent("bookmarks:changed"));
-  } catch {}
+  } catch {
+    // Storage was updated; notification is best effort outside browser contexts.
+  }
 }
 
 export const bookmarks = {

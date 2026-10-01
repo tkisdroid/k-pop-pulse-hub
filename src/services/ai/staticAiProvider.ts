@@ -7,20 +7,14 @@
  * and behave as empty (so the UI never renders unverified data).
  */
 import { AiBundleSchema, type Locale } from "@/schemas/ai";
-import {
-  AiProviderUnavailableError,
-  type AiProvider,
-} from "./types";
+import { AiProviderUnavailableError, type AiProvider } from "./types";
 
 // Eager import — Vite tree-shakes locales that aren't referenced.
-const bundleModules = import.meta.glob<{ default: unknown }>(
-  "@/data/ai-generated/*.json",
-  { eager: true },
-);
+const bundleModules = import.meta.glob<{ default: unknown }>("@/data/ai-generated/*.json", {
+  eager: true,
+});
 
-type Kind =
-  | "article" | "artist" | "member"
-  | "comeback" | "chart" | "forum_thread";
+type Kind = "article" | "artist" | "member" | "comeback" | "chart" | "forum_thread";
 
 const KIND_TO_FIELD: Record<Kind, keyof ReturnType<typeof AiBundleSchema.parse>> = {
   article: "articles",
@@ -37,7 +31,6 @@ function loadBundle(locale: Locale) {
   if (!mod) return null;
   const parsed = AiBundleSchema.safeParse(mod.default);
   if (!parsed.success) {
-    // eslint-disable-next-line no-console
     console.error(`[ai] invalid bundle ${path}:`, parsed.error.issues.slice(0, 3));
     return null;
   }

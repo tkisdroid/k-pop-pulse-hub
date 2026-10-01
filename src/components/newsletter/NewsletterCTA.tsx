@@ -11,7 +11,6 @@ import {
 import { localNotifications } from "@/services/notifications/local";
 import { toast } from "sonner";
 
-
 type Variant = "inline" | "card" | "footer";
 
 export function NewsletterCTA({
@@ -77,11 +76,19 @@ export function NewsletterCTA({
             className="h-9"
           />
           <Button type="submit" size="sm" disabled={status === "loading" || !email}>
-            {status === "loading" ? <Loader2 className="size-4 animate-spin" /> : settings.cta.button}
+            {status === "loading" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              settings.cta.button
+            )}
           </Button>
         </form>
         {status !== "idle" && status !== "loading" && (
-          <p className={`mt-2 text-xs ${status === "success" ? "text-primary" : "text-destructive"}`}>{message}</p>
+          <p
+            className={`mt-2 text-xs ${status === "success" ? "text-primary" : "text-destructive"}`}
+          >
+            {message}
+          </p>
         )}
       </div>
     );
@@ -103,7 +110,9 @@ export function NewsletterCTA({
           {status === "loading" ? <Loader2 className="size-4 animate-spin" /> : settings.cta.button}
         </Button>
         {status === "success" && (
-          <span className="text-sm text-primary inline-flex items-center gap-1"><Check className="size-4" /> {message}</span>
+          <span className="text-sm text-primary inline-flex items-center gap-1">
+            <Check className="size-4" /> {message}
+          </span>
         )}
         {status === "error" && <span className="text-sm text-destructive">{message}</span>}
       </form>
@@ -116,7 +125,9 @@ export function NewsletterCTA({
     >
       <div className="absolute -top-20 -right-20 size-64 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
       <div className="relative max-w-2xl">
-        <div className="text-xs uppercase tracking-widest text-primary font-semibold">{settings.cta.eyebrow}</div>
+        <div className="text-xs uppercase tracking-widest text-primary font-semibold">
+          {settings.cta.eyebrow}
+        </div>
         <h2 className="font-display text-2xl md:text-3xl font-bold mt-2">{settings.cta.heading}</h2>
         <p className="text-muted-foreground mt-2">{settings.cta.subheading}</p>
 
@@ -132,7 +143,11 @@ export function NewsletterCTA({
             aria-label="Email address"
             className="h-11"
           />
-          <Button type="submit" size="lg" disabled={status === "loading" || status === "success" || !email}>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={status === "loading" || status === "success" || !email}
+          >
             {status === "loading" ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
             {status === "success" ? "Subscribed" : settings.cta.button}
           </Button>
@@ -140,7 +155,9 @@ export function NewsletterCTA({
 
         {showTopics && settings.availableTopics.length > 0 && (
           <fieldset className="mt-4">
-            <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Topics</legend>
+            <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+              Topics
+            </legend>
             <div className="flex flex-wrap gap-2">
               {settings.availableTopics.map((t) => {
                 const active = topics.includes(t);
@@ -148,7 +165,9 @@ export function NewsletterCTA({
                   <button
                     type="button"
                     key={t}
-                    onClick={() => setTopics((prev) => (active ? prev.filter((x) => x !== t) : [...prev, t]))}
+                    onClick={() =>
+                      setTopics((prev) => (active ? prev.filter((x) => x !== t) : [...prev, t]))
+                    }
                     className={`px-3 py-1 rounded-full text-xs border transition ${
                       active
                         ? "bg-primary text-primary-foreground border-primary"
@@ -182,19 +201,23 @@ export function NewsletterCTA({
 
 function PushOptIn() {
   const [perm, setPerm] = useState<NotificationPermission>(() => localNotifications.permission());
-  useEffect(() => { setPerm(localNotifications.permission()); }, []);
+  useEffect(() => {
+    setPerm(localNotifications.permission());
+  }, []);
   if (typeof Notification === "undefined") return null;
   if (perm === "granted") {
     return (
       <p className="mt-3 text-xs text-primary inline-flex items-center gap-1.5">
-        <BellRing className="size-3.5" /> Push reminders enabled — we'll ping you 15 min before comebacks drop.
+        <BellRing className="size-3.5" /> Push reminders enabled — we'll ping you 15 min before
+        comebacks drop.
       </p>
     );
   }
   if (perm === "denied") {
     return (
       <p className="mt-3 text-xs text-muted-foreground">
-        Browser notifications are blocked. Enable them in your site settings to get comeback reminders.
+        Browser notifications are blocked. Enable them in your site settings to get comeback
+        reminders.
       </p>
     );
   }
@@ -203,7 +226,9 @@ function PushOptIn() {
       <Bell className="size-4 text-primary shrink-0" />
       <div className="flex-1 text-xs">
         <div className="font-semibold">Also get browser reminders?</div>
-        <div className="text-muted-foreground">Comebacks and poll deadlines, never miss a drop.</div>
+        <div className="text-muted-foreground">
+          Comebacks and poll deadlines, never miss a drop.
+        </div>
       </div>
       <Button
         size="sm"
@@ -220,4 +245,3 @@ function PushOptIn() {
     </div>
   );
 }
-

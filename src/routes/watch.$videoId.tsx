@@ -22,7 +22,9 @@ export const Route = createFileRoute("/watch/$videoId")({
   notFoundComponent: () => (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
       <h1 className="font-display text-2xl font-bold">Video not found</h1>
-      <Link to="/videos" className="text-primary mt-4 inline-block">Browse all videos</Link>
+      <Link to="/videos" className="text-primary mt-4 inline-block">
+        Browse all videos
+      </Link>
     </div>
   ),
 });
@@ -33,14 +35,35 @@ function WatchPage() {
   const { user } = useAuth();
   const { show } = useAuthModal();
   const video = data.videos.find((item) => item.id === videoId || item.slug === videoId);
-  const artist = video ? data.artists.find((item) => item.id === video.artistId || item.slug === video.artistId || item.slug === video.artistSlug) : undefined;
+  const artist = video
+    ? data.artists.find(
+        (item) =>
+          item.id === video.artistId ||
+          item.slug === video.artistId ||
+          item.slug === video.artistSlug,
+      )
+    : undefined;
   const related = useMemo(
-    () => video ? data.videos.filter((item) => (item.artistId === video.artistId || item.artistSlug === video.artistSlug) && item.id !== video.id) : [],
-    [data.videos, video]
+    () =>
+      video
+        ? data.videos.filter(
+            (item) =>
+              (item.artistId === video.artistId || item.artistSlug === video.artistSlug) &&
+              item.id !== video.id,
+          )
+        : [],
+    [data.videos, video],
   );
   const other = useMemo(
-    () => video ? data.videos.filter((item) => item.artistId !== video.artistId && item.artistSlug !== video.artistSlug).slice(0, 6) : [],
-    [data.videos, video]
+    () =>
+      video
+        ? data.videos
+            .filter(
+              (item) => item.artistId !== video.artistId && item.artistSlug !== video.artistSlug,
+            )
+            .slice(0, 6)
+        : [],
+    [data.videos, video],
   );
 
   const [comments, setComments] = useState<Comment[]>([]);
@@ -59,11 +82,23 @@ function WatchPage() {
     let active = true;
     setLoadingComments(true);
     setCommentError(null);
-    void cmsProvider.listVideoComments(slug)
-      .then((items) => { if (active) setComments(items); })
-      .catch((requestError) => { if (active) setCommentError(requestError instanceof Error ? requestError.message : "Comments could not be loaded."); })
-      .finally(() => { if (active) setLoadingComments(false); });
-    return () => { active = false; };
+    void cmsProvider
+      .listVideoComments(slug)
+      .then((items) => {
+        if (active) setComments(items);
+      })
+      .catch((requestError) => {
+        if (active)
+          setCommentError(
+            requestError instanceof Error ? requestError.message : "Comments could not be loaded.",
+          );
+      })
+      .finally(() => {
+        if (active) setLoadingComments(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [video?.slug]);
 
   async function addComment(e: React.FormEvent) {
@@ -86,12 +121,24 @@ function WatchPage() {
     }
     if (result.item && !result.pending) setComments((current) => [result.item!, ...current]);
     setBody("");
-    setCommentNotice(result.pending ? "Your comment is awaiting moderation." : "Your comment was posted.");
+    setCommentNotice(
+      result.pending ? "Your comment is awaiting moderation." : "Your comment was posted.",
+    );
   }
 
-  if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading video…</div>;
-  if (runtimeError) return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{runtimeError}</div>;
-  if (!video) return <div className="mx-auto max-w-3xl px-4 py-16 text-center"><h1 className="font-display text-2xl font-bold">Video not found</h1><Link to="/videos" className="text-primary mt-4 inline-block">Browse all videos</Link></div>;
+  if (isLoading)
+    return <div className="mx-auto max-w-7xl px-4 py-12 text-muted-foreground">Loading video…</div>;
+  if (runtimeError)
+    return <div className="mx-auto max-w-7xl px-4 py-12 text-destructive">{runtimeError}</div>;
+  if (!video)
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <h1 className="font-display text-2xl font-bold">Video not found</h1>
+        <Link to="/videos" className="text-primary mt-4 inline-block">
+          Browse all videos
+        </Link>
+      </div>
+    );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -113,8 +160,14 @@ function WatchPage() {
             <div className="text-xs uppercase tracking-wider text-primary">{video.category}</div>
             <h1 className="font-display text-2xl font-bold">{video.title}</h1>
             {artist && (
-              <Link to="/artist/$slug" params={{ slug: artist.slug }} className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
-                <span className="size-6 rounded-full overflow-hidden"><img src={artist.image} alt="" className="size-full object-cover" /></span>
+              <Link
+                to="/artist/$slug"
+                params={{ slug: artist.slug }}
+                className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+              >
+                <span className="size-6 rounded-full overflow-hidden">
+                  <img src={artist.image} alt="" className="size-full object-cover" />
+                </span>
                 {artist.name} · {artist.followerCount.toLocaleString()} followers
               </Link>
             )}
@@ -139,7 +192,10 @@ function WatchPage() {
             Comments are saved to WordPress and may be reviewed by moderators.
           </p>
 
-          <form onSubmit={addComment} className="mt-4 space-y-2 rounded-xl border border-border bg-card p-4">
+          <form
+            onSubmit={addComment}
+            className="mt-4 space-y-2 rounded-xl border border-border bg-card p-4"
+          >
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -150,14 +206,26 @@ function WatchPage() {
             />
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{body.length}/1000</span>
-              <Button type="submit" disabled={posting || !body.trim()}>{posting && <Loader2 className="size-3 animate-spin" />} Post comment</Button>
+              <Button type="submit" disabled={posting || !body.trim()}>
+                {posting && <Loader2 className="size-3 animate-spin" />} Post comment
+              </Button>
             </div>
           </form>
-          {commentError && <p role="alert" className="mt-3 text-sm text-destructive">{commentError}</p>}
-          {commentNotice && <p role="status" className="mt-3 text-sm text-primary">{commentNotice}</p>}
+          {commentError && (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {commentError}
+            </p>
+          )}
+          {commentNotice && (
+            <p role="status" className="mt-3 text-sm text-primary">
+              {commentNotice}
+            </p>
+          )}
 
           <ul className="mt-4 space-y-3">
-            {loadingComments && <li className="text-sm text-muted-foreground py-6 text-center">Loading comments…</li>}
+            {loadingComments && (
+              <li className="text-sm text-muted-foreground py-6 text-center">Loading comments…</li>
+            )}
             {comments.length === 0 && !loadingComments && (
               <li className="text-sm text-muted-foreground py-6 text-center border border-dashed border-border rounded-xl">
                 Be the first to comment on this video.
@@ -166,11 +234,17 @@ function WatchPage() {
             {comments.map((c) => (
               <li key={c.id} className="p-3 rounded-xl bg-card border border-border">
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold text-sm">{c.author?.displayName ?? "Community member"}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleString()}</div>
+                  <div className="font-semibold text-sm">
+                    {c.author?.displayName ?? "Community member"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(c.createdAt).toLocaleString()}
+                  </div>
                 </div>
                 <p className="mt-1 text-sm whitespace-pre-wrap">{c.body}</p>
-                {c.status === "pending" && <div className="mt-2 text-xs text-muted-foreground">Awaiting moderation</div>}
+                {c.status === "pending" && (
+                  <div className="mt-2 text-xs text-muted-foreground">Awaiting moderation</div>
+                )}
               </li>
             ))}
           </ul>
@@ -184,21 +258,37 @@ function WatchPage() {
             <div className="font-display text-lg font-bold">{artist.name}</div>
             <div className="mt-3 space-y-3">
               {related.map((v) => (
-                <Link key={v.id} to="/watch/$videoId" params={{ videoId: v.id }} className="flex gap-3 group">
+                <Link
+                  key={v.id}
+                  to="/watch/$videoId"
+                  params={{ videoId: v.id }}
+                  className="flex gap-3 group"
+                >
                   <div className="relative w-32 aspect-video rounded-md overflow-hidden shrink-0">
-                    <img src={v.thumbnail} alt="" className="size-full object-cover" loading="lazy" />
+                    <img
+                      src={v.thumbnail}
+                      alt=""
+                      className="size-full object-cover"
+                      loading="lazy"
+                    />
                     <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 group-hover:opacity-100 transition">
                       <Play className="size-8 text-white" />
                     </div>
-                    <div className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/70 text-white text-[10px]">{v.duration}</div>
+                    <div className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/70 text-white text-[10px]">
+                      {v.duration}
+                    </div>
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium line-clamp-2 group-hover:text-primary">{v.title}</div>
+                    <div className="text-sm font-medium line-clamp-2 group-hover:text-primary">
+                      {v.title}
+                    </div>
                     <div className="text-xs text-muted-foreground mt-1">{v.category}</div>
                   </div>
                 </Link>
               ))}
-              {related.length === 0 && <div className="text-xs text-muted-foreground">No other videos yet.</div>}
+              {related.length === 0 && (
+                <div className="text-xs text-muted-foreground">No other videos yet.</div>
+              )}
             </div>
           </div>
         )}
@@ -209,7 +299,12 @@ function WatchPage() {
           <div className="text-xs uppercase text-muted-foreground mb-2">Explore other artists</div>
           <div className="space-y-2">
             {other.map((v) => (
-              <Link key={v.id} to="/watch/$videoId" params={{ videoId: v.id }} className="block text-sm hover:text-primary">
+              <Link
+                key={v.id}
+                to="/watch/$videoId"
+                params={{ videoId: v.id }}
+                className="block text-sm hover:text-primary"
+              >
                 {v.title}
               </Link>
             ))}

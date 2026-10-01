@@ -19,7 +19,13 @@ interface Props {
  * `reminder.fireAt - reminder.leadMinutes`. Persists in localStorage and
  * re-arms on next visit.
  */
-export function NotifyButton({ reminder, size = "sm", variant = "outline", className, label = "Remind" }: Props) {
+export function NotifyButton({
+  reminder,
+  size = "sm",
+  variant = "outline",
+  className,
+  label = "Remind",
+}: Props) {
   const [on, setOn] = useState(false);
   const [perm, setPerm] = useState<NotificationPermission>("default");
   // Notification only exists in browsers; checking it during render would make
@@ -47,7 +53,11 @@ export function NotifyButton({ reminder, size = "sm", variant = "outline", class
     const result = await localNotifications.add(reminder);
     if (!result.ok) {
       setPerm(localNotifications.permission());
-      toast.error(result.reason === "denied" ? "Notifications blocked in browser settings" : "Allow notifications to get reminders");
+      toast.error(
+        result.reason === "denied"
+          ? "Notifications blocked in browser settings"
+          : "Allow notifications to get reminders",
+      );
       return;
     }
     setOn(true);

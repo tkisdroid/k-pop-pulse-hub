@@ -42,17 +42,10 @@ export function DailyQuizWidget({ compact = false, className }: Props) {
     quiz.reset();
   }
 
-  const progressPct = Math.round(
-    (state.answers.filter((a) => a !== null).length / total) * 100,
-  );
+  const progressPct = Math.round((state.answers.filter((a) => a !== null).length / total) * 100);
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-card overflow-hidden",
-        className,
-      )}
-    >
+    <div className={cn("rounded-2xl border border-border bg-card overflow-hidden", className)}>
       <div className="p-4 bg-gradient-to-br from-primary/10 via-card to-card border-b border-border">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -60,7 +53,10 @@ export function DailyQuizWidget({ compact = false, className }: Props) {
               <Brain className="size-4" />
             </div>
             <div>
-              <Link to="/quiz" className="text-[11px] uppercase tracking-wider text-primary font-semibold hover:underline">
+              <Link
+                to="/quiz"
+                className="text-[11px] uppercase tracking-wider text-primary font-semibold hover:underline"
+              >
                 Daily K-pop Quiz →
               </Link>
               <div className="text-xs text-muted-foreground">
@@ -75,10 +71,7 @@ export function DailyQuizWidget({ compact = false, className }: Props) {
           )}
         </div>
         <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all"
-            style={{ width: `${progressPct}%` }}
-          />
+          <div className="h-full bg-primary transition-all" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 
@@ -111,7 +104,8 @@ export function DailyQuizWidget({ compact = false, className }: Props) {
                     className={cn(
                       "text-left px-3 py-2 rounded-lg border text-sm transition-colors",
                       "border-border bg-background hover:border-primary/50 hover:bg-accent",
-                      isCorrect && "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                      isCorrect &&
+                        "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
                       isWrongPick && "border-destructive bg-destructive/10 text-destructive",
                       answered && !isCorrect && !isWrongPick && "opacity-60",
                     )}

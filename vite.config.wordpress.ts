@@ -63,6 +63,9 @@ declare module '@tanstack/react-start' {
       rollupOptions: {
         input: path.resolve(__dirname, "src/entry-wordpress.tsx"),
         output: {
+          manualChunks(id) {
+            if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react-vendor";
+          },
           entryFileNames: "assets/index-[hash].js",
           chunkFileNames: "assets/chunk-[hash].js",
           assetFileNames: "assets/[name]-[hash][extname]",

@@ -15,7 +15,7 @@ import { staticAiProvider } from "./staticAiProvider";
 import { runtimeAiProvider } from "./runtimeAiProvider";
 import type { AiProvider } from "./types";
 
-const endpoint = (import.meta as any).env?.VITE_AI_ENDPOINT as string | undefined;
+const endpoint = import.meta.env?.VITE_AI_ENDPOINT as string | undefined;
 
 export const aiProvider: AiProvider = endpoint ? runtimeAiProvider : staticAiProvider;
 

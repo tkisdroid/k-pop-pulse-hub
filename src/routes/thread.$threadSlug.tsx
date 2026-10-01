@@ -63,7 +63,10 @@ function ThreadPage() {
     } catch {
       /* storage unavailable: the server-side limit still applies */
     }
-    void fetch(`${apiUrl.replace(/\/$/, "")}/threads/${encodeURIComponent(thread.slug)}/view`, { method: "POST", credentials: "same-origin" }).catch(() => undefined);
+    void fetch(`${apiUrl.replace(/\/$/, "")}/threads/${encodeURIComponent(thread.slug)}/view`, {
+      method: "POST",
+      credentials: "same-origin",
+    }).catch(() => undefined);
   }, [thread]);
 
   async function reply() {

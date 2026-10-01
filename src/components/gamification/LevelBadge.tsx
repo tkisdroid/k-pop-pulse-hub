@@ -5,7 +5,9 @@ export function LevelBadge({ compact = false }: { compact?: boolean }) {
   const [s, setS] = useState<GamificationStats>(() => gamification.stats());
   useEffect(() => {
     const unsub = gamification.subscribe(setS);
-    return () => { unsub(); };
+    return () => {
+      unsub();
+    };
   }, []);
   const { current, next, pct } = gamification.progress(s.points);
 
@@ -26,12 +28,17 @@ export function LevelBadge({ compact = false }: { compact?: boolean }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="size-3 rounded-full" style={{ background: current.color }} />
-          <span className="font-semibold">Lv {current.level} · {current.title}</span>
+          <span className="font-semibold">
+            Lv {current.level} · {current.title}
+          </span>
         </div>
         <span className="text-xs text-muted-foreground">{s.points} pts</span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: current.color }} />
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${pct}%`, background: current.color }}
+        />
       </div>
       {next && (
         <div className="mt-1 text-[11px] text-muted-foreground">

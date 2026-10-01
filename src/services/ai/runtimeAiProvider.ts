@@ -12,19 +12,19 @@
  * Until then, `canGenerate` is false and `generate()` throws.
  */
 import {
-  AiArticleSchema, AiArtistSchema, AiMemberSchema,
-  AiComebackSchema, AiChartSchema, AiForumThreadSchema,
+  AiArticleSchema,
+  AiArtistSchema,
+  AiMemberSchema,
+  AiComebackSchema,
+  AiChartSchema,
+  AiForumThreadSchema,
 } from "@/schemas/ai";
-import {
-  AiProviderUnavailableError,
-  type AiGenerateOptions,
-  type AiProvider,
-} from "./types";
+import { AiProviderUnavailableError, type AiGenerateOptions, type AiProvider } from "./types";
 import { staticAiProvider } from "./staticAiProvider";
 
-const ENDPOINT = (import.meta as any).env?.VITE_AI_ENDPOINT as string | undefined;
+const ENDPOINT = import.meta.env?.VITE_AI_ENDPOINT as string | undefined;
 const DEFAULT_PROVIDER =
-  ((import.meta as any).env?.VITE_AI_PROVIDER as "openai" | "gemini" | undefined) ?? "gemini";
+  (import.meta.env?.VITE_AI_PROVIDER as "openai" | "gemini" | undefined) ?? "gemini";
 
 const SCHEMA_FOR = {
   article: AiArticleSchema,
@@ -57,7 +57,10 @@ async function callEndpoint(kind: Kind, opts: AiGenerateOptions | undefined) {
   if (!parsed.success) {
     throw new Error(
       `AI response failed schema validation:\n` +
-        parsed.error.issues.slice(0, 5).map((i) => `  • ${i.path.join(".")} — ${i.message}`).join("\n"),
+        parsed.error.issues
+          .slice(0, 5)
+          .map((i) => `  • ${i.path.join(".")} — ${i.message}`)
+          .join("\n"),
     );
   }
   return parsed.data;

@@ -13,27 +13,31 @@
  * them from /wp-json/kpopblog/v1/moderation/settings if a WP API base is
  * configured, otherwise we fall back to safe defaults.
  */
-const ENDPOINT = (import.meta as any).env?.VITE_AI_CHAT_ENDPOINT as string | undefined;
+const ENDPOINT = import.meta.env?.VITE_AI_CHAT_ENDPOINT as string | undefined;
 
 type ModerationSettings = { enabled: boolean; threshold: number; defaultReason: string };
 
 const FALLBACK_MOD: ModerationSettings = {
   enabled: true,
   threshold: 0.7,
-  defaultReason: "Your comment was blocked by our automated moderation system. Please revise and try again.",
+  defaultReason:
+    "Your comment was blocked by our automated moderation system. Please revise and try again.",
 };
 
 let modSettingsPromise: Promise<ModerationSettings> | null = null;
 
 function injectedModSettings(): ModerationSettings | null {
   if (typeof window === "undefined") return null;
-  const cfg = (window as any).kpopblogConfig;
+  const cfg = window.kpopblogConfig;
   const m = cfg?.moderation;
   if (!m) return null;
   return {
     enabled: m.enabled !== false,
     threshold: typeof m.threshold === "number" ? m.threshold : FALLBACK_MOD.threshold,
-    defaultReason: typeof m.defaultReason === "string" && m.defaultReason ? m.defaultReason : FALLBACK_MOD.defaultReason,
+    defaultReason:
+      typeof m.defaultReason === "string" && m.defaultReason
+        ? m.defaultReason
+        : FALLBACK_MOD.defaultReason,
   };
 }
 
@@ -41,8 +45,8 @@ async function loadModerationSettings(): Promise<ModerationSettings> {
   const injected = injectedModSettings();
   if (injected) return injected;
   if (modSettingsPromise) return modSettingsPromise;
-  const wpApi = ((import.meta as any).env?.VITE_WORDPRESS_API_URL ??
-    (import.meta as any).env?.VITE_WP_API_BASE) as string | undefined;
+  const wpApi = (import.meta.env?.VITE_WORDPRESS_API_URL ?? import.meta.env?.VITE_WP_API_BASE) as
+    string | undefined;
   if (!wpApi) {
     modSettingsPromise = Promise.resolve(FALLBACK_MOD);
     return modSettingsPromise;
@@ -55,7 +59,10 @@ async function loadModerationSettings(): Promise<ModerationSettings> {
     .then((j) => ({
       enabled: j.enabled !== false,
       threshold: typeof j.threshold === "number" ? j.threshold : FALLBACK_MOD.threshold,
-      defaultReason: typeof j.defaultReason === "string" && j.defaultReason ? j.defaultReason : FALLBACK_MOD.defaultReason,
+      defaultReason:
+        typeof j.defaultReason === "string" && j.defaultReason
+          ? j.defaultReason
+          : FALLBACK_MOD.defaultReason,
     }))
     .catch(() => FALLBACK_MOD);
   return modSettingsPromise;
@@ -92,7 +99,10 @@ export const aiHelpers = {
       locale: opts?.locale ?? "en",
     });
     if (remote?.bullets?.length) return remote.bullets;
-    const sentences = text.replace(/<[^>]+>/g, "").split(/(?<=[.!?])\s+/).filter(Boolean);
+    const sentences = text
+      .replace(/<[^>]+>/g, "")
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean);
     return sentences.slice(0, opts?.bullets ?? 3);
   },
 
@@ -102,14 +112,19 @@ export const aiHelpers = {
     return { text: `[${targetLang}] ${text}`, machine: true };
   },
 
-  async moderate(text: string): Promise<{ allowed: boolean; reasons: string[]; reason: string; score: number }> {
+  async moderate(
+    text: string,
+  ): Promise<{ allowed: boolean; reasons: string[]; reason: string; score: number }> {
     const settings = await loadModerationSettings();
     if (!settings.enabled) return { allowed: true, reasons: [], reason: "", score: 0 };
 
-    const remote = await callChat<{ flagged: boolean; score?: number; reasons?: string[] }>("moderate", {
-      text,
-      threshold: settings.threshold,
-    });
+    const remote = await callChat<{ flagged: boolean; score?: number; reasons?: string[] }>(
+      "moderate",
+      {
+        text,
+        threshold: settings.threshold,
+      },
+    );
 
     let flagged: boolean;
     let reasons: string[];
